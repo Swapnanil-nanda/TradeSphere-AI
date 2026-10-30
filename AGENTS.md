@@ -30,6 +30,13 @@ Dedicated high-throughput simulation and market streaming:
 - **Quantitative Research Services:** Black-Scholes options pricing and Greeks ($\Delta, \Gamma, \Theta, \nu, \text{IV}$ via Newton-Raphson), vectorized strategy backtesting engine, and deterministic AI risk coach.
 - *Notice:* Node.js order and account endpoints are deprecated and return HTTP 410 (`MIGRATED_TO_SPRING_BOOT`).
 
+### Quantitative Investment Research Engine: Python FastAPI (`quant-engine/`, Port 8100)
+Dedicated autonomous multi-agent quantitative analytics and investment research service:
+- **7 Specialist Agents:** Market Data, News Intelligence, Technical Analysis, Historical Similarity, Forecasting, Risk Management, Quantitative Strategy.
+- **Orchestration & Verification:** Intent-based selective routing and independent Evidence Verification auditing outputs against regulatory and mathematical invariants.
+- **Quantitative Analytics:** Markowitz MPT, Efficient Frontier, one-sided VaR/CVaR, path-based Monte Carlo (with empirical path maximum drawdown), SIP planning, goal-based scenario modeling, and Strategy Lab.
+- *Invariant:* Read-only research engine. The Python engine has zero order execution authority and never writes directly into paper-trading accounts.
+
 ---
 
 ## 3. Architectural Invariants (Non-Negotiable Rules)
@@ -95,6 +102,15 @@ TR AI/
 │   ├── test/                  # Node.js market feed test suite
 │   ├── package.json           # Node scripts and dependencies
 │   └── server.js              # Express REST & WebSocket server (Port 8000)
+├── quant-engine/              # Python FastAPI Quantitative Research Engine (Port 8100)
+│   ├── agents/                # 7 Specialist Agents (Market, News, Tech, Sim, Forecast, Risk, Strategy)
+│   ├── core/                  # Pydantic schemas, Evidence Verification & Research store
+│   ├── wealth/                # SIP calculator, mutual funds & scenario modeler
+│   ├── reporting/             # ReportLab institutional PDF generator
+│   ├── api/                   # Versioned REST routers (/api/v1/quant, /api/v1/wealth)
+│   ├── tests/                 # 34 pytest unit & integration tests
+│   ├── requirements.txt       # Dependencies (FastAPI, NumPy, Pandas, SciPy, ReportLab)
+│   └── main.py                # Service entry point
 └── frontend/                  # Next.js 14/15 React Trading Terminal
     ├── src/
     │   ├── app/               # App Router pages (/terminal, /app/*, /login, etc.)

@@ -47,6 +47,7 @@ graph TD
   A["Client Browser (Next.js 14 App Router + TypeScript)"] <-->|"Edge Deployment / Proxy"| V["Vercel Edge Network"]
   A <-->|"REST API (:8080) - Auth, OMS, Ledger, Portfolio"| S["Spring Boot 3.4.x / Java 21 Backend (Render Container)"]
   A <-->|"WebSocket /ws/ticks & Microstructure (:8000)"| B["Node.js Market Simulator & Quant Engine"]
+  A <-->|"REST API (:8100) - Multi-Agent Research, MPT, Wealth"| Q["Python FastAPI Quantitative Engine"]
   
   S <-->|"Flyway Migrations (v1-v7) / HikariCP SSL"| N["Neon PostgreSQL Serverless"]
   
@@ -65,6 +66,15 @@ graph TD
     B --> F["Vectorized Strategy Backtester (/api/backtest)"]
     B --> H["Contextual AI Coach & Tilt Auditor (/api/coach)"]
   end
+
+  subgraph Python Quantitative Research Engine (:8100)
+    Q --> M1["7 Specialist Agents (Market, News, Tech, Sim, Forecast, Risk, Strategy)"]
+    Q --> M2["Independent Evidence Verification Component"]
+    Q --> M3["Markowitz MPT, Frontier & One-Sided VaR/CVaR"]
+    Q --> M4["Path-Based Monte Carlo with True Peak-to-Trough Drawdowns"]
+    Q --> M5["Wealth Planning (Step-up SIP, Scenarios, Mutual Funds)"]
+    Q --> M6["ReportLab Institutional PDF Export Engine"]
+  end
 ```
 
 ---
@@ -75,22 +85,24 @@ graph TD
 - **Node.js**: v18+ (tested on Node.js v24.14.1)
 - **Java**: JDK 21
 - **Maven**: 3.9+
+- **Python**: 3.11+
 - **Zero API keys required** — runs 100% out of the box with built-in simulation.
 
-### One-Click Launch (All 3 Services)
+### One-Click Launch (All 4 Services)
 ```bash
 node start.js
 ```
 This concurrently boots:
 1. **Spring Boot Authoritative OMS & Auth Server**: [http://localhost:8080](http://localhost:8080)
 2. **Node.js Market Feed & WebSocket Server**: [http://localhost:8000](http://localhost:8000) (`ws://localhost:8000/ws/ticks`)
-3. **Frontend Terminal Application**: [http://localhost:3000](http://localhost:3000)
+3. **Python Quantitative Research Engine**: [http://localhost:8100](http://localhost:8100)
+4. **Frontend Terminal Application**: [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## 🧪 Comprehensive Automated Test Suites
 
-The platform includes three distinct test suites covering all architectural layers:
+The platform includes four distinct test suites covering all architectural layers:
 
 ### 1. Spring Boot Authoritative Test Suite (23 Tests)
 Verifies JWT authentication, multi-tenant isolation, 1% risk gatekeeper, cash ledger reconciliation, position sizing, rate limiting, and production security profiles:
@@ -115,6 +127,14 @@ cd backend
 npm test
 ```
 *Output: 4 passed, 0 failed.*
+
+### 4. Quantitative Research Microservice Test Suite (34 Tests)
+Verifies the 7 specialist agents, selective query routing, independent evidence verification, Markowitz MPT, one-sided VaR/CVaR, path-based Monte Carlo drawdowns, step-up SIP plans, goal scenarios, and PDF report generation:
+```bash
+cd quant-engine
+pytest
+```
+*Output: 34 passed, 0 failed.*
 
 ---
 
@@ -157,6 +177,15 @@ TR AI/
 │   │   └── coach/             # Contextual AI coach
 │   ├── test/                  # Market feed test suite
 │   └── package.json
+├── quant-engine/              # Python FastAPI Quantitative Research Engine (:8100)
+│   ├── agents/                # 7 Specialist Agents (Market, News, Tech, Sim, Forecast, Risk, Strategy)
+│   ├── core/                  # Schemas, Evidence Verification & Research store
+│   ├── wealth/                # SIP calculator, mutual funds & scenario modeler
+│   ├── reporting/             # ReportLab institutional PDF generator
+│   ├── api/                   # Versioned REST routers (/api/v1/quant, /api/v1/wealth)
+│   ├── tests/                 # 34 pytest unit & integration tests
+│   ├── requirements.txt       # Dependencies (FastAPI, NumPy, Pandas, SciPy, ReportLab)
+│   └── main.py                # Microservice entry point
 └── frontend/                  # Next.js 14/15 React Trading Terminal (:3000)
     ├── src/
     │   ├── app/               # Next.js App Router pages

@@ -344,3 +344,97 @@ All order, portfolio, ledger, and authentication endpoints on Node.js return HTT
   "message": "Order, portfolio, ledger, and auth management are handled authoritatively by the Spring Boot backend on port 8080."
 }
 ```
+
+---
+
+## 12. Quantitative Research & Wealth Engine (Python FastAPI :8100)
+
+Autonomous Multi-Agent Alpha Modeling & Risk Invariant Service with independent Evidence Verification.
+
+### 12.1 Multi-Agent Research Run
+`POST /api/v1/quant/research-runs`
+- **Request Body:**
+  ```json
+  {
+    "query": "Evaluate technical regime, forecast, and sentiment for RELIANCE",
+    "symbol": "RELIANCE",
+    "requested_agents": ["MarketDataAgent", "TechnicalAnalysisAgent", "ForecastingAgent"]
+  }
+  ```
+- **Response:** Structured research run with synthesized executive summary, specialist agent results, and evidence verification report.
+
+### 12.2 Get Research Run by ID
+`GET /api/v1/quant/research-runs/{id}`
+
+### 12.3 Multi-Horizon Calibrated Return Forecast
+`POST /api/v1/quant/forecasts`
+- **Request Body:** `{"symbol": "RELIANCE", "history_bars": 252}`
+- **Response:** Probabilistic forecasts across 1d, 5d, 20d horizons with 80% and 95% confidence intervals, Student's t distribution stats, and out-of-sample validation metrics (MAE, RMSE, directional accuracy).
+
+### 12.4 Historical Similarity & Analogues
+`POST /api/v1/quant/analogues`
+- **Request Body:** `{"symbol": "RELIANCE", "target_window_bars": 20, "history_bars": 500, "top_k": 5}`
+- **Response:** Top normalized Euclidean trajectory analogue matches and forward return distributions across 1d, 5d, and 20d.
+
+### 12.5 Modern Portfolio Theory & Efficient Frontier
+`POST /api/v1/wealth/optimizations`
+- **Request Body:**
+  ```json
+  {
+    "symbols": ["RELIANCE", "TCS", "INFY", "HDFCBANK"],
+    "return_assumption_method": "Historical Annualized Mean Return",
+    "frontier_points_count": 20
+  }
+  ```
+- **Response:** Covariance & correlation matrices, Maximum Sharpe weights, Minimum Variance weights, and 20 Efficient Frontier points.
+
+### 12.6 Efficient Frontier Retrieval
+`GET /api/v1/wealth/optimizations/{id}/frontier`
+
+### 12.7 Systematic Investment Plan (SIP) Planning
+`POST /api/v1/wealth/sip-plans`
+- **Request Body:**
+  ```json
+  {
+    "monthly_investment": 10000.0,
+    "annual_step_up_pct": 10.0,
+    "expected_return_cagr": 12.0,
+    "investment_horizon_years": 15
+  }
+  ```
+- **Response:** Total invested, estimated future value, wealth gain, and year-by-year step-up schedule.
+
+### 12.8 Goal-Based Scenario Modeling
+`POST /api/v1/wealth/scenarios`
+- **Request Body:**
+  ```json
+  {
+    "goal_name": "Retirement Independence",
+    "target_amount": 20000000.0,
+    "horizon_years": 15,
+    "inflation_rate_pct": 6.0,
+    "expected_return_cagr": 12.0
+  }
+  ```
+- **Response:** Inflation-adjusted target, suggested monthly SIP, recommended asset allocation, and Monte Carlo shortfall probability.
+
+### 12.9 Mutual Fund Research Database
+`GET /api/v1/wealth/mutual-funds?category=Large+Cap&query=UTI`
+
+### 12.10 Vectorized Strategy Lab Backtest
+`POST /api/v1/quant/backtests`
+- **Request Body:**
+  ```json
+  {
+    "strategy_name": "EMA_CROSSOVER",
+    "symbol": "RELIANCE",
+    "initial_capital": 1000000.0,
+    "risk_per_trade_pct": 1.0,
+    "bars": 252
+  }
+  ```
+- **Response:** Sharpe ratio, Sortino ratio, max drawdown %, Calmar ratio, win rate %, profit factor, detailed trade log, and equity curve.
+
+### 12.11 Research Dossier Export (JSON & PDF)
+`GET /api/v1/quant/reports/{id}?format=pdf` (or `format=json`)
+- **Response:** Formatted institutional PDF research dossier with typography, metadata tables, technical breakdowns, verification audit stamps, and statutory disclosures.
