@@ -15,6 +15,7 @@ export interface AppConfig {
   apiUrl: string;
   marketWsUrl: string;
   marketApiUrl: string;
+  quantApiUrl: string;
   isProduction: boolean;
 }
 
@@ -29,6 +30,13 @@ function resolveApiUrl(): string {
   }
 
   return process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080';
+}
+
+function resolveQuantApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_QUANT_API_URL && process.env.NEXT_PUBLIC_QUANT_API_URL.trim() !== '') {
+    return process.env.NEXT_PUBLIC_QUANT_API_URL.replace(/\/+$/, '');
+  }
+  return process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8100';
 }
 
 function resolveMarketApiUrl(): string {
@@ -63,5 +71,6 @@ export const appConfig: AppConfig = {
   apiUrl: resolveApiUrl(),
   marketWsUrl: resolveMarketWsUrl(),
   marketApiUrl: resolveMarketApiUrl(),
+  quantApiUrl: resolveQuantApiUrl(),
   isProduction: process.env.NODE_ENV === 'production'
 };

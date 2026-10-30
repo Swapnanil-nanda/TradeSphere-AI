@@ -6,9 +6,9 @@ import QuoteTable from '../../../components/app/QuoteTable';
 import StockCard from '../../../components/app/StockCard';
 import EmptyState from '../../../components/app/EmptyState';
 import ErrorState from '../../../components/app/ErrorState';
-import { TableSkeleton, CardSkeleton } from '../../../components/app/LoadingSkeleton';
+import { TableSkeleton } from '../../../components/app/LoadingSkeleton';
 import { apiClient, Ticker } from '../../../lib/api-client';
-import { Search, Compass, TrendingUp, TrendingDown, RefreshCw, Filter, Layers } from 'lucide-react';
+import { Search, Compass, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function MarketsPage() {
@@ -39,17 +39,14 @@ export default function MarketsPage() {
   }, []);
 
   const handleSelectSymbol = (sym: string) => {
-    router.push(`/app/charts?symbol=${sym}`);
+    router.push(`/terminal`);
   };
 
   // Filtered list
   const filteredTickers = tickers.filter(t => {
-    // Market filter
     if (marketFilter !== 'ALL' && t.market !== marketFilter) return false;
-    // Category filter
     if (categoryFilter === 'GAINERS' && t.changePct <= 0) return false;
     if (categoryFilter === 'LOSERS' && t.changePct >= 0) return false;
-    // Search query
     if (search.trim()) {
       const q = search.toLowerCase();
       return t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q);
@@ -57,47 +54,44 @@ export default function MarketsPage() {
     return true;
   });
 
-  const topMovers = [...tickers].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 4);
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="space-y-4 max-w-7xl mx-auto pb-8 select-none text-xs">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
               Markets Overview
             </h1>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
               DUAL-MARKET FEED
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
             Real-time simulated quotes for Indian (NSE/BSE) and US (NASDAQ/NYSE) equities.
           </p>
         </div>
 
         <button
           onClick={loadTickers}
-          className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0c121f] border border-[#1b253b] hover:border-blue-500/40 text-xs font-semibold text-slate-300 hover:text-white transition-all"
+          className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-[#0c121f] border border-slate-200 dark:border-[#1b253b] hover:border-blue-500/50 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors shadow-2xs"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           <span>Refresh Feeds</span>
         </button>
       </div>
 
       {/* Simulation Transparency Ribbon */}
-      <div className="bg-[#0c121f] border border-[#1b253b] rounded-xl px-4 py-2 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-3">
+      <div className="bg-white dark:bg-[#0c121f] border border-slate-200 dark:border-[#1b253b] rounded-xl px-3.5 py-2 flex flex-wrap items-center justify-between text-[11px] text-slate-500 shadow-2xs gap-2">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-300">Data Source:</span>
-          <span className="text-blue-400">TradeSphere Synthetic GBM Engine</span>
+          <span className="font-semibold text-slate-700 dark:text-slate-300">Data Source:</span>
+          <span className="text-blue-600 dark:text-blue-400">TradeSphere Synthetic GBM Engine</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+          <span className="px-2 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
             SIMULATED DATA
           </span>
-          <span>Freshness: <strong className="text-slate-200">Real-time Synthetic Tick (&lt;50ms)</strong></span>
-          <span className="text-slate-500">{new Date().toLocaleTimeString()}</span>
+          <span>Tick Latency: <strong className="text-slate-700 dark:text-slate-200 font-mono">&lt;50ms</strong></span>
         </div>
       </div>
 
@@ -141,83 +135,70 @@ export default function MarketsPage() {
         />
       </div>
 
-      {/* Top Movers Highlight */}
-      <div>
-        <h2 className="text-sm font-extrabold text-white mb-3 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-blue-400" />
-          <span>Top Movers (Simulated High Volatility)</span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {topMovers.map(t => (
-            <StockCard key={t.symbol} ticker={t} onSelect={handleSelectSymbol} />
-          ))}
-        </div>
-      </div>
-
       {/* Filter and Search Bar */}
-      <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#0c121f] border border-slate-200 dark:border-[#1b253b] rounded-xl p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-2xs">
         {/* Search Input */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by symbol or company name (e.g. RELIANCE, AAPL, TCS)..."
-            className="w-full bg-[#070b14] border border-[#1b253b] rounded-xl pl-10 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-sans"
+            className="w-full bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-sans"
           />
         </div>
 
         {/* Market Filter Buttons */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="flex items-center bg-[#070b14] p-1 rounded-xl border border-[#1b253b]">
+          <div className="flex items-center bg-slate-100 dark:bg-[#070b14] p-0.5 rounded-lg border border-slate-200 dark:border-[#1b253b]">
             <button
               onClick={() => setMarketFilter('ALL')}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all ${
-                marketFilter === 'ALL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                marketFilter === 'ALL' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               All Markets
             </button>
             <button
               onClick={() => setMarketFilter('IN')}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all ${
-                marketFilter === 'IN' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                marketFilter === 'IN' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               NSE/BSE 🇮🇳
             </button>
             <button
               onClick={() => setMarketFilter('US')}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all ${
-                marketFilter === 'US' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                marketFilter === 'US' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               US Equities 🇺🇸
             </button>
           </div>
 
-          <div className="flex items-center bg-[#070b14] p-1 rounded-xl border border-[#1b253b]">
+          <div className="flex items-center bg-slate-100 dark:bg-[#070b14] p-0.5 rounded-lg border border-slate-200 dark:border-[#1b253b]">
             <button
               onClick={() => setCategoryFilter('ALL')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                categoryFilter === 'ALL' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                categoryFilter === 'ALL' ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'
               }`}
             >
               All
             </button>
             <button
               onClick={() => setCategoryFilter('GAINERS')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                categoryFilter === 'GAINERS' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-400'
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                categoryFilter === 'GAINERS' ? 'bg-emerald-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600'
               }`}
             >
               Gainers
             </button>
             <button
               onClick={() => setCategoryFilter('LOSERS')}
-              className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                categoryFilter === 'LOSERS' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-rose-400'
+              className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                categoryFilter === 'LOSERS' ? 'bg-rose-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-rose-600'
               }`}
             >
               Losers
@@ -246,9 +227,9 @@ export default function MarketsPage() {
         />
       ) : (
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
             <span>Showing {filteredTickers.length} active instruments</span>
-            <span>Click any symbol to open in Charts &amp; Analysis</span>
+            <span>Click any symbol to trade in Terminal</span>
           </div>
           <QuoteTable
             tickers={filteredTickers}

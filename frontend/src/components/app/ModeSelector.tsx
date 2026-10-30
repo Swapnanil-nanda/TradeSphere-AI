@@ -24,11 +24,13 @@ export default function ModeSelector({ currentMode = 'active', onModeChange }: M
   };
 
   return (
-    <div className="flex items-center gap-1 bg-[#070b14] p-1 rounded-xl border border-[#1b253b] text-xs select-none">
+    <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#070b14] p-0.5 rounded-lg border border-slate-200 dark:border-[#1b253b] text-xs select-none">
       <button
         onClick={() => handleSelect('basic')}
-        className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
-          mode === 'basic' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+          mode === 'basic'
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
         }`}
         title="Tier 1: Guided 20-EMA trend guide, 1% auto-risk sizing, plain-English coach"
       >
@@ -37,8 +39,10 @@ export default function ModeSelector({ currentMode = 'active', onModeChange }: M
 
       <button
         onClick={() => handleSelect('active')}
-        className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
-          mode === 'active' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+          mode === 'active'
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
         }`}
         title="Tier 2: Multi-timeframe candlesticks, VWAP, Bracket OCO orders, trade journal"
       >
@@ -47,8 +51,10 @@ export default function ModeSelector({ currentMode = 'active', onModeChange }: M
 
       <button
         onClick={() => handleSelect('pro')}
-        className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
-          mode === 'pro' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+          mode === 'pro'
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
         }`}
         title="Tier 3: 20-depth DOM ladder, Black-Scholes Greeks, vectorized backtester"
       >

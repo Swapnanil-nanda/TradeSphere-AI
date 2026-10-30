@@ -39,6 +39,8 @@ export default function Backtester({ symbol }) {
     const width = canvas.parentElement.clientWidth;
     const height = canvas.parentElement.clientHeight;
 
+    const isDark = document.documentElement.classList.contains('dark');
+
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
@@ -55,8 +57,13 @@ export default function Backtester({ symbol }) {
 
     // Draw Gradient Background under Equity Curve
     const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, 'rgba(37, 99, 235, 0.35)');
-    grad.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
+    if (isDark) {
+      grad.addColorStop(0, 'rgba(37, 99, 235, 0.35)');
+      grad.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
+    } else {
+      grad.addColorStop(0, 'rgba(37, 99, 235, 0.20)');
+      grad.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
+    }
 
     ctx.beginPath();
     ctx.moveTo(0, height);
@@ -69,9 +76,7 @@ export default function Backtester({ symbol }) {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Draw Equity Line
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 2;
+    // Draw Line
     ctx.beginPath();
     curve.forEach((val, i) => {
       const x = (i / (curve.length - 1)) * width;
@@ -79,87 +84,91 @@ export default function Backtester({ symbol }) {
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     });
+    ctx.strokeStyle = '#2563eb';
+    ctx.lineWidth = 2;
     ctx.stroke();
   }, [results]);
 
   return (
-    <div className="h-full flex flex-col bg-[#0b101c] text-xs select-none">
-      {/* Strategy Selector Header */}
-      <div className="p-3 border-b border-[#1b253b] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-slate-300 uppercase tracking-wider text-[11px]">Strategy Backtester</span>
+    <div className="h-full flex flex-col bg-white dark:bg-[#0b101c] text-xs select-none p-3 space-y-3 transition-colors overflow-y-auto custom-scrollbar">
+      {/* Parameter Controls */}
+      <div className="p-3 bg-slate-50 dark:bg-[#070b14] rounded-lg border border-slate-200 dark:border-[#1b253b] space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">Vectorized Backtester</span>
+          <span className="text-[10px] text-slate-500 font-mono">1,000 Candles</span>
+        </div>
 
-          <select
-            value={strategy}
-            onChange={e => setStrategy(e.target.value)}
-            className="bg-[#070b14] border border-[#1b253b] rounded px-2.5 py-1 text-slate-200 text-xs focus:outline-none focus:border-blue-500 font-semibold"
-          >
-            <option value="ema_cross">EMA 9/21 Crossover</option>
-            <option value="rsi_mean_reversion">RSI(14) Mean Reversion</option>
-            <option value="vwap_breakout">VWAP Volume Breakout</option>
-          </select>
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div>
+            <label className="text-[10px] text-slate-500 font-semibold mb-1 block">Fast EMA</label>
+            <input
+              type="number"
+              value={fastEma}
+              onChange={e => setFastEma(e.target.value)}
+              className="w-full bg-white dark:bg-[#0c121f] border border-slate-200 dark:border-[#1b253b] rounded px-2 py-1 text-slate-900 dark:text-white font-mono"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500 font-semibold mb-1 block">Slow EMA</label>
+            <input
+              type="number"
+              value={slowEma}
+              onChange={e => setSlowEma(e.target.value)}
+              className="w-full bg-white dark:bg-[#0c121f] border border-slate-200 dark:border-[#1b253b] rounded px-2 py-1 text-slate-900 dark:text-white font-mono"
+            />
+          </div>
         </div>
 
         <button
           onClick={handleRun}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-md shadow-blue-600/20"
+          className="w-full py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center justify-center gap-1.5 transition-colors"
         >
-          <Play className="w-3 h-3 fill-current" />
-          <span>{loading ? 'Simulating...' : 'Run Backtest'}</span>
+          <Play className="w-3.5 h-3.5 fill-white" />
+          <span>{loading ? 'Simulating Trades...' : 'Run Simulation'}</span>
         </button>
       </div>
 
-      {/* Main Backtest View */}
-      <div className="flex-1 flex flex-col md:flex-row p-3 gap-3 overflow-hidden">
-        {/* Performance Scorecard */}
-        <div className="w-full md:w-72 grid grid-cols-2 gap-2 text-[11px] font-['JetBrains_Mono']">
-          <div className="p-2.5 rounded-lg bg-[#070b14] border border-[#1b253b]">
-            <div className="text-[10px] text-slate-400 font-sans uppercase">Net Return</div>
-            <div className={`text-base font-bold ${results?.netReturnPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {results?.netReturnPct >= 0 ? '+' : ''}{results?.netReturnPct}%
+      {/* Equity Curve Canvas */}
+      <div className="p-3 bg-slate-50 dark:bg-[#070b14] rounded-lg border border-slate-200 dark:border-[#1b253b] space-y-2">
+        <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Simulated Equity Curve</div>
+        <div className="w-full h-32 relative">
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+        </div>
+      </div>
+
+      {/* Performance Metrics Cards */}
+      {results && (
+        <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+          <div className="p-2.5 bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg">
+            <div className="text-[10px] text-slate-500 font-sans">Net Cumulative Return</div>
+            <div className={`font-bold text-sm ${results.totalReturnPct >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              {results.totalReturnPct >= 0 ? '+' : ''}{results.totalReturnPct?.toFixed(2)}%
             </div>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-[#070b14] border border-[#1b253b]">
-            <div className="text-[10px] text-slate-400 font-sans uppercase">Win Rate</div>
-            <div className="text-base font-bold text-white">{results?.winRatePct}%</div>
+          <div className="p-2.5 bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg">
+            <div className="text-[10px] text-slate-500 font-sans">Win Rate</div>
+            <div className="font-bold text-sm text-slate-900 dark:text-white">
+              {results.winRatePct?.toFixed(1)}% ({results.totalTrades} Trades)
+            </div>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-[#070b14] border border-[#1b253b]">
-            <div className="text-[10px] text-slate-400 font-sans uppercase">Sharpe Ratio</div>
-            <div className="text-base font-bold text-cyan-400">{results?.sharpeRatio}</div>
+          <div className="p-2.5 bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg">
+            <div className="text-[10px] text-slate-500 font-sans">Sharpe Ratio</div>
+            <div className="font-bold text-sm text-blue-600 dark:text-blue-400">
+              {results.sharpeRatio?.toFixed(2)}
+            </div>
           </div>
 
-          <div className="p-2.5 rounded-lg bg-[#070b14] border border-[#1b253b]">
-            <div className="text-[10px] text-slate-400 font-sans uppercase">Sortino Ratio</div>
-            <div className="text-base font-bold text-emerald-400">{results?.sortinoRatio}</div>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-[#070b14] border border-[#1b253b]">
-            <div className="text-[10px] text-slate-400 font-sans uppercase">Max Drawdown</div>
-            <div className="text-base font-bold text-rose-400">-{results?.maxDrawdownPct}%</div>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-[#070b14] border border-[#1b253b]">
-            <div className="text-[10px] text-slate-400 font-sans uppercase">Total Trades</div>
-            <div className="text-base font-bold text-slate-200">{results?.totalTrades}</div>
+          <div className="p-2.5 bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg">
+            <div className="text-[10px] text-slate-500 font-sans">Max Drawdown</div>
+            <div className="font-bold text-sm text-rose-600 dark:text-rose-400">
+              -{results.maxDrawdownPct?.toFixed(2)}%
+            </div>
           </div>
         </div>
-
-        {/* Equity Curve Visualizer Canvas */}
-        <div className="flex-1 flex flex-col bg-[#070b14] border border-[#1b253b] rounded-lg p-2.5">
-          <div className="text-[10px] text-slate-400 uppercase font-semibold mb-1 flex items-center justify-between">
-            <span>Portfolio Equity Curve (Simulated)</span>
-            <span className="text-blue-400 font-['JetBrains_Mono']">
-              Final: ₹{results?.finalEquity?.toLocaleString('en-IN')}
-            </span>
-          </div>
-          <div className="flex-1 relative w-full h-full min-h-[140px]">
-            <canvas ref={canvasRef} className="absolute inset-0" />
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

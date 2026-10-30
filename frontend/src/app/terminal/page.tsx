@@ -22,6 +22,7 @@ export default function TerminalPage() {
   const [portfolio, setPortfolio] = useState<any>(null);
   const [flashes, setFlashes] = useState<Record<string, 'up' | 'down'>>({});
   const [coachOpen, setCoachOpen] = useState(false);
+  const [watchlistOpen, setWatchlistOpen] = useState(true);
   const [proTab, setProTab] = useState<'ticket' | 'options' | 'backtest'>('ticket');
   const [wsConnected, setWsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'CONNECTED' | 'CONNECTING' | 'OFFLINE'>('CONNECTING');
@@ -152,12 +153,12 @@ export default function TerminalPage() {
         ws.onclose = () => {
           setWsConnected(false);
           setConnectionStatus('OFFLINE');
-          reconnectTimeout = setTimeout(connectWs, 2000);
+          reconnectTimeout = setTimeout(connectWs, 2500);
         };
       } catch (err) {
         setWsConnected(false);
         setConnectionStatus('OFFLINE');
-        reconnectTimeout = setTimeout(connectWs, 2000);
+        reconnectTimeout = setTimeout(connectWs, 2500);
       }
     };
 
@@ -202,7 +203,7 @@ export default function TerminalPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] w-full overflow-hidden bg-[#070b14] text-slate-100 font-sans select-none">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#070b14] text-slate-800 dark:text-slate-100 font-sans select-none transition-colors">
       {/* Top Terminal Header Bar */}
       <Header
         mode={mode}
@@ -210,24 +211,28 @@ export default function TerminalPage() {
         portfolio={portfolio}
         activeSymbol={activeSymbol}
         onOpenCoach={() => setCoachOpen(true)}
+        watchlistOpen={watchlistOpen}
+        onToggleWatchlist={() => setWatchlistOpen(!watchlistOpen)}
       />
 
       {/* Main Workspace based on 3-Tier Adaptive Complexity */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Watchlist (Shared across all tiers) */}
-        <Watchlist
-          tickers={tickers}
-          activeSymbol={activeSymbol}
-          onSelectSymbol={setActiveSymbol}
-          flashes={flashes}
-        />
+        {/* Watchlist (Collapsible panel) */}
+        {watchlistOpen && (
+          <Watchlist
+            tickers={tickers}
+            activeSymbol={activeSymbol}
+            onSelectSymbol={setActiveSymbol}
+            flashes={flashes}
+          />
+        )}
 
         {/* Dynamic Center Stage */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Stage: Charts & Order Processing */}
           <div className="flex-1 flex min-h-0">
             {/* Chart Area */}
-            <div className="flex-1 flex flex-col min-w-0 border-r border-[#1b253b]">
+            <div className="flex-1 flex flex-col min-w-0 border-r border-slate-200 dark:border-[#1b253b]">
               <TradingChart
                 symbol={activeSymbol}
                 ticker={activeTicker}
@@ -240,7 +245,7 @@ export default function TerminalPage() {
 
             {/* Mode-Specific Right Panels */}
             {mode === 'basic' && (
-              <div className="w-80 flex flex-col">
+              <div className="w-80 flex flex-col shrink-0">
                 <OrderTicket
                   symbol={activeSymbol}
                   ticker={activeTicker}
@@ -252,7 +257,7 @@ export default function TerminalPage() {
             )}
 
             {mode === 'active' && (
-              <div className="w-80 flex flex-col">
+              <div className="w-80 flex flex-col shrink-0">
                 <OrderTicket
                   symbol={activeSymbol}
                   ticker={activeTicker}
@@ -264,9 +269,9 @@ export default function TerminalPage() {
             )}
 
             {mode === 'pro' && (
-              <div className="flex flex-row">
+              <div className="flex flex-row shrink-0">
                 {/* Level 2 DOM Ladder */}
-                <div className="w-64 border-r border-[#1b253b]">
+                <div className="w-64 border-r border-slate-200 dark:border-[#1b253b]">
                   <OrderBookDOM
                     ticker={activeTicker}
                     onQuickFill={() => {}}
@@ -274,21 +279,25 @@ export default function TerminalPage() {
                 </div>
 
                 {/* Tabbed Pro Quant Tools */}
-                <div className="w-96 flex flex-col bg-[#0c121f]">
+                <div className="w-96 flex flex-col bg-white dark:bg-[#0c121f]">
                   {/* Pro Tab Navigator */}
-                  <div className="h-9 px-2 border-b border-[#1b253b] flex items-center gap-1 bg-[#090d16]">
+                  <div className="h-9 px-2 border-b border-slate-200 dark:border-[#1b253b] flex items-center gap-1 bg-slate-50 dark:bg-[#090d16]">
                     <button
                       onClick={() => setProTab('ticket')}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                        proTab === 'ticket' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        proTab === 'ticket' 
+                          ? 'bg-blue-600 text-white shadow-2xs' 
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
-                      Smart Order Ticket
+                      Order Ticket
                     </button>
                     <button
                       onClick={() => setProTab('options')}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                        proTab === 'options' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        proTab === 'options' 
+                          ? 'bg-blue-600 text-white shadow-2xs' 
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
                       Options Greeks
@@ -296,14 +305,16 @@ export default function TerminalPage() {
                     <button
                       onClick={() => setProTab('backtest')}
                       className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                        proTab === 'backtest' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        proTab === 'backtest' 
+                          ? 'bg-blue-600 text-white shadow-2xs' 
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
                       Backtester
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {proTab === 'ticket' && (
                       <OrderTicket
                         symbol={activeSymbol}
@@ -332,6 +343,7 @@ export default function TerminalPage() {
           <PortfolioBlotter
             portfolio={portfolio}
             onClosePosition={handleClosePosition}
+            onRefresh={fetchPortfolio}
           />
         </div>
       </div>

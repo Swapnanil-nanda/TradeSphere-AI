@@ -99,19 +99,21 @@ export default function TradingViewChart({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
+    const isDark = document.documentElement.classList.contains('dark');
+
     // Create chart
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: height,
       layout: {
-        background: { type: ColorType.Solid, color: '#070b14' },
-        textColor: '#94a3b8',
+        background: { type: ColorType.Solid, color: isDark ? '#070b14' : '#ffffff' },
+        textColor: isDark ? '#94a3b8' : '#64748b',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         fontSize: 11
       },
       grid: {
-        vertLines: { color: 'rgba(27, 37, 59, 0.45)' },
-        horzLines: { color: 'rgba(27, 37, 59, 0.45)' }
+        vertLines: { color: isDark ? 'rgba(27, 37, 59, 0.45)' : 'rgba(241, 245, 249, 0.9)' },
+        horzLines: { color: isDark ? 'rgba(27, 37, 59, 0.45)' : 'rgba(241, 245, 249, 0.9)' }
       },
       crosshair: {
         mode: 1, // Magnet mode
@@ -119,22 +121,22 @@ export default function TradingViewChart({
           color: '#3b82f6',
           width: 1,
           style: 3, // Dashed
-          labelBackgroundColor: '#1e293b'
+          labelBackgroundColor: isDark ? '#1e293b' : '#2563eb'
         },
         horzLine: {
           color: '#3b82f6',
           width: 1,
           style: 3,
-          labelBackgroundColor: '#1e293b'
+          labelBackgroundColor: isDark ? '#1e293b' : '#2563eb'
         }
       },
       timeScale: {
-        borderColor: '#1b253b',
+        borderColor: isDark ? '#1b253b' : '#e2e8f0',
         timeVisible: true,
         secondsVisible: false
       },
       rightPriceScale: {
-        borderColor: '#1b253b',
+        borderColor: isDark ? '#1b253b' : '#e2e8f0',
         scaleMargins: {
           top: 0.1,
           bottom: 0.25
@@ -146,11 +148,11 @@ export default function TradingViewChart({
 
     // 1. Candlestick Series
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#10b981',
-      downColor: '#f43f5e',
+      upColor: isDark ? '#10b981' : '#16a34a',
+      downColor: isDark ? '#f43f5e' : '#dc2626',
       borderVisible: false,
-      wickUpColor: '#10b981',
-      wickDownColor: '#f43f5e'
+      wickUpColor: isDark ? '#10b981' : '#16a34a',
+      wickDownColor: isDark ? '#f43f5e' : '#dc2626'
     });
     candlestickSeriesRef.current = candleSeries;
 
@@ -358,24 +360,24 @@ export default function TradingViewChart({
   const latestCandle = candles && candles.length > 0 ? candles[candles.length - 1] : null;
 
   return (
-    <div className={`flex flex-col bg-[#070b14] border border-[#1b253b] rounded-2xl overflow-hidden shadow-2xl ${className}`}>
+    <div className={`flex flex-col bg-white dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-xl overflow-hidden shadow-2xs ${className}`}>
       {/* 1. Header Toolbar */}
-      <div className="flex flex-wrap items-center justify-between border-b border-[#1b253b] px-4 py-3 bg-[#0c121f] gap-3">
+      <div className="flex flex-wrap items-center justify-between border-b border-slate-200 dark:border-[#1b253b] px-3.5 py-2.5 bg-slate-50 dark:bg-[#0c121f] gap-3">
         {/* Symbol & Price Summary */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold text-lg text-white font-mono tracking-tight">{symbol}</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="font-bold text-base text-slate-900 dark:text-white font-mono tracking-tight">{symbol}</span>
+            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
               {stockDetails?.exchange || 'NSE'}
             </span>
           </div>
 
           {latestCandle && (
             <div className="flex items-baseline gap-2 font-mono">
-              <span className="text-base font-bold text-white">
+              <span className="text-sm font-bold text-slate-900 dark:text-white">
                 {currencySymbol}{latestCandle.close.toFixed(2)}
               </span>
-              <span className={`text-xs font-semibold flex items-center ${latestCandle.close >= latestCandle.open ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <span className={`text-[11px] font-semibold flex items-center ${latestCandle.close >= latestCandle.open ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {latestCandle.close >= latestCandle.open ? '+' : ''}
                 {(latestCandle.close - latestCandle.open).toFixed(2)} (
                 {(((latestCandle.close - latestCandle.open) / latestCandle.open) * 100).toFixed(2)}%)
@@ -385,15 +387,15 @@ export default function TradingViewChart({
         </div>
 
         {/* Timeframe Controls */}
-        <div className="flex items-center bg-[#070b14] border border-[#1b253b] rounded-xl p-1 gap-1">
+        <div className="flex items-center bg-slate-100 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg p-0.5 gap-0.5">
           {timeframes.map((tf) => (
             <button
               key={tf}
               onClick={() => onTimeframeChange(tf)}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+              className={`px-2 py-0.5 text-xs font-semibold rounded-md transition-all ${
                 timeframe === tf
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-[#121c2e]'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {tf}
