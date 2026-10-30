@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, User, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { apiClient } from '../../lib/api-client';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -20,22 +21,7 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // Connect to the real backend authentication API
-      const res = await fetch('http://localhost:8000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, tier })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Registration failed.');
-      }
-
-      // Persist authenticated token and user session
-      localStorage.setItem('tradesphere_token', data.token);
-      localStorage.setItem('tradesphere_user', JSON.stringify(data.user));
-
+      await apiClient.register({ name, email, password, tier });
       router.push('/terminal');
     } catch (err: any) {
       setError(err.message || 'Unable to connect to backend registration service.');

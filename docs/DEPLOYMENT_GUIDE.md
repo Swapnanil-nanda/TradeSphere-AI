@@ -110,8 +110,10 @@ This guide provides exact, step-by-step instructions for deploying TradeSphere A
 5. Configure **Environment Variables**:
    | Key | Value | Description |
    | :--- | :--- | :--- |
-   | `NEXT_PUBLIC_API_URL` | `https://tradesphere-backend.onrender.com` | Deployed backend URL |
+   | `NEXT_PUBLIC_API_URL` | `https://tradesphere-backend.onrender.com` | Deployed Spring Boot authoritative backend URL |
    | `BACKEND_INTERNAL_URL` | `https://tradesphere-backend.onrender.com` | Server-side proxy target |
+   | `NEXT_PUBLIC_MARKET_WS_URL` | `wss://tradesphere-market.onrender.com/ws/ticks` | (Optional) Deployed Node market feed WebSocket URL |
+   | `NEXT_PUBLIC_MARKET_API_URL` | `https://tradesphere-market.onrender.com` | (Optional) Deployed Node market feed REST URL |
 6. Click **Deploy**.
 7. Vercel will build all 29 routes and assign a live production URL (e.g. `https://tradesphere-ai.vercel.app`).
 

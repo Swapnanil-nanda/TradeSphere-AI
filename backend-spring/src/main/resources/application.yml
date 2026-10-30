@@ -5,6 +5,11 @@ spring:
   application:
     name: tradesphere-backend
 
+  servlet:
+    multipart:
+      max-file-size: 1MB
+      max-request-size: 2MB
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:tradesphere;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL}
     driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.h2.Driver}
@@ -27,7 +32,7 @@ spring:
     clean-disabled: true
 
 jwt:
-  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  secret: ${JWT_SECRET:}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
 
 management:

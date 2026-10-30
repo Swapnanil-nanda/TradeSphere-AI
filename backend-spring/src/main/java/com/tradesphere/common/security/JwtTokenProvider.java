@@ -18,14 +18,30 @@ import java.util.stream.Collectors;
 public class JwtTokenProvider {
 
     private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
+    private static final String INSECURE_DEFAULT_SECRET = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
 
     private final SecretKey key;
     private final long expirationMs;
 
     public JwtTokenProvider(
-            @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}") String secret,
-            @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+            @Value("${jwt.secret:}") String secret,
+            @Value("${jwt.expiration-ms:86400000}") long expirationMs,
+            org.springframework.core.env.Environment env) {
+        boolean isProduction = env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"));
+
+        if (isProduction) {
+            if (secret == null || secret.isBlank() || INSECURE_DEFAULT_SECRET.equals(secret.trim())) {
+                throw new IllegalStateException("CRITICAL SECURITY CONFIGURATION FAILURE: JWT_SECRET environment variable is missing or matches the insecure default key in production profile.");
+            }
+        }
+
+        String effectiveSecret = secret;
+        if (effectiveSecret == null || effectiveSecret.isBlank()) {
+            log.warn("JWT_SECRET is unset in non-production profile. Using development fallback key.");
+            effectiveSecret = INSECURE_DEFAULT_SECRET;
+        }
+
+        this.key = Keys.hmacShaKeyFor(effectiveSecret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
     }
 

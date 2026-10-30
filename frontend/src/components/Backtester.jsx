@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, TrendingUp, AlertTriangle, Award, Activity } from 'lucide-react';
+import { apiClient } from '../lib/api-client';
 
 export default function Backtester({ symbol }) {
   const [strategy, setStrategy] = useState('ema_cross');
@@ -12,20 +13,15 @@ export default function Backtester({ symbol }) {
   const handleRun = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/backtest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol,
-          strategy,
-          initialCapital: 1000000,
-          params: { fastEma: parseInt(fastEma, 10), slowEma: parseInt(slowEma, 10) }
-        })
+      const data = await apiClient.runBacktest({
+        symbol,
+        strategy,
+        initialCapital: 1000000,
+        params: { fastEma: parseInt(fastEma, 10), slowEma: parseInt(slowEma, 10) }
       });
-      const data = await res.json();
       setResults(data);
     } catch (e) {
-      console.error(e);
+      console.error('[Backtest] Execution failed:', e);
     } finally {
       setLoading(false);
     }

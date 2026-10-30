@@ -189,11 +189,62 @@ export interface UserProfile {
   circuitBreakerPct: number;
 }
 
-const BACKEND_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== 'undefined' ? '' : 'http://localhost:8080');
+import { appConfig } from './config';
+
+const BACKEND_BASE = appConfig.apiUrl;
+const MARKET_BASE = appConfig.marketApiUrl || BACKEND_BASE;
 
 class TradeSphereApiClient {
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('tradesphere_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    return headers;
+  }
+
+  async login(credentials: { email: string; password: string }): Promise<any> {
+    const res = await fetch(`${BACKEND_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || 'Authentication failed.');
+    }
+    if (typeof window !== 'undefined' && data.token) {
+      localStorage.setItem('tradesphere_token', data.token);
+      localStorage.setItem('tradesphere_user', JSON.stringify(data.user || data));
+    }
+    return data;
+  }
+
+  async register(userData: { name: string; email: string; password: string; tier?: string }): Promise<any> {
+    const res = await fetch(`${BACKEND_BASE}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: userData.name,
+        email: userData.email,
+        password: userData.password,
+        tier: userData.tier || 'ACTIVE'
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || data.error || 'Registration failed.');
+    }
+    if (typeof window !== 'undefined' && data.token) {
+      localStorage.setItem('tradesphere_token', data.token);
+      localStorage.setItem('tradesphere_user', JSON.stringify(data.user || data));
+    }
+    return data;
+  }
+
   async checkBackendHealth(): Promise<{ status: string; connected: boolean; details?: any }> {
     try {
       const controller = new AbortController();
@@ -285,7 +336,10 @@ class TradeSphereApiClient {
 
   async getPortfolio(): Promise<PortfolioData> {
     try {
-      const res = await fetch(`${BACKEND_BASE}/api/portfolio`, { cache: 'no-store' });
+      const res = await fetch(`${BACKEND_BASE}/api/portfolio`, {
+        headers: this.getAuthHeaders(),
+        cache: 'no-store'
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data && data.account) return data;
@@ -324,16 +378,17 @@ class TradeSphereApiClient {
     limitPrice?: number;
     stopLoss?: number;
     takeProfit?: number;
+    clientOrderId?: string;
   }): Promise<any> {
     const res = await fetch(`${BACKEND_BASE}/api/orders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getAuthHeaders(),
       body: JSON.stringify(orderData)
     });
 
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || 'Pre-trade risk check failed.');
+      throw new Error(data.message || data.error || 'Pre-trade risk check failed.');
     }
     return data;
   }
@@ -341,19 +396,20 @@ class TradeSphereApiClient {
   async closePosition(symbol: string): Promise<any> {
     const res = await fetch(`${BACKEND_BASE}/api/positions/close`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getAuthHeaders(),
       body: JSON.stringify({ symbol })
     });
     return await res.json();
   }
 
-  async cancelOrder(orderId: string): Promise<any> {
+  async cancelOrder(orderId: string | number): Promise<any> {
     const res = await fetch(`${BACKEND_BASE}/api/orders/${orderId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || 'Failed to cancel order.');
+      throw new Error(data.message || data.error || 'Failed to cancel order.');
     }
     return data;
   }
@@ -365,33 +421,90 @@ class TradeSphereApiClient {
   }): Promise<any> {
     const res = await fetch(`${BACKEND_BASE}/api/accounts/configure`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getAuthHeaders(),
       body: JSON.stringify(config)
     });
     return await res.json();
   }
 
   async reconcileAccount(): Promise<ReconciliationReport> {
-    const res = await fetch(`${BACKEND_BASE}/api/accounts/reconcile`, { cache: 'no-store' });
+    const res = await fetch(`${BACKEND_BASE}/api/accounts/reconcile`, {
+      headers: this.getAuthHeaders(),
+      cache: 'no-store'
+    });
     return await res.json();
   }
 
   async getCashLedger(): Promise<CashLedgerEntry[]> {
-    const res = await fetch(`${BACKEND_BASE}/api/ledger`, { cache: 'no-store' });
+    const res = await fetch(`${BACKEND_BASE}/api/ledger`, {
+      headers: this.getAuthHeaders(),
+      cache: 'no-store'
+    });
     return await res.json();
   }
 
   async resetAccount(): Promise<any> {
     const res = await fetch(`${BACKEND_BASE}/api/portfolio/reset`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: this.getAuthHeaders()
     });
     return await res.json();
   }
 
+  async calculatePositionSize(params: {
+    symbol: string;
+    entryPrice?: number;
+    stopLossPrice: number;
+    riskPct?: number;
+  }): Promise<{ recommendedQuantity: number; riskBreached: boolean; message?: string }> {
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/orders/size`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(params)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {}
+
+    const riskDistance = Math.abs((params.entryPrice || 100) - params.stopLossPrice);
+    if (riskDistance <= 0) return { recommendedQuantity: 0, riskBreached: false, message: 'Invalid Stop-Loss distance.' };
+    const maxRisk = 10000;
+    const raw = Math.floor(maxRisk / riskDistance);
+    if (raw < 1) {
+      return {
+        recommendedQuantity: 0,
+        riskBreached: true,
+        message: `Risk Breach: Minimum 1 share risk (₹${riskDistance.toFixed(2)}) exceeds 1% risk cap.`
+      };
+    }
+    return { recommendedQuantity: raw, riskBreached: false };
+  }
+
+  async getOptionsChain(symbol: string = 'NIFTY50', days: number = 7): Promise<any> {
+    try {
+      const res = await fetch(`${MARKET_BASE}/api/options-chain?symbol=${symbol}&days=${days}`);
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return { symbol, spotPrice: 24350, expiryDays: days, chain: [] };
+  }
+
+  async runBacktest(body: any): Promise<any> {
+    try {
+      const res = await fetch(`${MARKET_BASE}/api/backtest`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(body)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return { totalTrades: 0, winRate: '0%', netReturnPct: '0.00%', maxDrawdownPct: '0.00%', equityCurve: [1000000] };
+  }
+
   async getRiskMetrics(symbol: string): Promise<any> {
     try {
-      const res = await fetch(`${BACKEND_BASE}/api/coach?symbol=${symbol}`);
+      const res = await fetch(`${MARKET_BASE}/api/coach?symbol=${symbol}`);
       if (res.ok) return await res.json();
     } catch (e) {
       console.warn('[ApiClient] Failed to fetch risk metrics from backend');

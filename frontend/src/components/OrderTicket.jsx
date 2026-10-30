@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, AlertCircle, ArrowUpRight, ArrowDownRight, Calculator, CheckCircle2 } from 'lucide-react';
+import { apiClient } from '../lib/api-client';
 
 export default function OrderTicket({ symbol, ticker, portfolio, mode, onOrderPlaced }) {
   const [side, setSide] = useState('BUY');
@@ -54,11 +55,19 @@ export default function OrderTicket({ symbol, ticker, portfolio, mode, onOrderPl
       setFeedback({ type: 'error', message: 'Set a valid Stop-Loss price first before auto-sizing.' });
       return;
     }
-    const safeQty = Math.max(1, Math.floor(maxAllowedRisk / riskPerShare));
-    setQuantity(safeQty);
+    const rawQty = Math.floor(maxAllowedRisk / riskPerShare);
+    if (rawQty < 1) {
+      setQuantity(0);
+      setFeedback({
+        type: 'error',
+        message: `Risk Breach: Minimum 1 share risk (₹${riskPerShare.toFixed(2)}) exceeds 1% risk cap (₹${maxAllowedRisk.toFixed(2)}). Select a closer Stop-Loss.`
+      });
+      return;
+    }
+    setQuantity(rawQty);
     setFeedback({
       type: 'success',
-      message: `Auto-sized to ${safeQty} shares. Total risk capped at ₹${(safeQty * riskPerShare).toFixed(2)} (1.0% of equity).`
+      message: `Auto-sized to ${rawQty} shares. Total risk capped at ₹${(rawQty * riskPerShare).toFixed(2)} (1.0% of equity).`
     });
   };
 
@@ -68,29 +77,21 @@ export default function OrderTicket({ symbol, ticker, portfolio, mode, onOrderPl
     setFeedback(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol,
-          side,
-          orderType: mode === 'basic' ? 'BRACKET' : orderType,
-          quantity: parseInt(quantity, 10),
-          limitPrice: orderType === 'LIMIT' ? parseFloat(limitPrice) : undefined,
-          stopLoss: parseFloat(stopLoss),
-          takeProfit: parseFloat(takeProfit)
-        })
+      const data = await apiClient.submitOrder({
+        symbol,
+        side,
+        orderType: mode === 'basic' ? 'BRACKET' : orderType,
+        quantity: parseInt(quantity, 10),
+        limitPrice: orderType === 'LIMIT' ? parseFloat(limitPrice) : undefined,
+        stopLoss: parseFloat(stopLoss),
+        takeProfit: parseFloat(takeProfit),
+        clientOrderId: 'cli_' + Math.random().toString(36).substring(2, 10)
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to execute order');
-      }
-
-      setFeedback({ type: 'success', message: data.message });
+      setFeedback({ type: 'success', message: data.message || 'Order placed successfully!' });
       if (onOrderPlaced) onOrderPlaced();
     } catch (err) {
-      setFeedback({ type: 'error', message: err.message });
+      setFeedback({ type: 'error', message: err.message || 'Pre-trade risk check failed' });
     } finally {
       setLoading(false);
     }

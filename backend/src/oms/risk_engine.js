@@ -183,8 +183,8 @@ export class RiskAndOMSEngine {
     const riskPerShare = Math.abs(entryPrice - stopLossPrice);
 
     if (riskPerShare <= 0) return 0;
-    const rawQty = maxRiskCapital / riskPerShare;
-    return Math.max(1, Math.floor(rawQty));
+    const rawQty = Math.floor(maxRiskCapital / riskPerShare);
+    return rawQty < 1 ? 0 : rawQty;
   }
 
   // Synchronous Pre-Trade Risk Validation & Order Execution
@@ -587,7 +587,7 @@ export class RiskAndOMSEngine {
 
   // Active Bracket OCO State Machine & Limit Order Book Matcher
   _initOcoMonitor() {
-    setInterval(() => {
+    this.ocoTimer = setInterval(() => {
       // 1. Monitor Open Limit Orders for execution
       for (const order of this.orders) {
         if (order.status !== 'OPEN') continue;
@@ -656,5 +656,15 @@ export class RiskAndOMSEngine {
         }
       }
     }, 500);
+    if (this.ocoTimer && typeof this.ocoTimer.unref === 'function') {
+      this.ocoTimer.unref();
+    }
+  }
+
+  stop() {
+    if (this.ocoTimer) {
+      clearInterval(this.ocoTimer);
+      this.ocoTimer = null;
+    }
   }
 }

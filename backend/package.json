@@ -5,7 +5,8 @@
   "description": "High-Performance Market Engine, Risk Gatekeeper, and OMS for ApexTradeOS",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --test test/**/*.test.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

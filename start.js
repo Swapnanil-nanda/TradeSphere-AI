@@ -1,58 +1,87 @@
 /**
- * ApexTradeOS / TradeSphere AI - Unified Root Launcher
- * Starts both Backend (Port 8000) and Frontend (Port 3000) concurrently.
+ * ApexTradeOS / TradeSphere AI - Unified Multi-Process Stack Launcher
+ * Orchestrates:
+ *  1. Authoritative OMS & Auth Backend (Spring Boot - Port 8080)
+ *  2. Real-time Market Simulator & Level 2 DOM Feed (Node.js - Port 8000)
+ *  3. React / Next.js Trading Terminal (Port 3000)
  */
 
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 const rootDir = __dirname;
-const backendDir = path.join(rootDir, 'backend');
+const backendSpringDir = path.join(rootDir, 'backend-spring');
+const backendNodeDir = path.join(rootDir, 'backend');
 const frontendDir = path.join(rootDir, 'frontend');
 
 console.log('================================================================');
-console.log('  Ω  ApexTradeOS / TradeSphere AI - Institutional Terminal');
+console.log('  Ω  TradeSphere AI / ApexTradeOS - Institutional Stack Launcher');
 console.log('================================================================');
-console.log('  * Mode: 100% Free / Local-First ($0 budget)');
-console.log('  * Exchanges: NSE (India) & NASDAQ (US) Dual-Market');
-console.log('  * Market Data: 24/7 GBM Tick Simulator + 20-Depth DOM Ladder');
+console.log('  * Authoritative OMS & Auth: Spring Boot (Port 8080)');
+console.log('  * Market Data & Level 2 Feed: Node.js GBM Engine (Port 8000)');
+console.log('  * UI Terminal: Next.js 15 (Port 3000)');
 console.log('  * Pre-Trade Gatekeeper: 1% Max Risk & 3% Circuit Breaker Active');
 console.log('----------------------------------------------------------------');
 
-// 1. Start Backend Server
-const backend = spawn('node', ['src/server.js'], {
-  cwd: backendDir,
-  stdio: 'inherit',
-  shell: true
-});
+const processes = [];
 
-// 2. Wait 800ms and start Frontend Next.js Server
-setTimeout(() => {
-  const frontend = spawn('npx', ['next', 'start', '-p', '3000'], {
-    cwd: frontendDir,
+// Helper to spawn and track processes
+function launchProcess(name, cmd, args, cwd) {
+  console.log(`[Launcher] Starting ${name} in ${cwd}...`);
+  const child = spawn(cmd, args, {
+    cwd,
     stdio: 'inherit',
-    shell: true
+    shell: true,
+    env: { ...process.env }
   });
 
-  frontend.on('close', (code) => {
-    console.log(`[Frontend] Exited with code ${code}`);
-    process.exit(code);
+  child.on('error', (err) => {
+    console.error(`[${name}] Failed to start:`, err.message);
   });
-}, 800);
 
-backend.on('close', (code) => {
-  console.log(`[Backend] Exited with code ${code}`);
-  process.exit(code);
-});
+  child.on('close', (code) => {
+    console.log(`[${name}] Process exited with code ${code}`);
+    if (code !== 0 && code !== null) {
+      cleanupAndExit(code);
+    }
+  });
+
+  processes.push({ name, child });
+  return child;
+}
+
+// 1. Start Spring Boot Authoritative Backend (Port 8080)
+const jarPath = path.join(backendSpringDir, 'target', 'tradesphere-backend-1.0.0.jar');
+if (fs.existsSync(jarPath)) {
+  launchProcess('Authoritative-OMS-8080', 'java', ['-jar', 'target/tradesphere-backend-1.0.0.jar'], backendSpringDir);
+} else {
+  const isWin = process.platform === 'win32';
+  const mvnCmd = isWin ? 'mvn.cmd' : 'mvn';
+  launchProcess('Authoritative-OMS-8080', mvnCmd, ['spring-boot:run'], backendSpringDir);
+}
+
+// 2. Start Node.js Market Feed & Microstructure Engine (Port 8000)
+launchProcess('MarketFeed-Simulator-8000', 'node', ['src/server.js'], backendNodeDir);
+
+// 3. Start Next.js Frontend Terminal (Port 3000)
+setTimeout(() => {
+  launchProcess('Frontend-Terminal-3000', 'npx', ['next', 'start', '-p', '3000'], frontendDir);
+}, 2000);
 
 // Graceful cleanup
-process.on('SIGINT', () => {
-  console.log('\nStopping ApexTradeOS services...');
-  backend.kill('SIGINT');
-  process.exit(0);
-});
+function cleanupAndExit(code = 0) {
+  console.log('\n[Launcher] Shutting down all TradeSphere AI services...');
+  processes.forEach(({ name, child }) => {
+    try {
+      if (child && !child.killed) {
+        console.log(`[Launcher] Terminating ${name}...`);
+        child.kill('SIGINT');
+      }
+    } catch (e) {}
+  });
+  process.exit(code);
+}
 
-process.on('SIGTERM', () => {
-  backend.kill('SIGTERM');
-  process.exit(0);
-});
+process.on('SIGINT', () => cleanupAndExit(0));
+process.on('SIGTERM', () => cleanupAndExit(0));

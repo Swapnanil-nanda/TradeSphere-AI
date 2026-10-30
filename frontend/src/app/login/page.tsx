@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { apiClient } from '../../lib/api-client';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('demo.trader@tradesphere.ai');
@@ -18,21 +19,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Invalid credentials.');
-      }
-
-      // Persist authenticated token and user session
-      localStorage.setItem('tradesphere_token', data.token);
-      localStorage.setItem('tradesphere_user', JSON.stringify(data.user));
-
+      await apiClient.login({ email, password });
       router.push('/terminal');
     } catch (err: any) {
       setError(err.message || 'Unable to authenticate with backend server.');

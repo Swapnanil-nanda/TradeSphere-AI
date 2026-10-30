@@ -26,12 +26,17 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
-    @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:*}")
+    @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:3000,https://tradesphere-ai.vercel.app,https://*.vercel.app}")
     private String corsAllowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    @org.springframework.beans.factory.annotation.Value("${springdoc.swagger-ui.enabled:true}")
+    private boolean swaggerEnabled;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitingFilter rateLimitingFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
     }
 
     @Bean
@@ -50,25 +55,35 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        // Public Health & Monitoring Endpoints
-                        .requestMatchers("/api/health", "/actuator/**").permitAll()
-                        // Public Authentication & Market Data Endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/instruments/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/market-data/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tickers/**", "/api/tickers").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/quotes/**", "/api/quotes").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/candles/**", "/api/candles").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/dom/**", "/api/dom").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/screener/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/portfolio/**", "/api/portfolio").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
-                        // Protected Application Endpoints
-                        .anyRequest().authenticated()
-                )
+                .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType(org.springframework.http.MediaType.APPLICATION_JSON_VALUE);
+                    response.getWriter().write("{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Authentication token is missing or invalid.\"}");
+                }))
+                .authorizeHttpRequests(auth -> {
+                    // Public Health & Monitoring Endpoints
+                    auth.requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll();
+                    // Public Authentication & Market Data Endpoints
+                    auth.requestMatchers("/api/auth/**").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/instruments/**").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/market-data/**").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/tickers/**", "/api/tickers").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/quotes/**", "/api/quotes").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/candles/**", "/api/candles").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/dom/**", "/api/dom").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/api/screener/**").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/orders/size", "/api/risk/size").permitAll();
+
+                    if (swaggerEnabled) {
+                        auth.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll();
+                    }
+                    auth.requestMatchers("/h2-console/**").permitAll();
+
+                    // All trading, accounts, positions, ledgers, watchlists & portfolio require strict authentication
+                    auth.anyRequest().authenticated();
+                })
                 .headers(headers -> headers.frameOptions(frame -> frame.disable())) // For H2 console in dev
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, X, ShieldAlert, CheckCircle, Target, TrendingUp, AlertTriangle } from 'lucide-react';
+import { apiClient } from '../lib/api-client';
 
 export default function AICoachModal({ symbol, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/coach?symbol=${symbol}`)
-      .then(res => res.json())
+    apiClient.getRiskMetrics(symbol)
       .then(json => {
         setData(json);
         setLoading(false);

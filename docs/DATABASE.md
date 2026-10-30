@@ -102,3 +102,4 @@ The Spring Boot modular monolith uses Flyway for schema management:
 | `V4__create_paper_accounts_and_ledger.sql` | Paper accounts and double-entry cash ledger | `paper_accounts`, `cash_ledger_entries` |
 | `V5__create_orders_trades_positions.sql` | Paper orders, trades blotter, and open positions | `paper_orders`, `paper_trades`, `positions` |
 | `V6__create_audit_events.sql` | Immutable audit trail for security and financial actions | `audit_events` |
+| `V7__enhance_paper_trading_features.sql` | Commission fees, slippage configurations, custom capital, and balance reconciliation | Enhanced columns in `paper_accounts` & `paper_orders` |

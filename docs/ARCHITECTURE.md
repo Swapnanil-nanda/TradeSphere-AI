@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TB
-    subgraph Client["Frontend Client (Next.js 15 / React / Tailwind)"]
+    subgraph Client["Frontend Client (Next.js 14/15 / React / Tailwind)"]
         UI[Adaptive 3-Tier Mode Controller]
         ZUSTAND[Zustand Transient State Store]
         TVC[TradingView Lightweight Chart Canvas]
@@ -15,35 +15,35 @@ flowchart TB
         COACH_UI[AI Risk Coach & Journal View]
     end
 
-    subgraph Backend["High-Performance Backend Server (Node.js / FastAPI)"]
+    subgraph SpringBoot["Authoritative OMS & Auth (Java 21 Spring Boot :8080)"]
+        AUTH[JWT Auth, Multi-Tenant Isolation & Rate Limiting]
+        RISK[Pre-Trade Risk Gatekeeper 1% Cap & Circuit Breaker]
+        OMS[Order Management & Idempotent Paper Execution Engine]
+        LEDGER[Double-Entry Cash Ledger & MTM Portfolio]
+        PG[(Authoritative PostgreSQL DB with Flyway v1-v7)]
+    end
+
+    subgraph NodeEngine["Market Feed & Microstructure Engine (Node.js :8000)"]
         WS_HUB[WebSocket Feed Multiplexer /ws/ticks]
         SIM[24/7 Geometric Brownian Motion & L2 DOM Simulator]
-        ADAPTER[Pluggable Broker Gateway FYERS / Upstox / Alpaca]
-        RISK[Pre-Trade Risk Gatekeeper]
-        OMS[Order Management & Paper Trading Engine]
-        OCO[Bracket OCO State Machine Monitor]
-        QUANT[Candle Aggregator & Technical Indicator Engine]
-        GREEKS[Black-Scholes Options Greeks Engine]
-        BACKTESTER[Vectorized Backtesting Engine]
-        COACH[AI Risk Coach Service]
-        DB[(Persistent Store SQLite / In-Memory Cache)]
+        GREEKS[Black-Scholes Options Greeks Engine /api/options-chain]
+        BACKTESTER[Vectorized Backtesting Engine /api/backtest]
+        COACH[AI Risk Coach Service /api/coach]
     end
 
     SIM --> WS_HUB
-    ADAPTER --> WS_HUB
-    WS_HUB -->|60fps JSON Ticks & L2 Depth| ZUSTAND
+    WS_HUB -->|120ms JSON Ticks & L2 Depth| ZUSTAND
     ZUSTAND --> TVC
     ZUSTAND --> DOM_UI
-    ZUSTAND --> OPT_UI
-
-    TICKET -->|Submit Order| RISK
+    
+    TICKET -->|Submit Order via REST| RISK
     RISK -->|Pass Guardrail| OMS
     RISK -.->|Reject Risk Violation| TICKET
-    OMS --> OCO
-    OMS --> DB
-    OCO -->|Market Price Check| OMS
+    OMS --> LEDGER
+    LEDGER --> PG
+    AUTH --> PG
 
-    QUANT --> DB
+    OPT_UI -->|Greeks Calculation| GREEKS
     BACKTEST_UI -->|Run Strategy| BACKTESTER
     COACH_UI -->|Request Audit| COACH
 ```

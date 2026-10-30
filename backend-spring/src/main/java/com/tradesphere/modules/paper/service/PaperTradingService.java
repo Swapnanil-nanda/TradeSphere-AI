@@ -645,4 +645,51 @@ public class PaperTradingService {
         dto.setCreatedAt(l.getCreatedAt());
         return dto;
     }
+
+    public PositionSizeResponse calculatePositionSize(Long userId, PositionSizeRequest req) {
+        BigDecimal entryPrice = req.getEntryPrice();
+        if (entryPrice == null || entryPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            TickerQuoteDto quote = marketDataService.getQuote(req.getSymbol());
+            entryPrice = quote.getLtp();
+        }
+
+        BigDecimal sl = req.getStopLossPrice();
+        BigDecimal riskDistance = entryPrice.subtract(sl).abs();
+
+        PaperAccount account = (userId != null) ? paperAccountRepository.findByUserId(userId).orElse(null) : null;
+        BigDecimal netEquity = (account != null) ? account.getNetLiquidation() : new BigDecimal("1000000.0000");
+
+        BigDecimal riskPct = (req.getRiskPct() != null && req.getRiskPct().compareTo(BigDecimal.ZERO) > 0)
+                ? req.getRiskPct()
+                : new BigDecimal("1.0");
+
+        BigDecimal maxRiskCapital = netEquity.multiply(riskPct).divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+
+        if (riskDistance.compareTo(BigDecimal.ZERO) <= 0) {
+            return new PositionSizeResponse(
+                    req.getSymbol(), entryPrice, sl, 0, BigDecimal.ZERO, maxRiskCapital, BigDecimal.ZERO, false,
+                    "Stop-Loss cannot equal entry price."
+            );
+        }
+
+        BigDecimal rawQty = maxRiskCapital.divide(riskDistance, 0, RoundingMode.FLOOR);
+        int qty = rawQty.intValue();
+
+        if (qty < 1) {
+            return new PositionSizeResponse(
+                    req.getSymbol(), entryPrice, sl, 0, riskDistance, maxRiskCapital, BigDecimal.ZERO, true,
+                    String.format("Risk Breach: Single-share risk (%s) exceeds your %.1f%% account risk cap (%s). Select a tighter Stop-Loss.",
+                            riskDistance.setScale(2, RoundingMode.HALF_UP),
+                            riskPct.doubleValue(),
+                            maxRiskCapital.setScale(2, RoundingMode.HALF_UP))
+            );
+        }
+
+        BigDecimal totalRisk = riskDistance.multiply(BigDecimal.valueOf(qty));
+        return new PositionSizeResponse(
+                req.getSymbol(), entryPrice, sl, qty, riskDistance, maxRiskCapital, totalRisk, false,
+                String.format("Auto-sized to %d shares. Total risk strictly capped at %s (%.1f%% of equity).",
+                        qty, totalRisk.setScale(2, RoundingMode.HALF_UP), riskPct.doubleValue())
+        );
+    }
 }

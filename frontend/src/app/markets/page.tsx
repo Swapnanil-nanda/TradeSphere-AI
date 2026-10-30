@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, TrendingUp, TrendingDown, ArrowRight, ShieldCheck, Activity, Globe } from 'lucide-react';
+import { apiClient } from '../../lib/api-client';
 
 interface TickerItem {
   symbol: string;
@@ -21,10 +22,9 @@ export default function MarketsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/tickers')
-      .then(res => res.json())
+    apiClient.getTickers()
       .then(data => {
-        if (Array.isArray(data)) setTickers(data);
+        if (Array.isArray(data)) setTickers(data as any);
       })
       .catch(() => {
         // Fallback simulated list

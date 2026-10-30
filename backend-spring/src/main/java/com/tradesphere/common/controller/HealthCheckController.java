@@ -42,29 +42,39 @@ public class HealthCheckController {
         health.put("executionMode", "PAPER_TRADING_ONLY");
         health.put("disclaimer", "PAPER TRADING – NO REAL MONEY");
 
+        boolean isProd = "prod".equalsIgnoreCase(activeProfile);
+
         // Database Connectivity Probe
         boolean dbConnected = false;
         String dbProduct = "UNKNOWN";
         try (Connection conn = dataSource.getConnection()) {
             dbConnected = conn.isValid(2);
-            dbProduct = conn.getMetaData().getDatabaseProductName() + " " + conn.getMetaData().getDatabaseProductVersion();
+            if (!isProd) {
+                dbProduct = conn.getMetaData().getDatabaseProductName() + " " + conn.getMetaData().getDatabaseProductVersion();
+            }
         } catch (Exception e) {
             dbConnected = false;
-            dbProduct = "Error: " + e.getMessage();
+            if (!isProd) {
+                dbProduct = "Error: " + e.getMessage();
+            }
         }
 
         Map<String, Object> dbDetails = new LinkedHashMap<>();
         dbDetails.put("status", dbConnected ? "CONNECTED" : "DOWN");
-        dbDetails.put("databaseProduct", dbProduct);
+        if (!isProd) {
+            dbDetails.put("databaseProduct", dbProduct);
+        }
         health.put("database", dbDetails);
 
-        // Memory Statistics
-        Runtime runtime = Runtime.getRuntime();
-        Map<String, Object> memDetails = new LinkedHashMap<>();
-        memDetails.put("totalMemoryMb", runtime.totalMemory() / (1024 * 1024));
-        memDetails.put("freeMemoryMb", runtime.freeMemory() / (1024 * 1024));
-        memDetails.put("maxMemoryMb", runtime.maxMemory() / (1024 * 1024));
-        health.put("memory", memDetails);
+        // Memory Statistics (non-production only)
+        if (!isProd) {
+            Runtime runtime = Runtime.getRuntime();
+            Map<String, Object> memDetails = new LinkedHashMap<>();
+            memDetails.put("totalMemoryMb", runtime.totalMemory() / (1024 * 1024));
+            memDetails.put("freeMemoryMb", runtime.freeMemory() / (1024 * 1024));
+            memDetails.put("maxMemoryMb", runtime.maxMemory() / (1024 * 1024));
+            health.put("memory", memDetails);
+        }
 
         return ResponseEntity.ok(health);
     }

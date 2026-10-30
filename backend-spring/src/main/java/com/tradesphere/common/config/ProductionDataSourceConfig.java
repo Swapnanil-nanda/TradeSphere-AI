@@ -27,6 +27,13 @@ public class ProductionDataSourceConfig {
             rawUrl = env.getProperty("DATABASE_URL");
         }
 
+        boolean isProduction = env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"));
+
+        // In production profile, H2 fallback is strictly disallowed
+        if (isProduction && (rawUrl == null || rawUrl.isBlank() || rawUrl.startsWith("jdbc:h2:"))) {
+            throw new IllegalStateException("CRITICAL DATABASE CONFIGURATION FAILURE: Production profile requires a valid PostgreSQL DATABASE_URL or SPRING_DATASOURCE_URL. H2 in-memory database fallback is strictly disabled in production.");
+        }
+
         // H2 in-memory fallback for local dev & testing
         if (rawUrl == null || rawUrl.isBlank() || rawUrl.startsWith("jdbc:h2:")) {
             HikariConfig h2Config = new HikariConfig();

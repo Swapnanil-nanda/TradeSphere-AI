@@ -69,11 +69,19 @@ export default function OrderForm({
       setFeedback({ type: 'error', message: 'Set a valid Stop-Loss price first before auto-sizing.' });
       return;
     }
-    const safeQty = Math.max(1, Math.floor(maxAllowedRisk / riskPerShare));
-    setQuantity(safeQty);
+    const rawQty = Math.floor(maxAllowedRisk / riskPerShare);
+    if (rawQty < 1) {
+      setQuantity(0);
+      setFeedback({
+        type: 'error',
+        message: `Risk Breach: Minimum 1 share risk (₹${riskPerShare.toFixed(2)}) exceeds 1% risk cap (₹${maxAllowedRisk.toFixed(2)}). Select a closer Stop-Loss.`
+      });
+      return;
+    }
+    setQuantity(rawQty);
     setFeedback({
       type: 'success',
-      message: `Auto-sized to ${safeQty} shares. Total risk capped at ₹${(safeQty * riskPerShare).toFixed(2)} (1.0% of equity).`
+      message: `Auto-sized to ${rawQty} shares. Total risk capped at ₹${(rawQty * riskPerShare).toFixed(2)} (1.0% of equity).`
     });
   };
 

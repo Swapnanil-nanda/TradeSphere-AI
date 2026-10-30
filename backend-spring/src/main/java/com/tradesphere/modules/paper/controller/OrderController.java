@@ -3,6 +3,8 @@ package com.tradesphere.modules.paper.controller;
 import com.tradesphere.common.security.UserPrincipal;
 import com.tradesphere.modules.paper.dto.OrderRequest;
 import com.tradesphere.modules.paper.dto.OrderResponse;
+import com.tradesphere.modules.paper.dto.PositionSizeRequest;
+import com.tradesphere.modules.paper.dto.PositionSizeResponse;
 import com.tradesphere.modules.paper.service.PaperTradingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping({"/api/orders", "/api/risk"})
 @Tag(name = "Paper Orders", description = "Simulated order placement, state machine, and cancellation with Pre-Trade Risk Gatekeeper")
 public class OrderController {
 
@@ -32,6 +34,15 @@ public class OrderController {
             @Valid @RequestBody OrderRequest request) {
         OrderResponse response = paperTradingService.placeOrder(principal.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/size")
+    @Operation(summary = "Calculate exact safe position size using BigDecimal without 1-unit minimum breach")
+    public ResponseEntity<PositionSizeResponse> calculateSize(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody PositionSizeRequest request) {
+        Long userId = (principal != null) ? principal.getId() : null;
+        return ResponseEntity.ok(paperTradingService.calculatePositionSize(userId, request));
     }
 
     @GetMapping

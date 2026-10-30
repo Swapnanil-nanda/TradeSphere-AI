@@ -19,8 +19,9 @@ import {
   MarketIndexSummary
 } from './types';
 import { computeAllIndicators } from '../indicators/technical-indicators';
+import { appConfig } from '../config';
 
-const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const BACKEND_BASE = appConfig.apiUrl || 'http://localhost:8080';
 
 export class SyntheticMarketDataProvider implements MarketDataProvider {
   readonly providerId = 'tradesphere-synthetic-gbm';

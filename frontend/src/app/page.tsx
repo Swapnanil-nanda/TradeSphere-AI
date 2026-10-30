@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { apiClient } from '../lib/api-client';
 import { 
   ShieldCheck, ArrowRight, Zap, TrendingUp, TrendingDown, 
   BarChart2, Layers, Bot, Activity, CheckCircle2, Lock, 
@@ -30,12 +31,11 @@ export default function HomePage() {
   const [calcEntry, setCalcEntry] = useState<number>(2950);
   const [calcStopLoss, setCalcStopLoss] = useState<number>(2920);
 
-  // Fetch real-time ticker snapshots from backend
+  // Fetch real-time ticker snapshots from backend via apiClient
   useEffect(() => {
-    fetch('http://localhost:8000/api/tickers')
-      .then(res => res.json())
+    apiClient.getTickers()
       .then(data => {
-        if (Array.isArray(data)) setTickers(data);
+        if (Array.isArray(data)) setTickers(data as any);
       })
       .catch(() => {
         // Fallback default sample tickers

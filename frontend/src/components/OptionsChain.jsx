@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { apiClient } from '../lib/api-client';
 
 export default function OptionsChain({ symbol, spotPrice }) {
   const [data, setData] = useState(null);
@@ -9,8 +10,7 @@ export default function OptionsChain({ symbol, spotPrice }) {
   const fetchChain = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/options-chain?symbol=${symbol}&days=${days}`);
-      const json = await res.json();
+      const json = await apiClient.getOptionsChain(symbol, days);
       setData(json);
     } catch (e) {
       console.error('Failed to fetch options chain:', e);

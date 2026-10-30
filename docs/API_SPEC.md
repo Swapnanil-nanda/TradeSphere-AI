@@ -1,8 +1,11 @@
 # API Specification — ApexTradeOS / TradeSphere AI
 
 ## 1. Architecture Overview
-TradeSphere AI features a Spring Boot 3.4.x / 4.x modular monolith backend (Java 21) running on port `8080` (with fallback to port `8000`), backed by Flyway database migrations and PostgreSQL 18 (with H2 in-memory test/fallback support).
-Interactive OpenAPI 3.0 documentation and Swagger UI are hosted at:
+TradeSphere AI features a dual-tier backend architecture with distinct, non-overlapping ownership:
+- **Authoritative OMS & Auth Service:** Java 21 Spring Boot 3.4.x running on port `8080`, backed by Flyway migrations and PostgreSQL 18. Owns authentication, tenant isolation, virtual accounts, paper order execution, pre-trade risk checks, portfolio calculations, double-entry cash ledger, and immutable audit logs.
+- **Market Feed & Microstructure Engine:** Node.js service running on port `8000`. Exposes 24/7 Geometric Brownian Motion simulated tick streams (`/ws/ticks`), Level 2 Depth of Market order books (`/api/dom`), Black-Scholes Options Greeks (`/api/options-chain`), strategy backtesting (`/api/backtest`), and AI risk coaching (`/api/coach`). Duplicate account and order endpoints on Node return HTTP 410 (`MIGRATED_TO_SPRING_BOOT`).
+
+Interactive OpenAPI 3.0 documentation and Swagger UI (Spring Boot) are hosted at:
 - **Swagger UI:** `http://localhost:8080/swagger-ui.html`
 - **OpenAPI JSON:** `http://localhost:8080/v3/api-docs`
 
@@ -263,9 +266,81 @@ All authenticated endpoints require an `Authorization: Bearer <JWT>` header.
 - **Access:** Authenticated
 - **Response:** Complete audit trail of `INITIAL_DEPOSIT`, `TRADE_DEBIT`, and `TRADE_CREDIT` transactions.
 
+### 9.3 Reset Portfolio
+`POST /api/portfolio/reset`
+- **Access:** Authenticated
+- **Behavior:** Clears open positions, pending orders, and restores virtual cash balance.
+
+### 9.4 Pre-Trade Safe Position Sizing
+`POST /api/orders/size` (also mapped to `POST /api/risk/size`)
+- **Access:** Public or Authenticated
+- **Request Body:**
+  ```json
+  {
+    "symbol": "RELIANCE",
+    "entryPrice": 2985.40,
+    "stopLossPrice": 2940.00,
+    "equity": 1000000.00,
+    "riskPct": 1.00
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "symbol": "RELIANCE",
+    "recommendedQuantity": 220,
+    "maxAllowableRiskAmount": 10000.00,
+    "perUnitRisk": 45.40,
+    "totalRiskAmount": 9988.00,
+    "riskBreached": false,
+    "message": "Sizing approved within 1% risk threshold."
+  }
+  ```
+- **Invariant:** If per-unit risk exceeds max allowable risk amount, `recommendedQuantity` strictly returns `0` and `riskBreached` is `true`. Never rounds up to 1 unit.
+
 ---
 
 ## 10. Audit Trail
 `GET /api/audit-events`
 - **Access:** Authenticated
 - **Response:** Immutable log of authentication attempts, order placements, risk breaches, and circuit lock events.
+
+---
+
+## 11. Node.js Market Feed & Microstructure Engine (Port 8000)
+
+### 11.1 Black-Scholes Options Greeks
+`GET /api/options-chain?symbol={symbol}&days={days}`
+- **Parameters:** `symbol` (default: `NIFTY50`), `days` (default: 7)
+- **Response:** Spot price, strike ladder, and computed Greeks ($\Delta, \Gamma, \Theta, \nu, \text{IV}$ via Newton-Raphson).
+
+### 11.2 Strategy Backtester
+`POST /api/backtest`
+- **Request Body:**
+  ```json
+  {
+    "strategy": "EMA_CROSSOVER",
+    "symbol": "RELIANCE",
+    "fastPeriod": 9,
+    "slowPeriod": 21,
+    "initialCapital": 1000000
+  }
+  ```
+- **Response:** Vectorized trade history, win rate, net return %, max drawdown %, and equity curve coordinates.
+
+### 11.3 AI Risk Coach & Tilt Auditor
+`GET /api/coach?symbol={symbol}`
+- **Response:** Technical regime evaluation (trend strength, 20-EMA, VWAP, key levels) and behavioral trade journal tilt analysis.
+
+### 11.4 Real-time WebSocket Tick Stream
+`WebSocket /ws/ticks`
+- **Stream:** 120ms tick stream broadcasting price deltas, volume, and 20-level Level 2 DOM depth updates.
+
+### 11.5 Migrated Endpoints Notice
+All order, portfolio, ledger, and authentication endpoints on Node.js return HTTP 410:
+```json
+{
+  "error": "MIGRATED_TO_SPRING_BOOT",
+  "message": "Order, portfolio, ledger, and auth management are handled authoritatively by the Spring Boot backend on port 8080."
+}
+```

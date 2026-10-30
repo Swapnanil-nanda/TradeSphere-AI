@@ -62,4 +62,35 @@ public class PortfolioCalculationTest {
                 .andExpect(jsonPath("$.positions").isArray())
                 .andExpect(jsonPath("$.trades").isArray());
     }
+
+    @Test
+    @DisplayName("Tenant Isolation: Unauthenticated portfolio access is rejected with 401")
+    void testUnauthenticatedPortfolioRejected() throws Exception {
+        mockMvc.perform(get("/api/portfolio"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Position Sizing: Never suggests minimum-1 share when single-share risk breaches 1% risk cap")
+    void testSafePositionSizingNeverBreachesRiskCap() throws Exception {
+        // High priced equity with wide stop loss where 1 share risk > 1% equity
+        // e.g. entry 4100, SL 3000 -> risk = 1100. If net equity is 100,000, 1% cap is 1,000.
+        // Or with 1,000,000 equity, risk distance 15,000 exceeds 10,000 cap -> qty must be 0!
+        String payload = """
+            {
+                "symbol": "TCS",
+                "entryPrice": 25000.00,
+                "stopLossPrice": 5000.00,
+                "riskPct": 1.0
+            }
+            """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/orders/size")
+                        .header("Authorization", authToken)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedQuantity").value(0))
+                .andExpect(jsonPath("$.riskBreached").value(true));
+    }
 }

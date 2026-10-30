@@ -10,9 +10,8 @@ import OptionsChain from '../../components/OptionsChain';
 import Backtester from '../../components/Backtester';
 import PortfolioBlotter from '../../components/PortfolioBlotter';
 import AICoachModal from '../../components/AICoachModal';
-
-const API_BASE = 'http://localhost:8000';
-const WS_URL = 'ws://localhost:8000/ws/ticks';
+import { apiClient } from '../../lib/api-client';
+import { appConfig } from '../../lib/config';
 
 export default function TerminalPage() {
   const [mode, setMode] = useState<'basic' | 'active' | 'pro'>('active');
@@ -25,46 +24,42 @@ export default function TerminalPage() {
   const [coachOpen, setCoachOpen] = useState(false);
   const [proTab, setProTab] = useState<'ticket' | 'options' | 'backtest'>('ticket');
   const [wsConnected, setWsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'CONNECTED' | 'CONNECTING' | 'OFFLINE'>('CONNECTING');
 
   const wsRef = useRef<WebSocket | null>(null);
   const flashTimers = useRef<Record<string, any>>({});
 
-  // 1. Fetch initial tickers & portfolio
+  // 1. Fetch initial tickers & portfolio via shared API Client
   const fetchTickers = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/tickers`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data.tickers || []);
+      const list = await apiClient.getTickers();
       if (Array.isArray(list) && list.length > 0) {
         setTickers(list);
       }
     } catch (e) {
-      console.warn('Backend connecting...', e);
+      console.warn('[Terminal] Backend connecting...', e);
     }
   }, []);
 
   const fetchPortfolio = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/portfolio`);
-      const data = await res.json();
+      const data = await apiClient.getPortfolio();
       if (data && data.account) {
         setPortfolio(data);
       }
     } catch (e) {
-      console.warn('Failed to load portfolio:', e);
+      console.warn('[Terminal] Failed to load portfolio:', e);
     }
   }, []);
 
   const fetchCandles = useCallback(async (sym: string, tf: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/candles?symbol=${sym}&timeframe=${tf}`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data.candles || []);
+      const list = await apiClient.getCandles(sym, tf);
       if (Array.isArray(list)) {
         setCandles(list);
       }
     } catch (e) {
-      console.warn('Failed to load candles:', e);
+      console.warn('[Terminal] Failed to load candles:', e);
     }
   }, []);
 
@@ -86,11 +81,13 @@ export default function TerminalPage() {
     let reconnectTimeout: any;
     const connectWs = () => {
       try {
-        const ws = new WebSocket(WS_URL);
+        setConnectionStatus('CONNECTING');
+        const ws = new WebSocket(appConfig.marketWsUrl);
         wsRef.current = ws;
 
         ws.onopen = () => {
           setWsConnected(true);
+          setConnectionStatus('CONNECTED');
         };
 
         ws.onmessage = (event) => {
@@ -143,20 +140,23 @@ export default function TerminalPage() {
               fetchPortfolio();
             }
           } catch (err) {
-            console.error('Error handling WS message:', err);
+            console.error('[WS] Error handling tick payload:', err);
           }
         };
 
         ws.onerror = () => {
           setWsConnected(false);
+          setConnectionStatus('OFFLINE');
         };
 
         ws.onclose = () => {
           setWsConnected(false);
+          setConnectionStatus('OFFLINE');
           reconnectTimeout = setTimeout(connectWs, 2000);
         };
       } catch (err) {
         setWsConnected(false);
+        setConnectionStatus('OFFLINE');
         reconnectTimeout = setTimeout(connectWs, 2000);
       }
     };
@@ -187,20 +187,17 @@ export default function TerminalPage() {
     changePct: 0,
     currency: activeSymbol.length <= 4 && !activeSymbol.includes('NIFTY') ? 'USD' : 'INR',
     bids: [],
-    asks: []
+    asks: [],
+    isSimulated: true
   };
 
-  // Close position handler
+  // Close position handler via shared apiClient
   const handleClosePosition = async (sym: string) => {
     try {
-      await fetch(`${API_BASE}/api/positions/close`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol: sym })
-      });
+      await apiClient.closePosition(sym);
       fetchPortfolio();
     } catch (e) {
-      console.error('Failed to close position:', e);
+      console.error('[Terminal] Failed to close position:', e);
     }
   };
 
