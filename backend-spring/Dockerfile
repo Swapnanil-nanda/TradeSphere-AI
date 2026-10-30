@@ -13,7 +13,7 @@ WORKDIR /workspace
 
 # Cache maven dependencies layer
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:resolve -B
 
 # Build application artifact
 COPY src ./src
