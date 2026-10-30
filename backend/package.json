@@ -1,0 +1,13 @@
+{
+  "name": "apextrade-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "High-Performance Market Engine, Risk Gatekeeper, and OMS for ApexTradeOS",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

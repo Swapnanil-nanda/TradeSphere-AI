@@ -1,0 +1,23 @@
+{
+  "name": "apextrade-os",
+  "version": "1.0.0",
+  "description": "ApexTradeOS / TradeSphere AI - Free, Institutional-grade Stock & Options Trading Terminal",
+  "main": "start.js",
+  "scripts": {
+    "start": "node start.js",
+    "backend": "node backend/src/server.js",
+    "frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend"
+  },
+  "keywords": [
+    "trading",
+    "paper-trading",
+    "options-greeks",
+    "backtesting",
+    "level2-dom",
+    "nse",
+    "nasdaq"
+  ],
+  "author": "ApexTradeOS Team",
+  "license": "MIT"
+}
