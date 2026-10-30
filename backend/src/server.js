@@ -44,7 +44,7 @@ const server = http.createServer((req, res) => {
   }
 
   // 1. Health Check (Market Feed Engine only)
-  if (req.method === 'GET' && pathname === '/api/health') {
+  if (req.method === 'GET' && (pathname === '/api/health' || pathname === '/health')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       status: 'UP',

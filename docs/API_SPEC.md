@@ -1,13 +1,16 @@
 # API Specification — ApexTradeOS / TradeSphere AI
 
 ## 1. Architecture Overview
-TradeSphere AI features a dual-tier backend architecture with distinct, non-overlapping ownership:
+TradeSphere AI features a canonical decoupled backend architecture with distinct, non-overlapping ownership:
 - **Authoritative OMS & Auth Service:** Java 21 Spring Boot 3.4.x running on port `8080`, backed by Flyway migrations and PostgreSQL 18. Owns authentication, tenant isolation, virtual accounts, paper order execution, pre-trade risk checks, portfolio calculations, double-entry cash ledger, and immutable audit logs.
 - **Market Feed & Microstructure Engine:** Node.js service running on port `8000`. Exposes 24/7 Geometric Brownian Motion simulated tick streams (`/ws/ticks`), Level 2 Depth of Market order books (`/api/dom`), Black-Scholes Options Greeks (`/api/options-chain`), strategy backtesting (`/api/backtest`), and AI risk coaching (`/api/coach`). Duplicate account and order endpoints on Node return HTTP 410 (`MIGRATED_TO_SPRING_BOOT`).
+- **Quantitative Research Engine:** Python 3.11 FastAPI service running on port `8100`. Exposes 7 specialist quantitative agents (`/api/v1/quant/research-runs`), Modern Portfolio Theory (`/api/v1/wealth/optimizations`), Efficient Frontier, path-based Monte Carlo, Systematic Investment Planning (`/api/v1/wealth/sip-plans`), goal scenarios, and ReportLab PDF generation. Read-only invariant enforced (zero execution authority).
 
-Interactive OpenAPI 3.0 documentation and Swagger UI (Spring Boot) are hosted at:
-- **Swagger UI:** `http://localhost:8080/swagger-ui.html`
-- **OpenAPI JSON:** `http://localhost:8080/v3/api-docs`
+Interactive OpenAPI documentation is hosted at:
+- **Spring Boot Swagger UI:** `http://localhost:8080/swagger-ui.html`
+- **Spring Boot OpenAPI JSON:** `http://localhost:8080/v3/api-docs`
+- **Python Quant Engine Docs:** `http://localhost:8100/docs`
+- **Python Quant Engine OpenAPI JSON:** `http://localhost:8100/openapi.json`
 
 ---
 

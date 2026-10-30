@@ -156,6 +156,7 @@ TR AI/
 │   ├── PRD.md                 # Product Requirements Document
 │   ├── ARCHITECTURE.md        # Topology & technical workflows
 │   ├── DATABASE.md            # Relational schema for paper trading
+│   ├── FEATURE_COMPLETION.md  # 26-feature verification and production readiness audit
 │   ├── API_SPEC.md            # REST & WebSocket endpoint contracts
 │   └── DEPLOYMENT_GUIDE.md    # Cloud deployment runbook
 ├── backend-spring/            # Java 21 Spring Boot Authoritative OMS & Auth (:8080)

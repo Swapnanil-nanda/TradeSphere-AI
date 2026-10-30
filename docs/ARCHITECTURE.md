@@ -31,6 +31,15 @@ flowchart TB
         COACH[AI Risk Coach Service /api/coach]
     end
 
+    subgraph QuantEngine["Quantitative Research Microservice (Python FastAPI :8100)"]
+        AGENTS[7 Specialist Agents Market, News, Tech, Sim, Forecast, Risk, Strategy]
+        ORCH[Intent Orchestrator & Evidence Verifier]
+        MPT[Markowitz MPT, Frontier & One-Sided VaR/CVaR]
+        MONTE[Path-Based Monte Carlo with True Peak Drawdown]
+        WEALTH[SIP Planner & Goal Scenario Modeler]
+        PDF[ReportLab Institutional PDF Export Engine]
+    end
+
     SIM --> WS_HUB
     WS_HUB -->|120ms JSON Ticks & L2 Depth| ZUSTAND
     ZUSTAND --> TVC
@@ -46,6 +55,12 @@ flowchart TB
     OPT_UI -->|Greeks Calculation| GREEKS
     BACKTEST_UI -->|Run Strategy| BACKTESTER
     COACH_UI -->|Request Audit| COACH
+
+    UI -->|Multi-Agent Research /api/v1/quant/*| ORCH
+    ORCH --> AGENTS
+    UI -->|Wealth & MPT /api/v1/wealth/*| MPT
+    UI -->|Scenario Simulation| WEALTH
+    ORCH --> PDF
 ```
 
 ## 2. Real-Time Data Pipeline

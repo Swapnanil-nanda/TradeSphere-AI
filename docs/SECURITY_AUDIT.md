@@ -115,13 +115,15 @@ Node.js sets `Access-Control-Allow-Origin: *` unconditionally. Any malicious thi
 
 ---
 
-## 4. Security Compliance & Remediation Checklist
+## 4. Security Compliance & Remediation Status
 
-| Security Issue | Affected File(s) | Remediation Plan |
-| :--- | :--- | :--- |
-| **Node OMS Unauthenticated Endpoints** | `backend/src/server.js:164-241` | Deprecate Node OMS order execution. Route all order submissions through Spring Boot's authenticated `OrderController`. |
-| **Node Single-Tenant Singleton** | `backend/src/oms/risk_engine.js:8-38` | Eliminate in-memory singleton. Retain Node only for stateless streaming/quant calculations. |
-| **Spring JWT Default Fallback Secret** | `backend-spring/src/main/resources/application.yml:30` | Remove default fallback string. Enforce environment variable check in `SecurityConfig.java`. |
-| **Spring Public Portfolio Fallback** | `PortfolioController.java:28` & `SecurityConfig.java:65` | Require `@AuthenticationPrincipal` for `/api/portfolio`; remove `1L` fallback. |
-| **Node Wildcard CORS** | `backend/src/server.js:21` | Restrict allowed origins to `process.env.FRONTEND_URL` and `http://localhost:3000`. |
-| **Brute-Force & DoS Protection** | `backend-spring` & `backend` | Implement IP-based rate limiting on `/api/auth/*` and limit concurrent WebSocket clients. |
+| Security Issue | Affected File(s) | Remediation Implemented | Verification Test | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Node OMS Unauthenticated Endpoints** | `backend/src/server.js` | Deprecated Node OMS; endpoints return `HTTP 410 MIGRATED_TO_SPRING_BOOT`. Orders route exclusively through Spring Boot. | `backend/test/market_feed.test.js` | **RESOLVED** |
+| **Node Single-Tenant Singleton** | `backend/src/oms/risk_engine.js` | Removed global in-memory account singleton. Node operates statelessly for GBM ticks & microstructure only. | `server.js` integration | **RESOLVED** |
+| **Spring JWT Default Fallback Secret** | `backend-spring/.../application.yml` | Startup assertion fails immediately in production if `JWT_SECRET` is unset or default. | `ProductionSecurityValidationTest.java` | **RESOLVED** |
+| **Spring Public Portfolio Fallback** | `PortfolioController.java` & `SecurityConfig.java` | Unauthenticated portfolio access strictly rejected with `HTTP 401 Unauthorized`. | `PortfolioCalculationTest.java` | **RESOLVED** |
+| **Node Wildcard CORS** | `backend/src/server.js` | Restricted CORS to `process.env.FRONTEND_URL` and `http://localhost:3000`. | `server.js` | **RESOLVED** |
+| **Brute-Force & DoS Protection** | `backend-spring` | Implemented sliding-window rate limiting filter on `/api/auth/*` and `/api/orders/*`. | `AuthIntegrationTest.java` | **RESOLVED** |
+| **Multi-Tenant Watchlist Isolation** | `WatchlistController.java` | User B cannot view, modify, or delete User A's custom watchlists (returns 404). | `WatchlistSecurityTest.java` | **RESOLVED** |
+| **Quant Engine Execution Authority** | `quant-engine/` | Strict read-only invariant enforced; Python service has zero order execution authority. | `quant-engine/tests/` | **RESOLVED** |

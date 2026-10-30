@@ -48,6 +48,12 @@ lerna-debug.log*
 Thumbs.db
 Desktop.ini
 
+# Runtime data & caches
+data/
+quant-engine/data/
+__pycache__/
+*.pyc
+
 # Temporary Files
 *.tmp
 *.bak
