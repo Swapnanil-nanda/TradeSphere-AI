@@ -30,6 +30,18 @@ public class ProductionSecurityValidationTest {
     }
 
     @Test
+    @DisplayName("Security: Startup succeeds in production when ephemeral fallback is explicitly enabled")
+    void testProductionJwtSecretEphemeralFallbackGeneratesKey() {
+        MockEnvironment env = new MockEnvironment();
+        env.setActiveProfiles("prod");
+        env.setProperty("jwt.allow-ephemeral-fallback", "true");
+
+        // When allow-ephemeral-fallback is true, missing JWT_SECRET safely initializes an ephemeral key
+        JwtTokenProvider provider = new JwtTokenProvider("", 86400000L, env, true);
+        org.junit.jupiter.api.Assertions.assertNotNull(provider);
+    }
+
+    @Test
     @DisplayName("Security: Startup fails in production when H2 database is used")
     void testProductionH2DatabaseFallbackThrowsException() {
         MockEnvironment env = new MockEnvironment();

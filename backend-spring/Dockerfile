@@ -39,10 +39,10 @@ WORKDIR /app
 # Copy executable jar from builder stage
 COPY --from=builder --chown=tradesphere:tradesphere /workspace/target/tradesphere-backend-*.jar app.jar
 
-# Container configuration
+# Container configuration & memory limits optimized for <=512MB RAM containers
 ENV PORT=8080
 ENV SPRING_PROFILES_ACTIVE=prod
-ENV JAVA_OPTS="-XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
+ENV JAVA_OPTS="-XX:+UseSerialGC -Xms96m -Xmx224m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=48m -Xss256k -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
 
 # Expose HTTP port
 EXPOSE 8080

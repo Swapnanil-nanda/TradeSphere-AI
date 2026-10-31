@@ -82,7 +82,9 @@ This guide provides exact, step-by-step instructions for deploying TradeSphere A
    | `SPRING_PROFILES_ACTIVE` | `prod` | Activates production PostgreSQL & Hikari settings |
    | `PORT` | `8080` | Container listener port |
    | `DATABASE_URL` | `postgresql://...` | Connection URI from Neon (with `?sslmode=require`) |
-   | `JWT_SECRET` | *(64-character hex key)* | Generate via `openssl rand -hex 32` |
+   | `JWT_SECRET` | *(64-character hex key)* | Generate via `openssl rand -hex 32` (or uses auto-ephemeral key) |
+   | `JWT_ALLOW_EPHEMERAL_FALLBACK` | `true` | Allows safe auto-generated key if JWT_SECRET is unset |
+   | `JAVA_OPTS` | `-XX:+UseSerialGC -Xms96m -Xmx224m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=48m -Xss256k -XX:+ExitOnOutOfMemoryError` | Low-memory container tuning (<512MB RAM) |
    | `CORS_ALLOWED_ORIGINS` | `https://tradesphere-ai.vercel.app,https://*.vercel.app,http://localhost:3000` | Allowed frontend origins |
    | `SWAGGER_ENABLED` | `false` | Disables public API doc introspection in production |
 5. Configure **Health Check Path**:

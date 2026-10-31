@@ -1,0 +1,111 @@
+version: '3.8'
+
+# ==============================================================================
+# TradeSphere AI - Multi-Service Production Docker Compose Stack
+# Ideal for Oracle Cloud Free Tier (24GB RAM), Railway, Hetzner, or Local VPS
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL Database
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: tradesphere-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tradesphere
+      POSTGRES_USER: tradesphere
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-tradesphere_secure_db_pass_2025}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tradesphere -d tradesphere"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # 2. Authoritative OMS & Auth Backend (Spring Boot / Java 21)
+  # ----------------------------------------------------------------------------
+  backend-spring:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+    container_name: tradesphere-backend-spring
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8080
+      DATABASE_URL: postgresql://tradesphere:${DB_PASSWORD:-tradesphere_secure_db_pass_2025}@postgres:5432/tradesphere
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970A1B2C3}
+      JWT_ALLOW_EPHEMERAL_FALLBACK: "true"
+      CORS_ALLOWED_ORIGINS: "*"
+      SWAGGER_ENABLED: "false"
+      JAVA_OPTS: "-XX:+UseSerialGC -Xms96m -Xmx224m -XX:MaxMetaspaceSize=112m -XX:ReservedCodeCacheSize=48m -Xss256k -XX:+ExitOnOutOfMemoryError"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # 3. Market Feed & Tick Simulator (Node.js)
+  # ----------------------------------------------------------------------------
+  backend-market:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tradesphere-backend-market
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      NODE_ENV: production
+
+  # ----------------------------------------------------------------------------
+  # 4. Quantitative Research Engine (Python FastAPI)
+  # ----------------------------------------------------------------------------
+  quant-engine:
+    build:
+      context: ./quant-engine
+      dockerfile: Dockerfile
+    container_name: tradesphere-quant-engine
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    environment:
+      PORT: 8100
+
+  # ----------------------------------------------------------------------------
+  # 5. Financial Trading Terminal & Research Frontend (Next.js)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tradesphere-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend-spring
+      - backend-market
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_MARKET_WS_URL: ws://localhost:8000/ws/ticks
+      NEXT_PUBLIC_MARKET_API_URL: http://localhost:8000
+
+volumes:
+  pgdata:

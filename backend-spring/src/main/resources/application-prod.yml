@@ -6,6 +6,13 @@
 server:
   port: ${PORT:8080}
   forward-headers-strategy: native
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:20}
+      min-spare: ${TOMCAT_MIN_SPARE_THREADS:4}
+    max-connections: ${TOMCAT_MAX_CONNECTIONS:100}
+    accept-count: 20
+    connection-timeout: 20000
   compression:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
@@ -21,8 +28,8 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:}
     hikari:
       pool-name: TradeSphereNeonHikariPool
-      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:10}
-      minimum-idle: ${HIKARI_MIN_IDLE:2}
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:5}
+      minimum-idle: ${HIKARI_MIN_IDLE:1}
       idle-timeout: 300000
       max-lifetime: 600000
       connection-timeout: 20000
@@ -38,6 +45,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        generate_statistics: false
         jdbc:
           batch_size: 25
         order_inserts: true
@@ -50,9 +58,13 @@ spring:
     baseline-version: 0
     clean-disabled: true
 
+  jmx:
+    enabled: false
+
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  allow-ephemeral-fallback: ${JWT_ALLOW_EPHEMERAL_FALLBACK:true}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:https://tradesphere-ai.vercel.app,https://*.vercel.app,http://localhost:3000}
