@@ -86,7 +86,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-[#090D12] text-[#E7EDF3] selection:bg-[#2979FF] selection:text-white font-sans antialiased">
+      <body className="min-h-screen flex flex-col bg-[#000000] text-[#F0F3F6] selection:bg-[#2979FF] selection:text-white font-sans antialiased">
         <ThemeProvider>
           <Navbar />
           <main className="flex-1">

@@ -28,6 +28,7 @@ public class PortfolioService {
     public PortfolioSummaryResponse getPortfolioSummary(Long userId) {
         AccountSummaryDto account = paperAccountService.getAccountSummary(userId);
         List<PositionDto> positions = paperTradingService.getPositions(userId);
+        List<com.tradesphere.modules.paper.dto.OrderResponse> orders = paperTradingService.getOrders(userId);
         List<TradeDto> trades = paperTradingService.getTrades(userId);
 
         BigDecimal totalPositionsValue = BigDecimal.ZERO;
@@ -66,6 +67,7 @@ public class PortfolioService {
         PortfolioSummaryResponse res = new PortfolioSummaryResponse();
         res.setAccount(account);
         res.setPositions(positions);
+        res.setOrders(orders);
         res.setTrades(trades);
         res.setTotalPositionsValue(totalPositionsValue.setScale(2, RoundingMode.HALF_UP));
         res.setTotalTradesCount(totalClosed);

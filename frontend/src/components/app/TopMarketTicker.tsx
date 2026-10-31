@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
-import { appConfig } from '../../lib/config';
+import { TrendingUp, TrendingDown, Activity, Globe } from 'lucide-react';
 
 interface TickerItem {
   symbol: string;
@@ -11,120 +10,117 @@ interface TickerItem {
   change: number;
   changePct: number;
   currency: string;
+  isLive?: boolean;
 }
 
 const INITIAL_TICKERS: TickerItem[] = [
-  { symbol: 'NIFTY 50', name: 'Nifty 50 Index', price: 24350.25, change: 112.40, changePct: 0.46, currency: 'INR' },
-  { symbol: 'BANKNIFTY', name: 'Nifty Bank', price: 51240.10, change: 164.80, changePct: 0.32, currency: 'INR' },
-  { symbol: 'RELIANCE', name: 'Reliance Industries', price: 2985.40, change: 24.30, changePct: 0.82, currency: 'INR' },
-  { symbol: 'TCS', name: 'Tata Consultancy Services', price: 4120.50, change: -10.20, changePct: -0.25, currency: 'INR' },
-  { symbol: 'INFY', name: 'Infosys Limited', price: 1845.00, change: 21.00, changePct: 1.15, currency: 'INR' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank', price: 1680.75, change: 3.10, changePct: 0.18, currency: 'INR' },
-  { symbol: 'AAPL', name: 'Apple Inc.', price: 232.50, change: 1.50, changePct: 0.65, currency: 'USD' },
-  { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 141.20, change: 2.90, changePct: 2.10, currency: 'USD' },
-  { symbol: 'TSLA', name: 'Tesla Inc.', price: 265.40, change: -3.20, changePct: -1.20, currency: 'USD' },
-  { symbol: 'MSFT', name: 'Microsoft Corp.', price: 428.15, change: 1.85, changePct: 0.43, currency: 'USD' },
+  { symbol: 'NIFTY 50', name: 'Nifty 50 Index', price: 23053.10, change: 116.30, changePct: 0.51, currency: 'INR', isLive: true },
+  { symbol: 'SENSEX', name: 'BSE Sensex', price: 74459.53, change: 308.53, changePct: 0.42, currency: 'INR', isLive: true },
+  { symbol: 'BANKNIFTY', name: 'Nifty Bank', price: 49820.40, change: 184.20, changePct: 0.37, currency: 'INR', isLive: true },
+  { symbol: 'RELIANCE', name: 'Reliance Industries', price: 1164.90, change: -2.50, changePct: -0.21, currency: 'INR', isLive: true },
+  { symbol: 'TCS', name: 'Tata Consultancy', price: 2502.60, change: 24.60, changePct: 0.99, currency: 'INR', isLive: true },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank', price: 692.80, change: 9.50, changePct: 1.39, currency: 'INR', isLive: true },
+  { symbol: 'INFY', name: 'Infosys Limited', price: 1185.00, change: 38.50, changePct: 3.36, currency: 'INR', isLive: true },
+  { symbol: 'AAPL', name: 'Apple Inc.', price: 344.63, change: -4.28, changePct: -1.23, currency: 'USD', isLive: true },
+  { symbol: 'NVDA', name: 'NVIDIA Corp.', price: 204.64, change: -9.02, changePct: -4.22, currency: 'USD', isLive: true },
+  { symbol: 'TSLA', name: 'Tesla Inc.', price: 399.81, change: -3.49, changePct: -0.87, currency: 'USD', isLive: true }
 ];
 
 export default function TopMarketTicker() {
   const [tickers, setTickers] = useState<TickerItem[]>(INITIAL_TICKERS);
+  const [flashes, setFlashes] = useState<Record<string, 'up' | 'down'>>({});
+  const [isLiveConnected, setIsLiveConnected] = useState<boolean>(true);
 
+  // Poll real live market quotes from Next.js server proxy
   useEffect(() => {
-    let ws: WebSocket | null = null;
-    let reconnectTimer: any = null;
+    let isMounted = true;
 
-    const connect = () => {
+    const fetchLive = async () => {
       try {
-        ws = new WebSocket(appConfig.marketWsUrl);
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'tick' || msg.type === 'TICK') {
-              const tick = msg.data || msg;
-              if (tick && tick.symbol) {
-                setTickers(prev => prev.map(t => {
-                  if (t.symbol === tick.symbol) {
-                    const price = tick.price ?? tick.ltp ?? t.price;
-                    return {
-                      ...t,
-                      price: typeof price === 'number' && !isNaN(price) ? price : t.price,
-                      change: typeof tick.change === 'number' && !isNaN(tick.change) ? tick.change : t.change,
-                      changePct: typeof tick.changePct === 'number' && !isNaN(tick.changePct) ? tick.changePct : t.changePct,
-                    };
-                  }
-                  return t;
-                }));
+        const res = await fetch('/api/market/live-quotes', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data) && data.length > 0) {
+            setIsLiveConnected(true);
+            setTickers((prev) => {
+              const newFlashes: Record<string, 'up' | 'down'> = {};
+              data.forEach((item: any) => {
+                const old = prev.find((p) => p.symbol === item.symbol || p.symbol === item.name);
+                if (old && old.price !== item.ltp) {
+                  newFlashes[item.symbol] = item.ltp > old.price ? 'up' : 'down';
+                }
+              });
+              if (Object.keys(newFlashes).length > 0) {
+                setFlashes(newFlashes);
+                setTimeout(() => setFlashes({}), 1200);
               }
-            }
-          } catch {
-            // ignore non-json messages
+
+              return data.slice(0, 12).map((item: any) => ({
+                symbol: item.symbol === 'NIFTY50' ? 'NIFTY 50' : item.symbol,
+                name: item.name,
+                price: Number(item.ltp ?? 100),
+                change: Number(item.change ?? 0),
+                changePct: Number(item.changePct ?? 0),
+                currency: item.currency ?? 'INR',
+                isLive: true
+              }));
+            });
           }
-        };
-        ws.onerror = () => ws?.close();
-        ws.onclose = () => {
-          reconnectTimer = setTimeout(connect, 4000);
-        };
+        }
       } catch {
-        reconnectTimer = setTimeout(connect, 4000);
+        if (isMounted) setIsLiveConnected(false);
       }
     };
 
-    connect();
-
-    // Gentle micro-simulation update fallback if WebSocket is offline
-    const fallbackTimer = setInterval(() => {
-      setTickers(prev => prev.map(t => {
-        const currentPrice = typeof t.price === 'number' && !isNaN(t.price) ? t.price : 1000;
-        const currentChange = typeof t.change === 'number' && !isNaN(t.change) ? t.change : 0;
-        const drift = (Math.random() - 0.49) * 0.001;
-        const newPrice = Number((currentPrice * (1 + drift)).toFixed(2));
-        const newChange = Number((currentChange + (newPrice - currentPrice)).toFixed(2));
-        const denom = (newPrice - newChange) || 1;
-        const newChangePct = Number(((newChange / denom) * 100).toFixed(2));
-        return {
-          ...t,
-          price: newPrice,
-          change: newChange,
-          changePct: newChangePct
-        };
-      }));
-    }, 2500);
-
+    fetchLive();
+    const interval = setInterval(fetchLive, 5000);
     return () => {
-      if (ws) ws.close();
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      clearInterval(fallbackTimer);
+      isMounted = false;
+      clearInterval(interval);
     };
   }, []);
 
   return (
-    <div className="h-7 bg-[#0D131A] border-b border-[#25313D] px-3 flex items-center overflow-hidden text-[11px] font-mono select-none">
-      <div className="flex items-center gap-1.5 pr-3 mr-2 border-r border-[#25313D] text-[#8B99A8] shrink-0 font-sans">
-        <Activity className="w-3 h-3 text-[#35C69A] animate-pulse" />
-        <span className="text-[10px] uppercase font-bold tracking-wider text-[#8B99A8]">MARKETS</span>
+    <div className="h-7 bg-[#000000] border-b border-[#141414] px-3 flex items-center overflow-hidden text-[11px] font-mono select-none">
+      {/* Live Feed Status Tag */}
+      <div className="flex items-center gap-1.5 pr-2.5 mr-2 border-r border-[#1a1a1a] text-[#808a9d] shrink-0 font-sans">
+        <span className="relative flex h-2 w-2">
+          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isLiveConnected ? 'bg-[#00c805]' : 'bg-[#2979ff]'} opacity-75`}></span>
+          <span className={`relative inline-flex rounded-full h-2 w-2 ${isLiveConnected ? 'bg-[#00c805]' : 'bg-[#2979ff]'}`}></span>
+        </span>
+        <span className="font-semibold text-white tracking-wider text-[10px]">
+          {isLiveConnected ? 'LIVE FEED' : 'SIMULATED'}
+        </span>
       </div>
 
-      <div className="flex-1 overflow-x-auto no-scrollbar flex items-center gap-4 text-[#E7EDF3]">
+      {/* Ticker Streamer */}
+      <div className="flex items-center gap-5 overflow-x-auto no-scrollbar whitespace-nowrap py-1">
         {tickers.map((t) => {
           const isUp = t.change >= 0;
+          const currency = t.currency === 'USD' ? '$' : '₹';
+          const flash = flashes[t.symbol];
+
           return (
-            <div key={t.symbol} className="flex items-center gap-1.5 shrink-0 hover:bg-[#151F29] px-1.5 py-0.5 rounded transition-colors cursor-pointer">
-              <span className="font-semibold text-[11px] text-[#E7EDF3]">{t.symbol}</span>
-              <span className="text-[11px] text-[#E7EDF3] num-tabular">
-                {t.currency === 'INR' ? '₹' : '$'}{(t.price ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div
+              key={t.symbol}
+              className={`flex items-center gap-1.5 px-1 py-0.5 rounded transition-colors duration-300 ${
+                flash === 'up'
+                  ? 'bg-emerald-950/80 text-[#00c805]'
+                  : flash === 'down'
+                  ? 'bg-rose-950/80 text-[#ff333a]'
+                  : ''
+              }`}
+            >
+              <span className="font-bold text-white text-[11px] tracking-tight">{t.symbol}</span>
+              <span className="text-slate-200 tabular-nums">
+                {currency}{Number(t.price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-              <span className={`text-[10px] flex items-center gap-0.5 font-medium num-tabular ${isUp ? 'text-[#35C69A]' : 'text-[#EF6468]'}`}>
-                {isUp ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                {isUp ? '+' : ''}{(t.changePct ?? 0).toFixed(2)}%
+              <span className={`flex items-center text-[10px] tabular-nums font-semibold ${isUp ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>
+                {isUp ? '+' : ''}{Number(t.change ?? 0).toFixed(2)} ({isUp ? '+' : ''}{Number(t.changePct ?? 0).toFixed(2)}%)
               </span>
             </div>
           );
         })}
-      </div>
-
-      <div className="pl-3 ml-2 border-l border-[#25313D] text-[10px] text-[#8B99A8] shrink-0 flex items-center gap-1.5 font-sans">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#35C69A]" />
-        <span className="hidden lg:inline text-[#8B99A8]">SIMULATED FEED</span>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
-const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-const quantUrl = process.env.QUANT_INTERNAL_URL || process.env.NEXT_PUBLIC_QUANT_API_URL || 'http://localhost:8100';
+const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8080');
+const quantUrl = process.env.QUANT_INTERNAL_URL || process.env.NEXT_PUBLIC_QUANT_API_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8100');
 
 const nextConfig = {
   reactStrictMode: true,
@@ -14,20 +14,26 @@ const nextConfig = {
     ignoreBuildErrors: true
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/v1/quant/:path*',
-        destination: `${quantUrl}/api/v1/quant/:path*`
-      },
-      {
-        source: '/api/v1/wealth/:path*',
-        destination: `${quantUrl}/api/v1/wealth/:path*`
-      },
-      {
-        source: '/api/:path*',
+    const rewrites = [];
+    if (quantUrl) {
+      rewrites.push(
+        {
+          source: '/api/v1/quant/:path*',
+          destination: `${quantUrl}/api/v1/quant/:path*`
+        },
+        {
+          source: '/api/v1/wealth/:path*',
+          destination: `${quantUrl}/api/v1/wealth/:path*`
+        }
+      );
+    }
+    if (backendUrl) {
+      rewrites.push({
+        source: '/api/:path((?!market/).*)',
         destination: `${backendUrl}/api/:path*`
-      }
-    ];
+      });
+    }
+    return rewrites;
   },
   async headers() {
     return [

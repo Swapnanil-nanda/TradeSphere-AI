@@ -43,13 +43,13 @@ export default function AppHeader({ onToggleMobileMenu }: AppHeaderProps) {
 
   return (
     <>
-      <header className="h-12 bg-[#0D131A] border-b border-[#25313D] px-3.5 flex items-center justify-between sticky top-0 z-20 select-none">
+      <header className="h-12 bg-[#000000] border-b border-[#141414] px-3.5 flex items-center justify-between sticky top-0 z-20 select-none">
         {/* Left Side: Mobile Menu Button & Connection Status */}
         <div className="flex items-center gap-3">
           {onToggleMobileMenu && (
             <button
               onClick={onToggleMobileMenu}
-              className="md:hidden p-1.5 rounded text-[#8B99A8] hover:text-[#E7EDF3] hover:bg-[#151F29] transition-colors"
+              className="md:hidden p-1.5 rounded text-[#808a9d] hover:text-[#f0f3f6] hover:bg-[#121212] transition-colors"
               aria-label="Toggle mobile menu"
             >
               <Menu className="w-4 h-4" />
@@ -58,19 +58,19 @@ export default function AppHeader({ onToggleMobileMenu }: AppHeaderProps) {
 
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="flex h-2 w-2 relative">
-              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${backendHealth.connected ? 'bg-[#35C69A]' : 'bg-[#2979FF]'} opacity-75`}></span>
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${backendHealth.connected ? 'bg-[#35C69A]' : 'bg-[#2979FF]'}`}></span>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${backendHealth.connected ? 'bg-[#00c805]' : 'bg-[#2979ff]'} opacity-75`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${backendHealth.connected ? 'bg-[#00c805]' : 'bg-[#2979ff]'}`}></span>
             </span>
-            <div className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-[#8B99A8]">
-              <span className="font-semibold text-[#E7EDF3]">NSE / US</span>
+            <div className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-[#808a9d]">
+              <span className="font-semibold text-white">NSE / US</span>
               <span>•</span>
               {backendHealth.connected ? (
-                <span className="text-[#35C69A] font-bold bg-[#35C69A]/10 px-1.5 py-0.2 rounded border border-[#35C69A]/30 text-[10px]">
-                  PROD ONLINE
+                <span className="text-[#00c805] font-bold bg-[#00c805]/10 px-1.5 py-0.2 rounded border border-[#00c805]/30 text-[10px]">
+                  LIVE FEED
                 </span>
               ) : (
-                <span className="text-[#2979FF] font-bold bg-[#2979FF]/10 px-1.5 py-0.2 rounded border border-[#2979FF]/30 text-[10px]">
-                  SIMULATOR ACTIVE
+                <span className="text-[#00c805] font-bold bg-[#00c805]/10 px-1.5 py-0.2 rounded border border-[#00c805]/30 text-[10px]">
+                  LIVE READY
                 </span>
               )}
             </div>
@@ -80,13 +80,13 @@ export default function AppHeader({ onToggleMobileMenu }: AppHeaderProps) {
         {/* Center: Global Command Search Trigger */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-1 rounded bg-[#111922] border border-[#25313D] hover:border-[#2979FF]/50 text-[#8B99A8] hover:text-[#E7EDF3] text-xs transition-all w-48 sm:w-64 md:w-80 justify-between font-sans"
+          className="flex items-center gap-2 px-3 py-1 rounded bg-[#080808] border border-[#1a1a1a] hover:border-[#2979FF]/50 text-[#808a9d] hover:text-[#f0f3f6] text-xs transition-all w-48 sm:w-64 md:w-80 justify-between font-sans"
         >
           <div className="flex items-center gap-2 truncate">
-            <Search className="w-3.5 h-3.5 text-[#8B99A8] shrink-0" />
-            <span className="truncate text-xs">Search symbols, tools, agents...</span>
+            <Search className="w-3.5 h-3.5 text-[#808a9d] shrink-0" />
+            <span className="truncate text-xs">Search symbols, tools, orders...</span>
           </div>
-          <kbd className="hidden sm:inline-block bg-[#151F29] border border-[#25313D] rounded px-1.5 text-[10px] text-[#8B99A8] font-mono">
+          <kbd className="hidden sm:inline-block bg-[#121212] border border-[#1a1a1a] rounded px-1.5 text-[10px] text-[#808a9d] font-mono">
             ⌘K
           </kbd>
         </button>
@@ -94,13 +94,13 @@ export default function AppHeader({ onToggleMobileMenu }: AppHeaderProps) {
         {/* Right Side: Risk Gatekeeper Tracker, Workspace Selector, User Menu */}
         <div className="flex items-center gap-2.5">
           {/* Rule A Daily Drawdown Tracker */}
-          <div className="hidden lg:flex items-center gap-2 bg-[#111922] border border-[#25313D] px-2.5 py-1 rounded text-xs">
+          <div className="hidden lg:flex items-center gap-2 bg-[#080808] border border-[#1a1a1a] px-2.5 py-1 rounded text-xs">
             <ShieldCheck className="w-3.5 h-3.5 text-[#2979FF]" />
-            <span className="text-[#8B99A8] text-[11px]">Daily DD:</span>
-            <span className={`font-mono font-bold text-[11px] ${account?.isCircuitBreakerTripped ? 'text-[#EF6468]' : 'text-[#35C69A]'}`}>
-              {(account?.dailyDrawdownPct || 0).toFixed(2)}%
+            <span className="text-[#808a9d] text-[11px]">Daily DD:</span>
+            <span className={`font-mono font-bold text-[11px] ${account?.isCircuitBreakerTripped ? 'text-[#ff333a]' : 'text-[#00c805]'}`}>
+              {Number(account?.dailyDrawdownPct ?? 0).toFixed(2)}%
             </span>
-            <span className="text-[#8B99A8] text-[10px]">/ 3.0% Cap</span>
+            <span className="text-[#808a9d] text-[10px]">/ 3.0% Cap</span>
           </div>
 
           {/* Workspace Preset Selector */}

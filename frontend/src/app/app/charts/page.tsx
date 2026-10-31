@@ -155,11 +155,11 @@ function ChartsContent() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-black text-white font-mono">
-                    {currencySymbol}{stockDetails.ltp.toFixed(2)}
+                    {currencySymbol}{Number(stockDetails.ltp ?? 0).toFixed(2)}
                   </span>
                   <span className={`text-xs font-bold font-mono flex items-center gap-0.5 ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                    {isUp ? '+' : ''}{stockDetails.change.toFixed(2)} ({isUp ? '+' : ''}{stockDetails.changePct.toFixed(2)}%)
+                    {isUp ? '+' : ''}{Number(stockDetails.change ?? 0).toFixed(2)} ({isUp ? '+' : ''}{Number(stockDetails.changePct ?? 0).toFixed(2)}%)
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-400 font-medium truncate max-w-[220px]">
@@ -294,28 +294,28 @@ function ChartsContent() {
                 <div className="flex justify-between py-1 border-b border-[#1b253b]/40">
                   <span className="text-slate-400">52-Week Range</span>
                   <span className="text-white font-medium">
-                    {currencySymbol}{stockDetails.low52w.toFixed(1)} – {currencySymbol}{stockDetails.high52w.toFixed(1)}
+                    {currencySymbol}{Number(stockDetails.low52w ?? stockDetails.ltp ?? 0).toFixed(1)} – {currencySymbol}{Number(stockDetails.high52w ?? stockDetails.ltp ?? 0).toFixed(1)}
                   </span>
                 </div>
 
                 <div className="flex justify-between py-1 border-b border-[#1b253b]/40">
                   <span className="text-slate-400">P/E Ratio</span>
-                  <span className="text-white font-medium">{stockDetails.peRatio.toFixed(1)}x</span>
+                  <span className="text-white font-medium">{Number(stockDetails.peRatio ?? 20).toFixed(1)}x</span>
                 </div>
 
                 <div className="flex justify-between py-1 border-b border-[#1b253b]/40">
                   <span className="text-slate-400">Beta</span>
-                  <span className="text-white font-medium">{stockDetails.beta.toFixed(2)}</span>
+                  <span className="text-white font-medium">{Number(stockDetails.beta ?? 1).toFixed(2)}</span>
                 </div>
 
                 <div className="flex justify-between py-1 border-b border-[#1b253b]/40">
                   <span className="text-slate-400">Upper Circuit (+10%)</span>
-                  <span className="text-emerald-400 font-medium">{currencySymbol}{stockDetails.upperCircuit.toFixed(1)}</span>
+                  <span className="text-emerald-400 font-medium">{currencySymbol}{Number(stockDetails.upperCircuit ?? (Number(stockDetails.ltp ?? 0) * 1.1)).toFixed(1)}</span>
                 </div>
 
                 <div className="flex justify-between py-1">
                   <span className="text-slate-400">Lower Circuit (-10%)</span>
-                  <span className="text-rose-400 font-medium">{currencySymbol}{stockDetails.lowerCircuit.toFixed(1)}</span>
+                  <span className="text-rose-400 font-medium">{currencySymbol}{Number(stockDetails.lowerCircuit ?? (Number(stockDetails.ltp ?? 0) * 0.9)).toFixed(1)}</span>
                 </div>
               </div>
             </div>

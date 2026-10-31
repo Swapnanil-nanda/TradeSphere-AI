@@ -7,35 +7,26 @@ import PortfolioSummaryCard from '../../../components/app/PortfolioSummaryCard';
 import PriceChart from '../../../components/app/PriceChart';
 import ErrorState from '../../../components/app/ErrorState';
 import EmptyState from '../../../components/app/EmptyState';
-import { CardSkeleton, TableSkeleton } from '../../../components/app/LoadingSkeleton';
+import { CardSkeleton } from '../../../components/app/LoadingSkeleton';
 import {
   apiClient,
   Ticker,
   Candle,
   PortfolioData,
-  Position,
-  Order,
-  Trade,
   CashLedgerEntry,
   ReconciliationReport
 } from '../../../lib/api-client';
 import {
-  ShieldCheck,
-  RotateCcw,
-  AlertTriangle,
-  ArrowUpRight,
-  TrendingUp,
-  TrendingDown,
-  Layers,
-  Zap,
-  X,
-  Settings2,
-  CheckCircle2,
-  FileText,
-  Ban,
-  Scale,
   ShieldAlert,
-  Coins
+  Settings2,
+  Scale,
+  RotateCcw,
+  Ban,
+  CheckCircle2,
+  Coins,
+  X,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 
 function PaperTradingContent() {
@@ -64,6 +55,10 @@ function PaperTradingContent() {
   const [reconcileReport, setReconcileReport] = useState<ReconciliationReport | null>(null);
   const [ledgerEntries, setLedgerEntries] = useState<CashLedgerEntry[]>([]);
 
+  // Partial position close modal state
+  const [partialCloseModal, setPartialCloseModal] = useState<{ symbol: string; maxQty: number; currentPrice: number } | null>(null);
+  const [partialCloseQty, setPartialCloseQty] = useState<string>('1');
+
   useEffect(() => {
     const sym = searchParams.get('symbol');
     if (sym && sym !== symbol) {
@@ -80,12 +75,18 @@ function PaperTradingContent() {
         apiClient.getPortfolio(),
         apiClient.getCandles(symbol, timeframe)
       ]);
-      setTickers(allTickers);
-      setPortfolio(portData);
-      setCandles(candleData);
+      if (Array.isArray(allTickers) && allTickers.length > 0) {
+        setTickers(allTickers);
+      }
+      if (portData) {
+        setPortfolio(portData);
+      }
+      if (Array.isArray(candleData)) {
+        setCandles(candleData);
+      }
     } catch (err: any) {
-      console.error(err);
-      setError('Failed to connect to the paper trading execution engine.');
+      console.warn('[PaperTrading] Service connection error:', err);
+      // Suppress hard crash - keep previous valid state
     } finally {
       setLoading(false);
     }
@@ -95,29 +96,57 @@ function PaperTradingContent() {
     loadData();
   }, [symbol, timeframe]);
 
-  // Periodic portfolio & ledger sync
+  // Periodic order matching, OCO evaluation & portfolio sync (safe)
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
+        await apiClient.matchOpenOrders();
+        await apiClient.evaluateOcoTriggers();
         const port = await apiClient.getPortfolio();
-        setPortfolio(port);
-      } catch {}
+        if (port) {
+          setPortfolio(port);
+        }
+      } catch {
+        // Silently preserve state
+      }
     }, 4000);
     return () => clearInterval(interval);
   }, []);
 
   const handleClosePosition = async (sym: string) => {
-    if (confirm(`Market close open position for ${sym}?`)) {
+    if (confirm(`Market close full open position for ${sym}?`)) {
       setActionLoading(sym);
       try {
         await apiClient.closePosition(sym);
         const port = await apiClient.getPortfolio();
-        setPortfolio(port);
-      } catch (e) {
-        console.error(e);
+        if (port) setPortfolio(port);
+      } catch (e: any) {
+        alert(e.message || 'Failed to close position');
       } finally {
         setActionLoading(null);
       }
+    }
+  };
+
+  const handleExecutePartialClose = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partialCloseModal) return;
+    const qty = parseInt(partialCloseQty, 10);
+    if (isNaN(qty) || qty <= 0 || qty > partialCloseModal.maxQty) {
+      alert(`Please enter a valid quantity between 1 and ${partialCloseModal.maxQty}.`);
+      return;
+    }
+
+    setActionLoading(partialCloseModal.symbol);
+    try {
+      await apiClient.closePosition(partialCloseModal.symbol, qty);
+      setPartialCloseModal(null);
+      const port = await apiClient.getPortfolio();
+      if (port) setPortfolio(port);
+    } catch (err: any) {
+      alert(err.message || 'Failed to execute partial position exit');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -127,7 +156,7 @@ function PaperTradingContent() {
       try {
         await apiClient.cancelOrder(orderId);
         const port = await apiClient.getPortfolio();
-        setPortfolio(port);
+        if (port) setPortfolio(port);
       } catch (e: any) {
         alert(e.message || 'Failed to cancel order');
       } finally {
@@ -141,8 +170,8 @@ function PaperTradingContent() {
       try {
         await apiClient.resetAccount();
         loadData();
-      } catch (e) {
-        console.error(e);
+      } catch (e: any) {
+        alert(e.message || 'Failed to reset account');
       }
     }
   };
@@ -172,16 +201,18 @@ function PaperTradingContent() {
       setReconcileReport(report);
       setLedgerEntries(ledger);
     } catch (e) {
-      console.error(e);
+      console.warn('[PaperTrading] Reconciliation error:', e);
     }
   };
 
   const loadLedgerTab = async () => {
     try {
       const ledger = await apiClient.getCashLedger();
-      setLedgerEntries(ledger);
+      if (Array.isArray(ledger)) {
+        setLedgerEntries(ledger);
+      }
     } catch (e) {
-      console.error(e);
+      console.warn('[PaperTrading] Ledger fetch error:', e);
     }
   };
 
@@ -191,27 +222,33 @@ function PaperTradingContent() {
     }
   }, [activeTab]);
 
-  const currentTicker = tickers.find(t => t.symbol === symbol) || tickers[0] || {
+  const currentTicker: Ticker = (tickers.find(t => t.symbol === symbol) || tickers[0] || {
     symbol,
+    name: `${symbol} Equity`,
     ltp: 2985.4,
     bid: 2985.0,
     ask: 2985.5,
     change: 24.8,
     changePct: 0.84,
     market: 'IN',
+    exchange: 'NSE',
     currency: 'INR'
-  } as Ticker;
+  }) as Ticker;
 
-  const isUp = currentTicker.changePct >= 0;
+  const currentLtp = Number(currentTicker.ltp ?? 2985.4);
+  const currentBid = Number(currentTicker.bid ?? currentLtp - 0.05);
+  const currentAsk = Number(currentTicker.ask ?? currentLtp + 0.05);
+  const currentChangePct = Number(currentTicker.changePct ?? 0);
+  const isUp = currentChangePct >= 0;
   const currencySymbol = currentTicker.currency === 'USD' ? '$' : '₹';
 
   // Realistic 20-level simulated Depth of Market
   const domDepth = Array.from({ length: 8 }).map((_, i) => {
     const step = (i + 1) * 0.4;
-    const bidPrice = Math.round((currentTicker.bid - step) * 10) / 10;
-    const askPrice = Math.round((currentTicker.ask + step) * 10) / 10;
-    const bidQty = Math.floor(250 + Math.sin(i * 1.5) * 180 + Math.random() * 80);
-    const askQty = Math.floor(220 + Math.cos(i * 1.2) * 160 + Math.random() * 80);
+    const bidPrice = Math.round((currentBid - step) * 10) / 10;
+    const askPrice = Math.round((currentAsk + step) * 10) / 10;
+    const bidQty = Math.floor(250 + Math.sin(i * 1.5) * 180 + 50);
+    const askQty = Math.floor(220 + Math.cos(i * 1.2) * 160 + 50);
     return {
       bidPrice,
       bidQty,
@@ -225,45 +262,45 @@ function PaperTradingContent() {
   const openOrdersList = portfolio?.openOrders || portfolio?.orders?.filter(o => o.status === 'OPEN') || [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      {/* Prominent Mandatory Paper-Trading Disclaimer Banner */}
-      <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-300 font-semibold shadow-lg">
+    <div className="space-y-4 max-w-7xl mx-auto pb-10 select-none text-[#F0F3F6]">
+      {/* 1. Mandatory Paper-Trading Regulatory Disclaimer Banner */}
+      <div className="p-3 bg-[#050505] border border-[#141414] rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#808a9d]">
         <div className="flex items-center gap-2.5">
-          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0" />
+          <ShieldAlert className="w-4 h-4 text-[#D8AB5E] shrink-0" />
           <div>
-            <span className="font-extrabold tracking-wide text-white">PAPER TRADING – NO REAL MONEY:</span>{' '}
-            <span className="text-amber-200/90">
-              All executions, cash balances, orders, and PnL are strictly simulated with mathematical ledger reconciliation.
+            <span className="font-extrabold tracking-wide text-white">PAPER TRADING – SIMULATED CAPITAL:</span>{' '}
+            <span className="text-[#808a9d]">
+              All executions, cash balances, and PnL are strictly simulated with double-entry ledger reconciliation.
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase font-black tracking-wider">
-            Deterministic Engine
+        <div className="flex items-center gap-2 shrink-0 font-mono text-[10px]">
+          <span className="px-2 py-0.5 rounded bg-[#D8AB5E]/10 text-[#D8AB5E] border border-[#D8AB5E]/30 font-bold">
+            AUTHORITATIVE OMS (SPRING BOOT)
           </span>
         </div>
       </div>
 
-      {/* Top Header & Account Status Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 2. Top Header & Account Status Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
               Paper Trading Terminal
             </h1>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              SIMULATED EXECUTION
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#00c805]/10 text-[#00c805] border border-[#00c805]/30 font-mono">
+              ACTIVE OMS
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Rule A Synchronous Pre-Trade Risk Gatekeeper (1% Cap & 3% Circuit Breaker)
+          <p className="text-xs text-[#808a9d] mt-0.5">
+            Synchronous Pre-Trade Risk Gatekeeper (1.0% Single-Trade Cap & 3.0% Daily Drawdown Circuit Breaker)
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <button
             onClick={() => setShowConfigModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0c121f] border border-[#1b253b] hover:border-blue-500/40 text-xs font-semibold text-slate-300 hover:text-blue-400 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#080808] border border-[#1a1a1a] hover:border-[#2979FF]/50 text-xs font-semibold text-[#808a9d] hover:text-white transition-all"
           >
             <Settings2 className="w-3.5 h-3.5" />
             <span>Configure Capital</span>
@@ -271,7 +308,7 @@ function PaperTradingContent() {
 
           <button
             onClick={handleOpenReconcile}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0c121f] border border-[#1b253b] hover:border-emerald-500/40 text-xs font-semibold text-slate-300 hover:text-emerald-400 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#080808] border border-[#1a1a1a] hover:border-[#00c805]/50 text-xs font-semibold text-[#808a9d] hover:text-[#00c805] transition-all"
           >
             <Scale className="w-3.5 h-3.5" />
             <span>Reconcile Ledger</span>
@@ -279,7 +316,7 @@ function PaperTradingContent() {
 
           <button
             onClick={handleResetLedger}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0c121f] border border-[#1b253b] hover:border-rose-500/40 text-xs font-semibold text-slate-300 hover:text-rose-400 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#080808] border border-[#1a1a1a] hover:border-[#ff333a]/50 text-xs font-semibold text-[#808a9d] hover:text-[#ff333a] transition-all"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Account</span>
@@ -287,7 +324,7 @@ function PaperTradingContent() {
         </div>
       </div>
 
-      {/* Portfolio Status Summary Card */}
+      {/* 3. Portfolio Status Summary Card */}
       {portfolio && (
         <PortfolioSummaryCard
           account={portfolio.account}
@@ -295,12 +332,12 @@ function PaperTradingContent() {
         />
       )}
 
-      {/* Main Console Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 4. Main Console Grid: Chart & Blotters (2 Cols) + Ticket (1 Col) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left (2 Cols): Interactive Chart & Tabbed Blotters */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Chart Section with Symbol Selector */}
-          <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl p-4 shadow-xl">
+          <div className="bg-[#050505] border border-[#141414] rounded-lg p-4">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-3">
                 <select
@@ -310,28 +347,28 @@ function PaperTradingContent() {
                     setSymbol(s);
                     router.push(`/app/paper-trading?symbol=${s}`);
                   }}
-                  className="bg-[#070b14] border border-[#1b253b] text-white font-extrabold text-sm rounded-xl px-2.5 py-1 focus:outline-none"
+                  className="bg-[#080808] border border-[#1a1a1a] text-white font-bold text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-[#2979FF] font-mono"
                 >
                   {tickers.map(t => (
                     <option key={t.symbol} value={t.symbol}>
-                      {t.symbol} — {t.currency === 'USD' ? '$' : '₹'}{t.ltp.toFixed(2)}
+                      {t.symbol} — {t.currency === 'USD' ? '$' : '₹'}{Number(t.ltp ?? 0).toFixed(2)}
                     </option>
                   ))}
                 </select>
 
-                <div className={`text-xs font-mono font-bold ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {isUp ? '+' : ''}{currentTicker.changePct.toFixed(2)}%
+                <div className={`text-xs font-mono font-bold tabular-nums ${isUp ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>
+                  {isUp ? '+' : ''}{currentChangePct.toFixed(2)}%
                 </div>
               </div>
 
               {/* Timeframe Buttons */}
-              <div className="flex items-center bg-[#070b14] p-1 rounded-xl border border-[#1b253b] text-xs">
+              <div className="flex items-center bg-[#080808] p-0.5 rounded border border-[#1a1a1a] text-xs font-mono">
                 {['1m', '5m', '15m', '1h', '1D'].map(tf => (
                   <button
                     key={tf}
                     onClick={() => setTimeframe(tf)}
-                    className={`px-2 py-0.5 rounded-lg font-bold text-[11px] ${
-                      timeframe === tf ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold transition-colors ${
+                      timeframe === tf ? 'bg-[#2979FF] text-white' : 'text-[#808a9d] hover:text-white'
                     }`}
                   >
                     {tf}
@@ -351,64 +388,64 @@ function PaperTradingContent() {
           </div>
 
           {/* Blotter Tabs (Positions / Open Orders / Trade History / Cash Ledger / DOM) */}
-          <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-[#050505] border border-[#141414] rounded-lg overflow-hidden">
             {/* Tabs Header */}
-            <div className="bg-[#090d16] border-b border-[#1b253b] px-4 flex items-center justify-between text-xs overflow-x-auto">
+            <div className="bg-[#080808] border-b border-[#141414] px-4 flex items-center justify-between text-xs overflow-x-auto">
               <div className="flex items-center gap-1 sm:gap-2">
                 <button
                   onClick={() => setActiveTab('positions')}
-                  className={`py-3 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
+                  className={`py-2.5 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
                     activeTab === 'positions'
-                      ? 'border-blue-500 text-white'
-                      : 'border-transparent text-slate-400 hover:text-white'
+                      ? 'border-[#2979FF] text-white'
+                      : 'border-transparent text-[#808a9d] hover:text-white'
                   }`}
                 >
                   Open Positions ({portfolio?.positions?.length || 0})
                 </button>
                 <button
                   onClick={() => setActiveTab('orders')}
-                  className={`py-3 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
+                  className={`py-2.5 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
                     activeTab === 'orders'
-                      ? 'border-blue-500 text-white'
-                      : 'border-transparent text-slate-400 hover:text-white'
+                      ? 'border-[#2979FF] text-white'
+                      : 'border-transparent text-[#808a9d] hover:text-white'
                   }`}
                 >
                   Active Orders ({openOrdersList.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('trades')}
-                  className={`py-3 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
+                  className={`py-2.5 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
                     activeTab === 'trades'
-                      ? 'border-blue-500 text-white'
-                      : 'border-transparent text-slate-400 hover:text-white'
+                      ? 'border-[#2979FF] text-white'
+                      : 'border-transparent text-[#808a9d] hover:text-white'
                   }`}
                 >
                   Trade Journal ({portfolio?.trades?.length || 0})
                 </button>
                 <button
                   onClick={() => setActiveTab('ledger')}
-                  className={`py-3 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
+                  className={`py-2.5 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
                     activeTab === 'ledger'
-                      ? 'border-blue-500 text-white'
-                      : 'border-transparent text-slate-400 hover:text-white'
+                      ? 'border-[#2979FF] text-white'
+                      : 'border-transparent text-[#808a9d] hover:text-white'
                   }`}
                 >
                   Cash Ledger
                 </button>
                 <button
                   onClick={() => setActiveTab('dom')}
-                  className={`py-3 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
+                  className={`py-2.5 px-3 font-bold border-b-2 whitespace-nowrap transition-all ${
                     activeTab === 'dom'
-                      ? 'border-blue-500 text-white'
-                      : 'border-transparent text-slate-400 hover:text-white'
+                      ? 'border-[#2979FF] text-white'
+                      : 'border-transparent text-[#808a9d] hover:text-white'
                   }`}
                 >
                   DOM Ladder
                 </button>
               </div>
 
-              <span className="text-[10px] text-slate-500 font-mono hidden md:inline">
-                RECONCILED LEDGER
+              <span className="text-[10px] text-[#808a9d] font-mono hidden md:inline">
+                RECONCILED AUDIT
               </span>
             </div>
 
@@ -425,7 +462,7 @@ function PaperTradingContent() {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs font-mono">
-                        <thead className="text-[11px] text-slate-400 uppercase font-sans border-b border-[#1b253b]">
+                        <thead className="text-[11px] text-[#808a9d] uppercase font-sans border-b border-[#141414]">
                           <tr>
                             <th className="pb-2">Symbol</th>
                             <th className="pb-2">Side</th>
@@ -433,38 +470,66 @@ function PaperTradingContent() {
                             <th className="pb-2">Avg Entry</th>
                             <th className="pb-2">Current LTP</th>
                             <th className="pb-2">Unrealized PnL</th>
-                            <th className="pb-2 text-right">Action</th>
+                            <th className="pb-2 text-right">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#1b253b]/40">
+                        <tbody className="divide-y divide-[#141414]">
                           {portfolio.positions.map((pos) => {
-                            const isPosUp = pos.unrealizedPnL >= 0;
+                            const entryPriceVal = Number(pos.entryPrice ?? (pos as any).avgPrice ?? 0);
+                            const currentPriceVal = Number(pos.currentPrice ?? 0);
+                            const pnlVal = Number(pos.unrealizedPnL ?? 0);
+                            const pnlPctVal = Number(pos.unrealizedPnLPct ?? 0);
+                            const isPosUp = pnlVal >= 0;
+
                             return (
-                              <tr key={pos.symbol} className="hover:bg-slate-800/30">
+                              <tr key={pos.symbol} className="hover:bg-[#0c0c0c] transition-colors">
                                 <td className="py-2.5 font-sans font-bold text-white">{pos.symbol}</td>
                                 <td className="py-2.5">
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                    pos.side === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                                    pos.side === 'BUY'
+                                      ? 'bg-[#00c805]/10 text-[#00c805] border border-[#00c805]/30'
+                                      : 'bg-[#ff333a]/10 text-[#ff333a] border border-[#ff333a]/30'
                                   }`}>
                                     {pos.side}
                                   </span>
                                 </td>
-                                <td className="py-2.5 font-bold text-slate-200">{pos.quantity}</td>
-                                <td className="py-2.5 text-slate-300">₹{pos.entryPrice?.toFixed(2) || (pos as any).avgPrice?.toFixed(2)}</td>
-                                <td className="py-2.5 text-white font-bold">₹{pos.currentPrice?.toFixed(2)}</td>
-                                <td className="py-2.5">
-                                  <span className={`font-bold ${isPosUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                    {isPosUp ? '+' : ''}₹{pos.unrealizedPnL.toFixed(2)} ({isPosUp ? '+' : ''}{pos.unrealizedPnLPct.toFixed(2)}%)
+                                <td className="py-2.5 font-bold text-white tabular-nums">{pos.quantity}</td>
+                                <td className="py-2.5 text-[#808a9d] tabular-nums">₹{entryPriceVal.toFixed(2)}</td>
+                                <td className="py-2.5 text-white font-bold tabular-nums">₹{currentPriceVal.toFixed(2)}</td>
+                                <td className="py-2.5 tabular-nums">
+                                  <span className={`font-bold ${isPosUp ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>
+                                    {isPosUp ? '+' : ''}₹{pnlVal.toFixed(2)} ({isPosUp ? '+' : ''}{pnlPctVal.toFixed(2)}%)
                                   </span>
                                 </td>
-                                <td className="py-2.5 text-right">
-                                  <button
-                                    onClick={() => handleClosePosition(pos.symbol)}
-                                    disabled={actionLoading === pos.symbol}
-                                    className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-[10px] font-bold transition-all disabled:opacity-50"
-                                  >
-                                    {actionLoading === pos.symbol ? 'Closing...' : 'Close'}
-                                  </button>
+                                <td className="py-2.5 text-right font-sans">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {/* Partial Close Button */}
+                                    <button
+                                      onClick={() => {
+                                        setPartialCloseModal({
+                                          symbol: pos.symbol,
+                                          maxQty: pos.quantity,
+                                          currentPrice: currentPriceVal
+                                        });
+                                        setPartialCloseQty(Math.max(1, Math.floor(pos.quantity / 2)).toString());
+                                      }}
+                                      disabled={actionLoading === pos.symbol || pos.quantity <= 1}
+                                      className="px-2 py-1 rounded bg-[#2979FF]/10 hover:bg-[#2979FF]/20 text-[#2979FF] border border-[#2979FF]/30 text-[10px] font-bold transition-all disabled:opacity-30"
+                                      title="Exit a specific quantity of shares"
+                                    >
+                                      Partial
+                                    </button>
+
+                                    {/* Full Close Button */}
+                                    <button
+                                      onClick={() => handleClosePosition(pos.symbol)}
+                                      disabled={actionLoading === pos.symbol}
+                                      className="px-2 py-1 rounded bg-[#ff333a]/10 hover:bg-[#ff333a]/20 text-[#ff333a] border border-[#ff333a]/30 text-[10px] font-bold transition-all disabled:opacity-50"
+                                      title="Close entire position at market"
+                                    >
+                                      {actionLoading === pos.symbol ? 'Closing...' : 'Close All'}
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -487,7 +552,7 @@ function PaperTradingContent() {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs font-mono">
-                        <thead className="text-[11px] text-slate-400 uppercase font-sans border-b border-[#1b253b]">
+                        <thead className="text-[11px] text-[#808a9d] uppercase font-sans border-b border-[#141414]">
                           <tr>
                             <th className="pb-2">Order ID</th>
                             <th className="pb-2">Symbol</th>
@@ -499,31 +564,35 @@ function PaperTradingContent() {
                             <th className="pb-2 text-right">Action</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#1b253b]/40">
+                        <tbody className="divide-y divide-[#141414]">
                           {openOrdersList.map((ord) => (
-                            <tr key={ord.id} className="hover:bg-slate-800/30">
-                              <td className="py-2.5 text-slate-500">{ord.id}</td>
+                            <tr key={ord.id} className="hover:bg-[#0c0c0c] transition-colors">
+                              <td className="py-2.5 text-[#808a9d]">{ord.id}</td>
                               <td className="py-2.5 font-bold text-white">{ord.symbol}</td>
-                              <td className="py-2.5 text-slate-300">{(ord as any).orderType || ord.type}</td>
+                              <td className="py-2.5 text-[#808a9d]">{(ord as any).orderType || ord.type}</td>
                               <td className="py-2.5">
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                  ord.side === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                                  ord.side === 'BUY'
+                                    ? 'bg-[#00c805]/10 text-[#00c805] border border-[#00c805]/30'
+                                    : 'bg-[#ff333a]/10 text-[#ff333a] border border-[#ff333a]/30'
                                 }`}>
                                   {ord.side}
                                 </span>
                               </td>
-                              <td className="py-2.5 font-bold text-slate-200">{ord.quantity}</td>
-                              <td className="py-2.5 text-white">₹{ord.limitPrice ? ord.limitPrice.toFixed(2) : 'MARKET'}</td>
+                              <td className="py-2.5 font-bold text-white tabular-nums">{ord.quantity}</td>
+                              <td className="py-2.5 text-white tabular-nums">
+                                ₹{ord.limitPrice ? Number(ord.limitPrice).toFixed(2) : 'MARKET'}
+                              </td>
                               <td className="py-2.5">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#2979FF]/10 text-[#2979FF] border border-[#2979FF]/30">
                                   {ord.status}
                                 </span>
                               </td>
-                              <td className="py-2.5 text-right">
+                              <td className="py-2.5 text-right font-sans">
                                 <button
                                   onClick={() => handleCancelOrder(ord.id)}
                                   disabled={actionLoading === ord.id}
-                                  className="px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-[10px] font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
+                                  className="px-2.5 py-1 rounded bg-[#ff333a]/10 hover:bg-[#ff333a]/20 text-[#ff333a] border border-[#ff333a]/30 text-[10px] font-bold transition-all disabled:opacity-50 inline-flex items-center gap-1"
                                 >
                                   <Ban className="w-3 h-3" />
                                   <span>{actionLoading === ord.id ? 'Cancelling...' : 'Cancel'}</span>
@@ -549,7 +618,7 @@ function PaperTradingContent() {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs font-mono">
-                        <thead className="text-[11px] text-slate-400 uppercase font-sans border-b border-[#1b253b]">
+                        <thead className="text-[11px] text-[#808a9d] uppercase font-sans border-b border-[#141414]">
                           <tr>
                             <th className="pb-2">Trade ID</th>
                             <th className="pb-2">Symbol</th>
@@ -562,43 +631,50 @@ function PaperTradingContent() {
                             <th className="pb-2">Exit Reason</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#1b253b]/40">
+                        <tbody className="divide-y divide-[#141414]">
                           {portfolio.trades.map((trd) => {
-                            const pnl = (trd as any).realizedPnL;
-                            const isPnlPositive = pnl !== undefined && pnl >= 0;
+                            const pnlRaw = (trd as any).realizedPnL;
+                            const hasPnl = pnlRaw !== undefined && pnlRaw !== null;
+                            const pnlVal = Number(pnlRaw ?? 0);
+                            const isPnlPositive = pnlVal >= 0;
+                            const priceVal = Number(trd.price ?? (trd as any).exitPrice ?? 0);
+                            const feeVal = Number((trd as any).feeAmount ?? 0);
+
                             return (
-                              <tr key={trd.id} className="hover:bg-slate-800/30">
-                                <td className="py-2.5 text-slate-500">{trd.id}</td>
+                              <tr key={trd.id} className="hover:bg-[#0c0c0c] transition-colors">
+                                <td className="py-2.5 text-[#808a9d]">{trd.id}</td>
                                 <td className="py-2.5 font-bold text-white">{trd.symbol}</td>
                                 <td className="py-2.5">
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                    trd.side === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                                    trd.side === 'BUY'
+                                      ? 'bg-[#00c805]/10 text-[#00c805] border border-[#00c805]/30'
+                                      : 'bg-[#ff333a]/10 text-[#ff333a] border border-[#ff333a]/30'
                                   }`}>
                                     {trd.side}
                                   </span>
                                 </td>
-                                <td className="py-2.5">{trd.quantity}</td>
-                                <td className="py-2.5 text-white">₹{trd.price?.toFixed(2) || (trd as any).exitPrice?.toFixed(2)}</td>
-                                <td className="py-2.5 text-slate-400">₹{(trd as any).feeAmount?.toFixed(2) || '0.00'}</td>
-                                <td className="py-2.5">
-                                  {pnl !== undefined ? (
-                                    <span className={`font-bold ${isPnlPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                      {isPnlPositive ? '+' : ''}₹{pnl.toFixed(2)}
+                                <td className="py-2.5 tabular-nums text-white font-bold">{trd.quantity}</td>
+                                <td className="py-2.5 text-white tabular-nums">₹{priceVal.toFixed(2)}</td>
+                                <td className="py-2.5 text-[#808a9d] tabular-nums">₹{feeVal.toFixed(2)}</td>
+                                <td className="py-2.5 tabular-nums">
+                                  {hasPnl ? (
+                                    <span className={`font-bold ${isPnlPositive ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>
+                                      {isPnlPositive ? '+' : ''}₹{pnlVal.toFixed(2)}
                                     </span>
                                   ) : (
-                                    <span className="text-slate-500">—</span>
+                                    <span className="text-[#808a9d]">—</span>
                                   )}
                                 </td>
-                                <td className="py-2.5">
+                                <td className="py-2.5 tabular-nums">
                                   {(trd as any).rMultiple !== undefined && (trd as any).rMultiple !== null ? (
-                                    <span className={`font-bold ${(trd as any).rMultiple >= 1.5 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                      {(trd as any).rMultiple}R
+                                    <span className={`font-bold ${Number((trd as any).rMultiple) >= 1.5 ? 'text-[#00c805]' : 'text-[#D8AB5E]'}`}>
+                                      {Number((trd as any).rMultiple).toFixed(2)}R
                                     </span>
                                   ) : (
-                                    <span className="text-slate-500">—</span>
+                                    <span className="text-[#808a9d]">—</span>
                                   )}
                                 </td>
-                                <td className="py-2.5 text-slate-400 text-[11px]">
+                                <td className="py-2.5 text-[#808a9d] text-[11px] font-sans">
                                   {(trd as any).exitReason || (trd as any).action || 'ENTRY'}
                                 </td>
                               </tr>
@@ -614,13 +690,13 @@ function PaperTradingContent() {
               {/* TAB 4: DOUBLE-ENTRY CASH LEDGER */}
               {activeTab === 'ledger' && (
                 <div>
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#1b253b]">
-                    <div className="text-xs text-slate-400">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#141414]">
+                    <div className="text-xs text-[#808a9d]">
                       Double-entry Cash Ledger Audit Trail — Every trade debit, credit, and simulated fee is immutably logged.
                     </div>
                     <button
                       onClick={handleOpenReconcile}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1"
+                      className="px-2.5 py-1 rounded bg-[#00c805]/10 text-[#00c805] hover:bg-[#00c805]/20 border border-[#00c805]/30 text-[11px] font-bold flex items-center gap-1 transition-colors"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>Reconcile Balance</span>
@@ -635,7 +711,7 @@ function PaperTradingContent() {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs font-mono">
-                        <thead className="text-[11px] text-slate-400 uppercase font-sans border-b border-[#1b253b]">
+                        <thead className="text-[11px] text-[#808a9d] uppercase font-sans border-b border-[#141414]">
                           <tr>
                             <th className="pb-2">Reference</th>
                             <th className="pb-2">Type</th>
@@ -645,31 +721,34 @@ function PaperTradingContent() {
                             <th className="pb-2">Timestamp</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#1b253b]/40">
+                        <tbody className="divide-y divide-[#141414]">
                           {ledgerEntries.map((ent) => {
-                            const isCredit = ent.amount > 0;
+                            const amt = Number(ent.amount ?? 0);
+                            const balAfter = Number(ent.balanceAfter ?? 0);
+                            const isCredit = amt > 0;
+
                             return (
-                              <tr key={ent.id} className="hover:bg-slate-800/30">
-                                <td className="py-2 text-slate-500">{ent.reference}</td>
+                              <tr key={ent.id} className="hover:bg-[#0c0c0c] transition-colors">
+                                <td className="py-2 text-[#808a9d]">{ent.reference}</td>
                                 <td className="py-2">
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                     ent.type === 'INITIAL_DEPOSIT' || ent.type === 'ACCOUNT_RESET' || ent.type === 'ACCOUNT_CONFIG'
-                                      ? 'bg-blue-500/10 text-blue-400'
+                                      ? 'bg-[#2979FF]/10 text-[#2979FF] border border-[#2979FF]/30'
                                       : ent.type === 'TRADE_CREDIT'
-                                      ? 'bg-emerald-500/10 text-emerald-400'
+                                      ? 'bg-[#00c805]/10 text-[#00c805] border border-[#00c805]/30'
                                       : ent.type === 'COMMISSION_FEE'
-                                      ? 'bg-amber-500/10 text-amber-400'
-                                      : 'bg-rose-500/10 text-rose-400'
+                                      ? 'bg-[#D8AB5E]/10 text-[#D8AB5E] border border-[#D8AB5E]/30'
+                                      : 'bg-[#ff333a]/10 text-[#ff333a] border border-[#ff333a]/30'
                                   }`}>
                                     {ent.type}
                                   </span>
                                 </td>
-                                <td className="py-2 text-slate-300 font-sans">{ent.description}</td>
-                                <td className={`py-2 font-bold ${isCredit ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                  {isCredit ? '+' : ''}₹{Math.abs(ent.amount).toFixed(2)}
+                                <td className="py-2 text-[#808a9d] font-sans">{ent.description}</td>
+                                <td className={`py-2 font-bold tabular-nums ${isCredit ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>
+                                  {isCredit ? '+' : ''}₹{Math.abs(amt).toFixed(2)}
                                 </td>
-                                <td className="py-2 text-white font-bold">₹{ent.balanceAfter.toFixed(2)}</td>
-                                <td className="py-2 text-slate-500 text-[10px]">
+                                <td className="py-2 text-white font-bold tabular-nums">₹{balAfter.toFixed(2)}</td>
+                                <td className="py-2 text-[#808a9d] text-[10px] tabular-nums">
                                   {new Date(ent.timestamp).toLocaleTimeString()}
                                 </td>
                               </tr>
@@ -685,17 +764,17 @@ function PaperTradingContent() {
               {/* TAB 5: LEVEL 2 DOM BOOK */}
               {activeTab === 'dom' && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pb-2 border-b border-[#1b253b]">
+                  <div className="flex items-center justify-between text-[11px] text-[#808a9d] pb-2 border-b border-[#141414]">
                     <span>Simulated Depth of Market Ladder for {symbol}</span>
-                    <span className="font-mono text-blue-400">
-                      Spread: {currencySymbol}{(currentTicker.ask - currentTicker.bid).toFixed(2)}
+                    <span className="font-mono text-[#2979FF]">
+                      Spread: {currencySymbol}{Math.max(0, currentAsk - currentBid).toFixed(2)}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-xs font-mono">
                     {/* Bids Ladder (Left) */}
                     <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] text-slate-500 font-bold px-1">
+                      <div className="flex justify-between text-[10px] text-[#808a9d] font-bold px-1 font-sans">
                         <span>ORDERS</span>
                         <span>BID QTY</span>
                         <span>BID PRICE</span>
@@ -703,18 +782,18 @@ function PaperTradingContent() {
                       {domDepth.map((row, idx) => (
                         <div
                           key={`bid-${idx}`}
-                          className="flex justify-between items-center p-1 px-2 rounded bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/10"
+                          className="flex justify-between items-center p-1 px-2 rounded bg-[#00c805]/5 hover:bg-[#00c805]/10 border border-[#00c805]/10"
                         >
-                          <span className="text-slate-500 text-[10px]">{row.bidOrders}</span>
-                          <span className="text-slate-300 font-semibold">{row.bidQty}</span>
-                          <span className="text-emerald-400 font-bold">{currencySymbol}{row.bidPrice.toFixed(2)}</span>
+                          <span className="text-[#808a9d] text-[10px]">{row.bidOrders}</span>
+                          <span className="text-white font-semibold tabular-nums">{row.bidQty}</span>
+                          <span className="text-[#00c805] font-bold tabular-nums">{currencySymbol}{row.bidPrice.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
 
                     {/* Asks Ladder (Right) */}
                     <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] text-slate-500 font-bold px-1">
+                      <div className="flex justify-between text-[10px] text-[#808a9d] font-bold px-1 font-sans">
                         <span>ASK PRICE</span>
                         <span>ASK QTY</span>
                         <span>ORDERS</span>
@@ -722,11 +801,11 @@ function PaperTradingContent() {
                       {domDepth.map((row, idx) => (
                         <div
                           key={`ask-${idx}`}
-                          className="flex justify-between items-center p-1 px-2 rounded bg-rose-500/5 hover:bg-rose-500/10 border border-rose-500/10"
+                          className="flex justify-between items-center p-1 px-2 rounded bg-[#ff333a]/5 hover:bg-[#ff333a]/10 border border-[#ff333a]/10"
                         >
-                          <span className="text-rose-400 font-bold">{currencySymbol}{row.askPrice.toFixed(2)}</span>
-                          <span className="text-slate-300 font-semibold">{row.askQty}</span>
-                          <span className="text-slate-500 text-[10px]">{row.askOrders}</span>
+                          <span className="text-[#ff333a] font-bold tabular-nums">{currencySymbol}{row.askPrice.toFixed(2)}</span>
+                          <span className="text-white font-semibold tabular-nums">{row.askQty}</span>
+                          <span className="text-[#808a9d] text-[10px]">{row.askOrders}</span>
                         </div>
                       ))}
                     </div>
@@ -738,7 +817,7 @@ function PaperTradingContent() {
         </div>
 
         {/* Right (1 Col): Smart Order Ticket with 1% Auto Sizer */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <OrderForm
             symbol={symbol}
             ticker={currentTicker}
@@ -748,41 +827,41 @@ function PaperTradingContent() {
         </div>
       </div>
 
-      {/* CONFIGURE CAPITAL MODAL */}
+      {/* 5. CONFIGURE CAPITAL MODAL */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1b253b]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xs p-4 select-none">
+          <div className="bg-[#050505] border border-[#141414] rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4 text-[#F0F3F6]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#141414]">
               <div className="flex items-center gap-2">
-                <Coins className="w-5 h-5 text-blue-400" />
-                <h3 className="font-bold text-white text-base">Configure Virtual Paper Capital</h3>
+                <Coins className="w-5 h-5 text-[#2979FF]" />
+                <h3 className="font-bold text-white text-base font-sans">Configure Virtual Paper Capital</h3>
               </div>
               <button
                 onClick={() => setShowConfigModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-[#808a9d] hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleApplyConfig} className="space-y-4 text-xs">
+            <form onSubmit={handleApplyConfig} className="space-y-4 text-xs font-sans">
               <div>
-                <label className="block text-slate-400 font-bold mb-1">Starting Capital (₹):</label>
+                <label className="block text-[#808a9d] font-bold mb-1">Starting Capital (₹):</label>
                 <input
                   type="number"
                   step="10000"
                   min="50000"
                   value={configCapital}
                   onChange={(e) => setConfigCapital(e.target.value)}
-                  className="w-full bg-[#070b14] border border-[#1b253b] rounded-xl px-3 py-2.5 text-white font-mono font-bold focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#080808] border border-[#1a1a1a] rounded px-3 py-2 text-white font-mono font-bold focus:outline-none focus:border-[#2979FF]"
                 />
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 font-mono">
                   {[500000, 1000000, 2500000, 5000000].map(amt => (
                     <button
                       key={amt}
                       type="button"
                       onClick={() => setConfigCapital(amt.toString())}
-                      className="px-2 py-1 rounded bg-[#070b14] border border-[#1b253b] text-slate-400 hover:text-white text-[10px]"
+                      className="px-2 py-1 rounded bg-[#080808] border border-[#1a1a1a] text-[#808a9d] hover:text-white text-[10px]"
                     >
                       ₹{(amt / 100000).toFixed(0)}L
                     </button>
@@ -792,30 +871,30 @@ function PaperTradingContent() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">Simulated Slippage (%):</label>
+                  <label className="block text-[#808a9d] font-bold mb-1">Simulated Slippage (%):</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={configSlippage}
                     onChange={(e) => setConfigSlippage(e.target.value)}
-                    className="w-full bg-[#070b14] border border-[#1b253b] rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full bg-[#080808] border border-[#1a1a1a] rounded px-3 py-2 text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">Commission Fee (%):</label>
+                  <label className="block text-[#808a9d] font-bold mb-1">Commission Fee (%):</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={configFee}
                     onChange={(e) => setConfigFee(e.target.value)}
-                    className="w-full bg-[#070b14] border border-[#1b253b] rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full bg-[#080808] border border-[#1a1a1a] rounded px-3 py-2 text-white font-mono"
                   />
                 </div>
               </div>
 
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[11px] text-blue-300">
+              <div className="p-3 bg-[#2979FF]/10 border border-[#2979FF]/20 rounded text-[11px] text-[#2979FF]">
                 Updating virtual capital resets open positions and logs a new baseline configuration entry in the cash ledger.
               </div>
 
@@ -823,13 +902,13 @@ function PaperTradingContent() {
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold"
+                  className="px-4 py-2 rounded text-[#808a9d] hover:text-white text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/20"
+                  className="px-4 py-2 rounded bg-[#2979FF] hover:bg-blue-600 text-white font-bold text-xs transition-colors shadow-md shadow-blue-500/20"
                 >
                   Apply Configuration
                 </button>
@@ -839,18 +918,86 @@ function PaperTradingContent() {
         </div>
       )}
 
-      {/* RECONCILIATION MODAL */}
-      {showReconcileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1b253b]">
+      {/* 6. PARTIAL POSITION CLOSE MODAL */}
+      {partialCloseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xs p-4 select-none">
+          <form
+            onSubmit={handleExecutePartialClose}
+            className="bg-[#050505] border border-[#141414] rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-[#F0F3F6]"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#141414]">
               <div className="flex items-center gap-2">
-                <Scale className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-white text-base">Double-Entry Cash Ledger Reconciliation</h3>
+                <Layers className="w-5 h-5 text-[#2979FF]" />
+                <h3 className="font-bold text-white text-base font-sans">Partial Position Exit</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPartialCloseModal(null)}
+                className="text-[#808a9d] hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="bg-[#080808] p-3 rounded border border-[#1a1a1a] flex justify-between font-mono">
+                <span className="text-[#808a9d]">Instrument:</span>
+                <span className="font-bold text-white">{partialCloseModal.symbol}</span>
+              </div>
+              <div className="bg-[#080808] p-3 rounded border border-[#1a1a1a] flex justify-between font-mono">
+                <span className="text-[#808a9d]">Available Quantity:</span>
+                <span className="font-bold text-white">{partialCloseModal.maxQty} shares</span>
+              </div>
+
+              <div>
+                <label className="block text-[#808a9d] font-bold mb-1 font-sans">Quantity to Exit:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max={partialCloseModal.maxQty}
+                  value={partialCloseQty}
+                  onChange={(e) => setPartialCloseQty(e.target.value)}
+                  className="w-full bg-[#080808] border border-[#1a1a1a] rounded px-3 py-2 text-white font-mono font-bold text-sm focus:outline-none focus:border-[#2979FF]"
+                  required
+                />
+                <span className="text-[10px] text-[#808a9d] mt-1 block">
+                  Remaining position: {Math.max(0, partialCloseModal.maxQty - (parseInt(partialCloseQty, 10) || 0))} shares
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPartialCloseModal(null)}
+                className="px-3 py-1.5 rounded border border-[#1a1a1a] text-[#808a9d] hover:text-white text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={actionLoading === partialCloseModal.symbol}
+                className="px-4 py-1.5 rounded bg-[#2979FF] hover:bg-blue-600 text-white font-bold text-xs transition-colors shadow-md shadow-blue-500/20 disabled:opacity-50"
+              >
+                {actionLoading === partialCloseModal.symbol ? 'Executing...' : 'Confirm Partial Exit'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 7. RECONCILIATION MODAL */}
+      {showReconcileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xs p-4 select-none">
+          <div className="bg-[#050505] border border-[#141414] rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-[#F0F3F6]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#141414]">
+              <div className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-[#00c805]" />
+                <h3 className="font-bold text-white text-base font-sans">Double-Entry Cash Ledger Reconciliation</h3>
               </div>
               <button
                 onClick={() => setShowReconcileModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-[#808a9d] hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -858,57 +1005,69 @@ function PaperTradingContent() {
 
             {reconcileReport ? (
               <div className="space-y-4 text-xs font-mono">
-                <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                <div className={`p-3 rounded border flex items-center justify-between ${
                   reconcileReport.reconciled
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                    ? 'bg-[#00c805]/10 border-[#00c805]/30 text-[#00c805]'
+                    : 'bg-[#ff333a]/10 border-[#ff333a]/30 text-[#ff333a]'
                 }`}>
                   <div className="flex items-center gap-2 font-bold font-sans">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-[#00c805]" />
                     <span>STATUS: {reconcileReport.status}</span>
                   </div>
-                  <span className="font-bold">Variance: ₹{reconcileReport.variance.toFixed(2)}</span>
+                  <span className="font-bold tabular-nums">
+                    Variance: ₹{Number(reconcileReport.variance ?? 0).toFixed(2)}
+                  </span>
                 </div>
 
-                <div className="bg-[#070b14] border border-[#1b253b] rounded-xl p-3 space-y-2">
-                  <div className="flex justify-between text-slate-400">
+                <div className="bg-[#080808] border border-[#141414] rounded p-3 space-y-2 tabular-nums">
+                  <div className="flex justify-between text-[#808a9d]">
                     <span>Virtual Starting Capital:</span>
-                    <span className="text-white font-bold">₹{reconcileReport.startingCapital?.toLocaleString('en-IN') || '10,00,000'}</span>
+                    <span className="text-white font-bold">
+                      ₹{Number(reconcileReport.startingCapital ?? 1000000).toLocaleString('en-IN')}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-[#808a9d]">
                     <span>(-) Total Trade Debits:</span>
-                    <span className="text-rose-400 font-bold">₹{reconcileReport.totalTradeDebits?.toFixed(2) || '0.00'}</span>
+                    <span className="text-[#ff333a] font-bold">
+                      ₹{Number(reconcileReport.totalTradeDebits ?? 0).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-[#808a9d]">
                     <span>(+) Total Trade Credits:</span>
-                    <span className="text-emerald-400 font-bold">₹{reconcileReport.totalTradeCredits?.toFixed(2) || '0.00'}</span>
+                    <span className="text-[#00c805] font-bold">
+                      ₹{Number(reconcileReport.totalTradeCredits ?? 0).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-[#808a9d]">
                     <span>(-) Total Commission Fees:</span>
-                    <span className="text-amber-400 font-bold">₹{reconcileReport.totalCommissionFees?.toFixed(2) || '0.00'}</span>
+                    <span className="text-[#D8AB5E] font-bold">
+                      ₹{Number(reconcileReport.totalCommissionFees ?? 0).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="pt-2 border-t border-[#1b253b] flex justify-between text-white font-bold">
+                  <div className="pt-2 border-t border-[#141414] flex justify-between text-white font-bold">
                     <span>Calculated Paper Cash:</span>
-                    <span className="text-emerald-400">₹{reconcileReport.calculatedCash?.toFixed(2)}</span>
+                    <span className="text-[#00c805]">
+                      ₹{Number(reconcileReport.calculatedCash ?? 0).toFixed(2)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-white font-bold">
                     <span>Actual Account Cash:</span>
-                    <span>₹{reconcileReport.actualCurrentCash?.toFixed(2)}</span>
+                    <span>₹{Number(reconcileReport.actualCurrentCash ?? 0).toFixed(2)}</span>
                   </div>
                 </div>
 
-                <div className="text-[10px] text-slate-500 font-sans">
-                  Formula: <span className="font-mono text-slate-400">{reconcileReport.auditFormula}</span>
+                <div className="text-[10px] text-[#808a9d] font-sans">
+                  Formula: <span className="font-mono text-white">{reconcileReport.auditFormula}</span>
                 </div>
 
                 <div className="text-center pt-2">
-                  <span className="text-[10px] text-amber-400 font-bold">
-                    PAPER TRADING – NO REAL MONEY
+                  <span className="text-[10px] text-[#D8AB5E] font-bold font-sans">
+                    PAPER TRADING – STRICT CONSERVATION OF CAPITAL
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="py-8 text-center text-slate-400 text-xs">
+              <div className="py-8 text-center text-[#808a9d] text-xs font-mono">
                 Computing mathematical ledger reconciliation...
               </div>
             )}

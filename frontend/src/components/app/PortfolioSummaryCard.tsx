@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, ShieldAlert, Wallet, TrendingUp, TrendingDown, DollarSign, Lock } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Lock } from 'lucide-react';
 import { PortfolioAccount } from '../../lib/api-client';
 
 interface PortfolioSummaryCardProps {
@@ -25,35 +25,41 @@ export default function PortfolioSummaryCard({ account, onReset }: PortfolioSumm
     lockReason: null
   };
 
-  const isProfit = (safeAccount.dailyPnL ?? 0) >= 0;
+  const dailyPnLVal = Number(safeAccount.dailyPnL ?? 0);
+  const dailyPnLPctVal = Number(safeAccount.dailyPnLPct ?? 0);
+  const unrealizedVal = Number(safeAccount.totalUnrealizedPnL ?? 0);
+  const netLiqVal = Number(safeAccount.netLiquidation ?? 0);
+  const cashVal = Number(safeAccount.currentCash ?? 0);
+
+  const isProfit = dailyPnLVal >= 0;
   const isLocked = safeAccount.tradingLocked ?? false;
 
   return (
-    <div className="bg-white dark:bg-[#0c121f] border border-slate-200 dark:border-[#1b253b] rounded-xl p-4 shadow-2xs select-none transition-colors">
+    <div className="bg-[#050505] border border-[#141414] rounded-lg p-4 select-none text-[#F0F3F6]">
       {/* Top Status */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#1b253b] mb-3">
+      <div className="flex items-center justify-between pb-3 border-b border-[#141414] mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-[#2979FF]/10 border border-[#2979FF]/30 text-[#2979FF] flex items-center justify-center">
             <Wallet className="w-4 h-4" />
           </div>
           <div>
-            <span className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider block">
+            <span className="font-bold text-xs text-white uppercase tracking-wider block">
               Paper Ledger Equity
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">SIMULATED VIRTUAL ACCOUNT</span>
+            <span className="text-[10px] text-[#808a9d] font-mono">AUTHORITATIVE POSTGRES PERSISTED</span>
           </div>
         </div>
 
         {/* Circuit Breaker Status */}
         {isLocked ? (
-          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-rose-50 dark:bg-rose-500/20 border border-rose-200 dark:border-rose-500/40 text-rose-700 dark:text-rose-300 font-bold text-[10px]">
+          <div className="flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#ff333a]/20 border border-[#ff333a]/40 text-[#ff333a] font-bold text-[10px]">
             <Lock className="w-3.5 h-3.5" />
-            <span>CIRCUIT BREAKER TRIGGERED</span>
+            <span>CIRCUIT BREAKER TRIGGERED ({safeAccount.lockReason || '3% Daily Cap'})</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-semibold text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>1% RISK GUARD ACTIVE</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#00c805]/10 border border-[#00c805]/20 text-[#00c805] font-semibold text-[10px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00c805] animate-pulse" />
+            <span>1% RISK GUARD &bull; 3% CIRCUIT BREAKER ACTIVE</span>
           </div>
         )}
       </div>
@@ -61,35 +67,35 @@ export default function PortfolioSummaryCard({ account, onReset }: PortfolioSumm
       {/* Metric Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
         <div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-0.5 font-sans">Net Liquidation:</span>
-          <div className="text-lg font-bold text-slate-900 dark:text-white">
-            ₹{(safeAccount.netLiquidation ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <span className="text-[10px] text-[#808a9d] block mb-0.5 font-sans">Net Liquidation:</span>
+          <div className="text-lg font-bold text-white tabular-nums">
+            ₹{netLiqVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
         <div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-0.5 font-sans">Daily P&amp;L:</span>
-          <div className={`text-lg font-bold flex items-center gap-1 ${
-            isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+          <span className="text-[10px] text-[#808a9d] block mb-0.5 font-sans">Daily P&amp;L:</span>
+          <div className={`text-lg font-bold flex items-center gap-1 tabular-nums ${
+            isProfit ? 'text-[#00c805]' : 'text-[#ff333a]'
           }`}>
-            <span>{isProfit ? '+' : ''}₹{(safeAccount.dailyPnL ?? 0).toFixed(2)}</span>
-            <span className="text-xs font-semibold font-sans">({(safeAccount.dailyPnLPct ?? 0).toFixed(2)}%)</span>
+            <span>{isProfit ? '+' : ''}₹{dailyPnLVal.toFixed(2)}</span>
+            <span className="text-xs font-semibold font-sans">({dailyPnLPctVal.toFixed(2)}%)</span>
           </div>
         </div>
 
         <div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-0.5 font-sans">Unrealized MTM:</span>
-          <div className={`text-lg font-bold ${
-            (safeAccount.totalUnrealizedPnL ?? 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+          <span className="text-[10px] text-[#808a9d] block mb-0.5 font-sans">Unrealized MTM:</span>
+          <div className={`text-lg font-bold tabular-nums ${
+            unrealizedVal >= 0 ? 'text-[#00c805]' : 'text-[#ff333a]'
           }`}>
-            {(safeAccount.totalUnrealizedPnL ?? 0) >= 0 ? '+' : ''}₹{(safeAccount.totalUnrealizedPnL ?? 0).toFixed(2)}
+            {unrealizedVal >= 0 ? '+' : ''}₹{unrealizedVal.toFixed(2)}
           </div>
         </div>
 
         <div>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-0.5 font-sans">Available Cash:</span>
-          <div className="text-lg font-bold text-slate-800 dark:text-slate-200">
-            ₹{(safeAccount.currentCash ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <span className="text-[10px] text-[#808a9d] block mb-0.5 font-sans">Available Cash:</span>
+          <div className="text-lg font-bold text-[#F0F3F6] tabular-nums">
+            ₹{cashVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       </div>

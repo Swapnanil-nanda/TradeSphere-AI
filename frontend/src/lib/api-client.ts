@@ -327,15 +327,33 @@ class TradeSphereApiClient {
   ];
 
   async getTickers(): Promise<Ticker[]> {
+    // 1. Try real live market quotes from Next.js proxy first
+    try {
+      const res = await fetch('/api/market/live-quotes', { cache: 'no-store' });
+      if (res.ok) {
+        const liveData = await res.json();
+        if (Array.isArray(liveData) && liveData.length > 0) {
+          return liveData.map((t: any) => ({
+            ...t,
+            isSimulated: t.isSimulated ?? false
+          }));
+        }
+      }
+    } catch {
+      // Fallback to internal microservices
+    }
+
+    // 2. Try backend simulation engine
     try {
       const res = await fetch(`${BACKEND_BASE}/api/tickers`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        return data.map((t: any) => ({
-          ...t,
-          isSimulated: true
-        }));
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          return data.map((t: any) => ({
+            ...t,
+            isSimulated: true
+          }));
+        }
       }
     } catch (e) {
       console.warn('[ApiClient] Backend unreachable, serving labeled demo fixtures for tickers');
@@ -344,11 +362,26 @@ class TradeSphereApiClient {
   }
 
   async getCandles(symbol: string, timeframe: string = '5m'): Promise<Candle[]> {
+    // 1. Try real live market candles from Next.js proxy first
+    try {
+      const res = await fetch(`/api/market/live-candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`, { cache: 'no-store' });
+      if (res.ok) {
+        const liveCandles = await res.json();
+        if (Array.isArray(liveCandles) && liveCandles.length > 0) {
+          return liveCandles;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    // 2. Try backend microservice
     try {
       const res = await fetch(`${BACKEND_BASE}/api/candles?symbol=${symbol}&timeframe=${timeframe}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+      }
     } catch (e) {
       console.warn('[ApiClient] Backend unreachable, generating simulated candles for', symbol);
     }
@@ -452,11 +485,19 @@ class TradeSphereApiClient {
     return data;
   }
 
-  async closePosition(symbol: string): Promise<any> {
+  async closePosition(symbol: string, quantity?: number): Promise<any> {
     const res = await fetch(`${BACKEND_BASE}/api/positions/close`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
-      body: JSON.stringify({ symbol })
+      body: JSON.stringify({ symbol, quantity })
+    });
+    return await res.json();
+  }
+
+  async evaluateOcoTriggers(): Promise<any> {
+    const res = await fetch(`${BACKEND_BASE}/api/orders/evaluate-oco`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
     });
     return await res.json();
   }
@@ -662,7 +703,8 @@ class TradeSphereApiClient {
         cache: 'no-store'
       });
       if (res.ok) {
-        return await res.json();
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
       }
     } catch {}
     return [];
@@ -699,7 +741,8 @@ class TradeSphereApiClient {
         body: JSON.stringify(params)
       });
       if (res.ok) {
-        return await res.json();
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
       }
     } catch (e) {}
 

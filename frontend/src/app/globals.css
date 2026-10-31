@@ -3,79 +3,74 @@
 @tailwind utilities;
 
 :root {
-  --background: #090D12;
-  --foreground: #E7EDF3;
-  --sidebar: #0D131A;
-  --surface: #111922;
-  --surface-hover: #151F29;
-  --surface-elevated: #151F29;
-  --border: #25313D;
-  --border-subtle: #1C2631;
-  --secondary: #8B99A8;
-  --bullish: #35C69A;
-  --bearish: #EF6468;
+  --background: #000000;
+  --foreground: #F0F3F6;
+  --sidebar: #060606;
+  --surface: #0A0A0A;
+  --surface-hover: #121212;
+  --surface-elevated: #111111;
+  --border: #1A1A1A;
+  --border-subtle: #141414;
+  --secondary: #808A9D;
+  --bullish: #00C805;
+  --bearish: #FF333A;
   --warning: #D8AB5E;
   --accent-blue: #2979FF;
 }
 
 .dark {
-  --background: #090D12;
-  --foreground: #E7EDF3;
-  --sidebar: #0D131A;
-  --surface: #111922;
-  --surface-hover: #151F29;
-  --surface-elevated: #151F29;
-  --border: #25313D;
-  --border-subtle: #1C2631;
-  --secondary: #8B99A8;
-  --bullish: #35C69A;
-  --bearish: #EF6468;
+  --background: #000000;
+  --foreground: #F0F3F6;
+  --sidebar: #060606;
+  --surface: #0A0A0A;
+  --surface-hover: #121212;
+  --surface-elevated: #111111;
+  --border: #1A1A1A;
+  --border-subtle: #141414;
+  --secondary: #808A9D;
+  --bullish: #00C805;
+  --bearish: #FF333A;
   --warning: #D8AB5E;
   --accent-blue: #2979FF;
 }
 
 body {
-  color: #E7EDF3;
-  background: #090D12;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #F0F3F6;
+  background: #000000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
   overflow-x: hidden;
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 12px;
+  line-height: 16px;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Institutional Monospace Financial Tabular Numbers */
+.font-mono {
+  font-family: 'IBM Plex Mono', 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Institutional Clean Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #090D12;
+  background: #000000;
 }
 ::-webkit-scrollbar-thumb {
-  background: #25313D;
+  background: #1A1A1A;
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #364554;
+  background: #2E2E2E;
 }
 
+/* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Financial tabular numbers */
-.num-tabular {
-  font-variant-numeric: tabular-nums;
-  font-family: 'IBM Plex Mono', 'Geist Mono', 'JetBrains Mono', monospace;
-  letter-spacing: -0.02em;
-}
-
-/* Institutional hairline borders */
-.border-hairline {
-  border: 1px solid #25313D;
 }

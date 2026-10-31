@@ -123,23 +123,23 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
 
   return (
     <aside
-      className={`bg-[#0D131A] border-r border-[#25313D] flex flex-col justify-between transition-all duration-200 z-30 select-none ${
+      className={`bg-[#000000] border-r border-[#141414] flex flex-col justify-between transition-all duration-200 z-30 select-none ${
         collapsed ? 'w-14' : 'w-60'
       }`}
     >
       <div className="flex flex-col h-full overflow-hidden">
         {/* Brand Header */}
-        <div className="h-12 px-3 flex items-center justify-between border-b border-[#25313D] shrink-0 bg-[#0D131A]">
+        <div className="h-12 px-3 flex items-center justify-between border-b border-[#141414] shrink-0 bg-[#000000]">
           {!collapsed ? (
             <Link href="/" className="flex items-center gap-2 group">
               <div className="w-6 h-6 rounded bg-[#2979FF] flex items-center justify-center font-black text-white text-xs shadow-xs">
                 Ω
               </div>
               <div className="flex items-center gap-1 font-sans">
-                <span className="font-bold text-xs tracking-tight text-[#E7EDF3]">
-                  TradeSphere<span className="text-[#2979FF]">AI</span>
+                <span className="font-bold text-xs tracking-tight text-[#f0f3f6]">
+                  TradeSphere<span className="text-[#2979FF]">OS</span>
                 </span>
-                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#151F29] text-[#35C69A] border border-[#25313D]">
+                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#0d0d0d] text-[#00c805] border border-[#1a1a1a]">
                   PRO
                 </span>
               </div>
@@ -154,7 +154,7 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
 
           <button
             onClick={onToggleCollapse}
-            className="p-1 rounded text-[#8B99A8] hover:text-[#E7EDF3] hover:bg-[#151F29] transition-colors"
+            className="p-1 rounded text-[#808a9d] hover:text-[#f0f3f6] hover:bg-[#121212] transition-colors"
             title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
@@ -166,7 +166,7 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
           {navigationSections.map((section) => (
             <div key={section.title} className="px-2">
               {!collapsed && (
-                <div className="px-2 pb-1 text-[10px] font-mono font-bold tracking-wider text-[#8B99A8] uppercase">
+                <div className="px-2 pb-1 text-[10px] font-mono font-bold tracking-wider text-[#808a9d] uppercase">
                   {section.title}
                 </div>
               )}
@@ -180,21 +180,21 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
                       href={item.path}
                       className={`flex items-center gap-2.5 px-2 py-1.5 rounded text-xs transition-colors group relative ${
                         active
-                          ? 'bg-[#151F29] text-[#E7EDF3] font-medium border-l-2 border-[#2979FF]'
-                          : 'text-[#8B99A8] hover:bg-[#111922] hover:text-[#E7EDF3]'
+                          ? 'bg-[#121212] text-white font-medium border-l-2 border-[#2979FF]'
+                          : 'text-[#808a9d] hover:bg-[#0c0c0c] hover:text-[#f0f3f6]'
                       }`}
                       title={collapsed ? item.name : undefined}
                     >
                       <Icon
                         className={`w-4 h-4 shrink-0 transition-colors ${
-                          active ? 'text-[#2979FF]' : 'text-[#8B99A8] group-hover:text-[#E7EDF3]'
+                          active ? 'text-[#2979FF]' : 'text-[#808a9d] group-hover:text-[#f0f3f6]'
                         }`}
                       />
                       {!collapsed && (
                         <div className="flex-1 flex items-center justify-between min-w-0">
                           <span className="truncate">{item.name}</span>
                           {item.badge && (
-                            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#1C2631] text-[#8B99A8] border border-[#25313D] shrink-0 ml-1">
+                            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#141414] text-[#808a9d] border border-[#1a1a1a] shrink-0 ml-1">
                               {item.badge}
                             </span>
                           )}
@@ -209,19 +209,19 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
         </div>
 
         {/* Bottom User Profile Ribbon */}
-        <div className="p-2 border-t border-[#25313D] bg-[#0D131A] shrink-0">
+        <div className="p-2 border-t border-[#141414] bg-[#000000] shrink-0">
           {!collapsed ? (
-            <div className="flex items-center justify-between px-2 py-1.5 rounded bg-[#111922] border border-[#25313D] text-[11px]">
+            <div className="flex items-center justify-between px-2 py-1.5 rounded bg-[#0a0a0a] border border-[#1a1a1a] text-[11px]">
               <div className="truncate">
-                <div className="font-semibold text-[#E7EDF3] truncate">Virtual Account</div>
-                <div className="text-[10px] font-mono text-[#35C69A] font-semibold">₹10,00,000.00</div>
+                <div className="font-semibold text-white truncate">Institutional Account</div>
+                <div className="text-[10px] font-mono text-[#00c805] font-semibold">₹10,00,000.00</div>
               </div>
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#151F29] text-[#8B99A8] border border-[#25313D]">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#141414] text-[#808a9d] border border-[#1a1a1a]">
                 SIM
               </span>
             </div>
           ) : (
-            <div className="flex justify-center py-1 text-[#35C69A] text-[10px] font-mono font-bold" title="Virtual Capital: ₹10,00,000">
+            <div className="flex justify-center py-1 text-[#00c805] text-[10px] font-mono font-bold" title="Capital: ₹10,00,000">
               ₹10L
             </div>
           )}

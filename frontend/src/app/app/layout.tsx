@@ -39,7 +39,7 @@ export default function AppLayout({
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#090D12] text-[#E7EDF3] font-sans select-none">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#000000] text-[#F0F3F6] font-sans select-none">
       {/* Top Persistent Streaming Market Ticker */}
       <TopMarketTicker />
 
@@ -80,7 +80,7 @@ export default function AppLayout({
         {/* Center Main Stage */}
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           <AppHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
-          <main className="flex-1 overflow-y-auto bg-[#090D12] p-2.5 sm:p-3 custom-scrollbar">
+          <main className="flex-1 overflow-y-auto bg-[#000000] p-2.5 sm:p-3 custom-scrollbar">
             {children}
           </main>
         </div>

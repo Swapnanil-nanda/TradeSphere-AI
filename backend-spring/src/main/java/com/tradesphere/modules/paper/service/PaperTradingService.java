@@ -84,8 +84,15 @@ public class PaperTradingService {
         BigDecimal currentPrice = quote.getLtp();
 
         // 2. Synchronously execute Pre-Trade Risk Gatekeeper
+        Integer heldQuantity = null;
+        if ("SELL".equalsIgnoreCase(req.getSide())) {
+            heldQuantity = positionRepository.findByAccountIdAndInstrumentId(account.getId(), instrument.getId())
+                    .map(Position::getQuantity)
+                    .orElse(0);
+        }
+
         try {
-            riskGatekeeper.validateOrder(user, account, req, currentPrice);
+            riskGatekeeper.validateOrder(user, account, req, currentPrice, heldQuantity);
         } catch (Exception ex) {
             PaperOrder rejectedOrder = new PaperOrder();
             rejectedOrder.setAccount(account);
@@ -418,6 +425,9 @@ public class PaperTradingService {
 
     @Transactional
     public List<OrderResponse> matchOpenOrders(Long userId) {
+        // First evaluate active OCO bracket stops/targets
+        evaluateOcoTriggers(userId);
+
         PaperAccount account = paperAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("PaperAccount", "userId", userId));
 
@@ -471,6 +481,11 @@ public class PaperTradingService {
 
     @Transactional
     public PositionDto closePosition(Long userId, String symbol) {
+        return closePosition(userId, symbol, null);
+    }
+
+    @Transactional
+    public PositionDto closePosition(Long userId, String symbol, Integer closeQty) {
         PaperAccount account = paperAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("PaperAccount", "userId", userId));
 
@@ -480,18 +495,23 @@ public class PaperTradingService {
         Position position = positionRepository.findByAccountIdAndInstrumentId(account.getId(), instrument.getId())
                 .orElseThrow(() -> new TradeSphereException("No open position found for symbol: " + symbol));
 
+        int availableQty = position.getQuantity();
+        int qtyToClose = (closeQty != null && closeQty > 0 && closeQty < availableQty)
+                ? closeQty
+                : availableQty;
+
         TickerQuoteDto quote = marketDataService.getQuote(instrument.getSymbol());
         BigDecimal exitPrice = quote.getBid();
-        BigDecimal proceeds = exitPrice.multiply(BigDecimal.valueOf(position.getQuantity()));
+        BigDecimal proceeds = exitPrice.multiply(BigDecimal.valueOf(qtyToClose));
 
-        BigDecimal costBasis = position.getEntryPrice().multiply(BigDecimal.valueOf(position.getQuantity()));
+        BigDecimal costBasis = position.getEntryPrice().multiply(BigDecimal.valueOf(qtyToClose));
         BigDecimal realizedPnl = proceeds.subtract(costBasis).setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal rMultiple = BigDecimal.ZERO;
         if (position.getStopLossPrice() != null) {
             BigDecimal riskPerShare = position.getEntryPrice().subtract(position.getStopLossPrice()).abs();
             if (riskPerShare.compareTo(BigDecimal.ZERO) > 0) {
-                BigDecimal totalRisk = riskPerShare.multiply(BigDecimal.valueOf(position.getQuantity()));
+                BigDecimal totalRisk = riskPerShare.multiply(BigDecimal.valueOf(qtyToClose));
                 rMultiple = realizedPnl.divide(totalRisk, 2, RoundingMode.HALF_UP);
             }
         }
@@ -501,13 +521,18 @@ public class PaperTradingService {
         account.setUpdatedAt(Instant.now());
         paperAccountRepository.save(account);
 
+        boolean isPartial = qtyToClose < availableQty;
+        String entryDesc = isPartial
+                ? String.format("Partial close %d of %d %s @ %s (PnL: %s)", qtyToClose, availableQty, instrument.getSymbol(), exitPrice, realizedPnl)
+                : String.format("Closed position %d %s @ %s (PnL: %s)", qtyToClose, instrument.getSymbol(), exitPrice, realizedPnl);
+
         CashLedgerEntry ledger = new CashLedgerEntry(
                 account,
                 "TRADE_CREDIT",
                 proceeds,
                 account.getCurrentCash(),
-                "CLOSE_" + position.getId(),
-                String.format("Closed position %d %s @ %s (PnL: %s)", position.getQuantity(), instrument.getSymbol(), exitPrice, realizedPnl)
+                (isPartial ? "PARTIAL_CLOSE_" : "CLOSE_") + position.getId(),
+                entryDesc
         );
         ledgerRepository.save(ledger);
 
@@ -515,20 +540,108 @@ public class PaperTradingService {
         closeTrade.setAccount(account);
         closeTrade.setInstrument(instrument);
         closeTrade.setSide("SELL");
-        closeTrade.setQuantity(position.getQuantity());
+        closeTrade.setQuantity(qtyToClose);
         closeTrade.setPrice(exitPrice);
         closeTrade.setRealizedPnl(realizedPnl);
         closeTrade.setRMultiple(rMultiple);
-        closeTrade.setExitReason("MANUAL_USER_CLOSE");
+        closeTrade.setExitReason(isPartial ? "PARTIAL_CLOSE" : "MANUAL_USER_CLOSE");
         paperTradeRepository.save(closeTrade);
 
-        PositionDto closedSnapshot = toPositionDto(position, exitPrice);
-        positionRepository.delete(position);
+        PositionDto resultDto;
+        if (isPartial) {
+            position.setQuantity(availableQty - qtyToClose);
+            position.setCurrentPrice(quote.getLtp());
+            position.setUpdatedAt(Instant.now());
+            Position savedPos = positionRepository.save(position);
+            resultDto = toPositionDto(savedPos, exitPrice);
+        } else {
+            resultDto = toPositionDto(position, exitPrice);
+            positionRepository.delete(position);
+        }
 
-        auditEventService.logEvent(userId, "POSITION_CLOSED",
-                String.format("Closed %s: realizedPnL=%s, R-multiple=%sR", instrument.getSymbol(), realizedPnl, rMultiple));
+        auditEventService.logEvent(userId, isPartial ? "POSITION_PARTIALLY_CLOSED" : "POSITION_CLOSED",
+                String.format("Closed %d %s: realizedPnL=%s, R-multiple=%sR", qtyToClose, instrument.getSymbol(), realizedPnl, rMultiple));
 
-        return closedSnapshot;
+        return resultDto;
+    }
+
+    @Transactional
+    public List<TradeDto> evaluateOcoTriggers(Long userId) {
+        PaperAccount account = paperAccountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("PaperAccount", "userId", userId));
+
+        List<Position> positions = positionRepository.findByAccountId(account.getId());
+        List<TradeDto> executedExits = new ArrayList<>();
+
+        for (Position pos : positions) {
+            if (pos.getStopLossPrice() == null && pos.getTakeProfitPrice() == null) {
+                continue;
+            }
+
+            TickerQuoteDto quote = marketDataService.getQuote(pos.getInstrument().getSymbol());
+            BigDecimal currentBid = quote.getBid();
+
+            boolean triggerStopLoss = false;
+            boolean triggerTakeProfit = false;
+
+            if ("BUY".equalsIgnoreCase(pos.getSide())) {
+                if (pos.getStopLossPrice() != null && currentBid.compareTo(pos.getStopLossPrice()) <= 0) {
+                    triggerStopLoss = true;
+                } else if (pos.getTakeProfitPrice() != null && currentBid.compareTo(pos.getTakeProfitPrice()) >= 0) {
+                    triggerTakeProfit = true;
+                }
+            }
+
+            if (triggerStopLoss || triggerTakeProfit) {
+                String exitReason = triggerStopLoss ? "STOP_LOSS_TRIGGERED" : "TAKE_PROFIT_TRIGGERED";
+                BigDecimal exitPrice = currentBid;
+                BigDecimal proceeds = exitPrice.multiply(BigDecimal.valueOf(pos.getQuantity()));
+                BigDecimal costBasis = pos.getEntryPrice().multiply(BigDecimal.valueOf(pos.getQuantity()));
+                BigDecimal realizedPnl = proceeds.subtract(costBasis).setScale(2, RoundingMode.HALF_UP);
+
+                BigDecimal rMultiple = BigDecimal.ZERO;
+                if (pos.getStopLossPrice() != null) {
+                    BigDecimal riskPerShare = pos.getEntryPrice().subtract(pos.getStopLossPrice()).abs();
+                    if (riskPerShare.compareTo(BigDecimal.ZERO) > 0) {
+                        BigDecimal totalRisk = riskPerShare.multiply(BigDecimal.valueOf(pos.getQuantity()));
+                        rMultiple = realizedPnl.divide(totalRisk, 2, RoundingMode.HALF_UP);
+                    }
+                }
+
+                account.setCurrentCash(account.getCurrentCash().add(proceeds));
+                account.setDailyRealizedPnl(account.getDailyRealizedPnl().add(realizedPnl));
+                paperAccountRepository.save(account);
+
+                CashLedgerEntry ledger = new CashLedgerEntry(
+                        account,
+                        "TRADE_CREDIT",
+                        proceeds,
+                        account.getCurrentCash(),
+                        "OCO_" + pos.getId(),
+                        String.format("OCO exit (%s) %d %s @ %s (PnL: %s)", exitReason, pos.getQuantity(), pos.getInstrument().getSymbol(), exitPrice, realizedPnl)
+                );
+                ledgerRepository.save(ledger);
+
+                PaperTrade ocoTrade = new PaperTrade();
+                ocoTrade.setAccount(account);
+                ocoTrade.setInstrument(pos.getInstrument());
+                ocoTrade.setSide("SELL");
+                ocoTrade.setQuantity(pos.getQuantity());
+                ocoTrade.setPrice(exitPrice);
+                ocoTrade.setRealizedPnl(realizedPnl);
+                ocoTrade.setRMultiple(rMultiple);
+                ocoTrade.setExitReason(exitReason);
+                PaperTrade savedTrade = paperTradeRepository.save(ocoTrade);
+                executedExits.add(toTradeDto(savedTrade));
+
+                // Atomic deletion permanently disarms both OCO legs and prevents dual exit events
+                positionRepository.delete(pos);
+
+                auditEventService.logEvent(userId, "OCO_ORDER_TRIGGERED",
+                        String.format("OCO leg %s triggered on %s @ %s (PnL: %s)", exitReason, pos.getInstrument().getSymbol(), exitPrice, realizedPnl));
+            }
+        }
+        return executedExits;
     }
 
     @Transactional(readOnly = true)

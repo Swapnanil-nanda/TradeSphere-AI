@@ -231,7 +231,7 @@ public class DeterministicPaperTradingTest {
                         .header("Authorization", authToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sellReq)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("INSUFFICIENT_POSITION")));
     }
 

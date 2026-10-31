@@ -65,4 +65,10 @@ public class OrderController {
     public ResponseEntity<List<OrderResponse>> matchOpenOrders(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(paperTradingService.matchOpenOrders(principal.getId()));
     }
+
+    @PostMapping("/evaluate-oco")
+    @Operation(summary = "Evaluate and trigger active Stop-Loss and Take-Profit OCO legs across open positions")
+    public ResponseEntity<List<com.tradesphere.modules.paper.dto.TradeDto>> evaluateOco(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(paperTradingService.evaluateOcoTriggers(principal.getId()));
+    }
 }

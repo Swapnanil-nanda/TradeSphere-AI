@@ -31,11 +31,11 @@ public class PositionController {
     }
 
     @PostMapping("/close")
-    @Operation(summary = "Close open position at current market price")
+    @Operation(summary = "Close open position (full or partial) at current market price")
     public ResponseEntity<PositionDto> closePosition(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody ClosePositionRequest request) {
-        PositionDto response = paperTradingService.closePosition(principal.getId(), request.getSymbol());
+        PositionDto response = paperTradingService.closePosition(principal.getId(), request.getSymbol(), request.getQuantity());
         return ResponseEntity.ok(response);
     }
 }
