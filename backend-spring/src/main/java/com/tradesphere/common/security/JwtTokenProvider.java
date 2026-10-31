@@ -28,15 +28,8 @@ public class JwtTokenProvider {
     public JwtTokenProvider(
             @Value("${jwt.secret:}") String secret,
             @Value("${jwt.expiration-ms:86400000}") long expirationMs,
+            @Value("${jwt.allow-ephemeral-fallback:true}") boolean allowEphemeralFallback,
             org.springframework.core.env.Environment env) {
-        this(secret, expirationMs, env, Boolean.parseBoolean(env != null ? env.getProperty("jwt.allow-ephemeral-fallback", "false") : "false"));
-    }
-
-    public JwtTokenProvider(
-            String secret,
-            long expirationMs,
-            org.springframework.core.env.Environment env,
-            boolean allowEphemeralFallback) {
         boolean isProduction = env != null && env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"));
 
         SecretKey resolvedKey;
@@ -60,6 +53,21 @@ public class JwtTokenProvider {
 
         this.key = resolvedKey;
         this.expirationMs = expirationMs;
+    }
+
+    public JwtTokenProvider(
+            String secret,
+            long expirationMs,
+            org.springframework.core.env.Environment env) {
+        this(secret, expirationMs, false, env);
+    }
+
+    public JwtTokenProvider(
+            String secret,
+            long expirationMs,
+            org.springframework.core.env.Environment env,
+            boolean allowEphemeralFallback) {
+        this(secret, expirationMs, allowEphemeralFallback, env);
     }
 
     public String generateToken(UserPrincipal userPrincipal) {
