@@ -58,7 +58,7 @@ export default function StockCard({ ticker, onSelect }: StockCardProps) {
           <span>H: {currencySymbol}{ticker.dayHigh.toFixed(1)}</span>
           <span>L: {currencySymbol}{ticker.dayLow.toFixed(1)}</span>
           <Link
-            href={`/terminal`}
+            href={`/app/paper-trading?symbol=${symbol}`}
             onClick={(e) => e.stopPropagation()}
             className="text-blue-600 dark:text-blue-400 font-sans font-semibold hover:underline flex items-center gap-0.5"
           >

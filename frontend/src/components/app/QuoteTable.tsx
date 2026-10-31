@@ -84,7 +84,7 @@ export default function QuoteTable({
                   <td className="py-2.5 px-3 text-right font-sans" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
                       <Link
-                        href={`/terminal`}
+                        href={`/app/paper-trading?symbol=${t.symbol}`}
                         className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 dark:bg-blue-600/10 dark:hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 font-semibold text-[10px] transition-colors flex items-center gap-0.5"
                       >
                         <span>Trade</span>

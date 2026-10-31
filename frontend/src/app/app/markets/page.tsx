@@ -39,7 +39,7 @@ export default function MarketsPage() {
   }, []);
 
   const handleSelectSymbol = (sym: string) => {
-    router.push(`/terminal`);
+    router.push(`/app/paper-trading?symbol=${sym}`);
   };
 
   // Filtered list

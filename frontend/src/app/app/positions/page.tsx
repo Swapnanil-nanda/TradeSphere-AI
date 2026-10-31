@@ -97,7 +97,7 @@ export default function PositionsPage() {
             <span>Refresh</span>
           </button>
           <Link
-            href="/terminal"
+            href="/app/paper-trading"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-semibold transition-colors"
           >
             <span>Trade in Terminal</span>
@@ -192,7 +192,7 @@ export default function PositionsPage() {
               You currently have no active open positions. Place a market or bracket order in the Trading Terminal.
             </p>
             <Link
-              href="/terminal"
+              href="/app/paper-trading"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#2979FF] text-white font-medium hover:bg-blue-600 transition-colors"
             >
               <span>Go to Trading Terminal</span>
@@ -228,7 +228,7 @@ export default function PositionsPage() {
                     <tr key={pos.symbol} className="hover:bg-[#151F29]/60 transition-colors">
                       <td className="px-3 py-2.5 font-bold text-[#E7EDF3]">
                         <div className="flex items-center gap-1.5">
-                          <Link href={`/terminal?symbol=${pos.symbol}`} className="hover:text-[#2979FF]">
+                          <Link href={`/app/paper-trading?symbol=${pos.symbol}`} className="hover:text-[#2979FF]">
                             {pos.symbol}
                           </Link>
                           <span className="text-[9px] px-1 py-0.2 rounded bg-[#090D12] text-[#8B99A8] border border-[#25313D]">

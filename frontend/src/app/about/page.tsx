@@ -89,7 +89,7 @@ export default function AboutPage() {
       <div className="text-center space-y-4">
         <h3 className="text-xl font-bold text-white">Experience the platform today</h3>
         <Link
-          href="/terminal"
+          href="/app/paper-trading"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xl shadow-blue-600/30 transition-all"
         >
           <span>Launch Paper Trading Terminal</span>

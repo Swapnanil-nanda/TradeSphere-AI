@@ -16,7 +16,7 @@ export default function Navbar() {
 
   const navLinks = [
     { name: 'Dashboard', path: '/app/dashboard' },
-    { name: 'Terminal', path: '/terminal' },
+    { name: 'Terminal', path: '/app/paper-trading' },
     { name: 'Markets', path: '/app/markets' },
     { name: 'Quant Research', path: '/app/quant/multi-agent' },
     { name: 'Wealth MPT', path: '/app/wealth/optimizer' },
@@ -35,7 +35,7 @@ export default function Navbar() {
       <div className="bg-[#111922] border-b border-[#25313D] px-4 py-1 text-center text-[11px] text-[#8B99A8] font-medium flex items-center justify-center gap-2 font-mono">
         <span className="w-2 h-2 rounded-full bg-[#35C69A] animate-pulse" />
         <span>TradeSphere AI Institutional Workstation: 100% Free &amp; Simulated Market Data (NSE/BSE &amp; US)</span>
-        <Link href="/terminal" className="underline font-semibold text-[#2979FF] hover:text-[#6d9fce] ml-1">
+        <Link href="/app/paper-trading" className="underline font-semibold text-[#2979FF] hover:text-[#6d9fce] ml-1">
           Launch Terminal &rarr;
         </Link>
       </div>
@@ -83,7 +83,7 @@ export default function Navbar() {
               Sign In
             </Link>
             <Link
-              href="/terminal"
+              href="/app/paper-trading"
               className="flex items-center gap-1.5 px-3 py-1 rounded bg-[#2979FF] hover:bg-[#1c62db] text-white font-semibold transition-colors shadow-xs"
             >
               <span>Launch Terminal</span>
@@ -119,7 +119,7 @@ export default function Navbar() {
           ))}
           <div className="pt-2 border-t border-[#25313D] flex flex-col gap-2">
             <Link
-              href="/terminal"
+              href="/app/paper-trading"
               onClick={() => setMobileMenuOpen(false)}
               className="w-full text-center py-2 rounded bg-[#2979FF] text-white font-semibold text-xs"
             >

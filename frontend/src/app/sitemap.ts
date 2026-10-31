@@ -14,7 +14,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/terms',
     '/login',
     '/register',
-    '/terminal'
+    '/terminal',
+    '/app/dashboard',
+    '/app/paper-trading',
+    '/app/screener',
+    '/app/quant/multi-agent',
+    '/app/wealth/optimizer'
   ];
 
   return routes.map((route) => ({

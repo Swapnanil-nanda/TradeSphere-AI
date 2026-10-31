@@ -165,7 +165,7 @@ export default function MarketsPage() {
                     </td>
                     <td className="py-3 px-4 text-right font-sans">
                       <Link
-                        href="/terminal"
+                        href={`/app/paper-trading?symbol=${t.symbol}`}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white font-bold text-[11px] transition-all"
                       >
                         <span>Trade</span>

@@ -44,7 +44,7 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
     {
       title: 'TRADING',
       items: [
-        { name: 'Terminal', path: '/terminal', icon: Terminal, badge: 'PRO' },
+        { name: 'Terminal', path: '/app/paper-trading', icon: Terminal, badge: 'PRO' },
         { name: 'Markets', path: '/app/markets', icon: Compass },
         { name: 'Watchlists', path: '/app/watchlists', icon: Eye },
         { name: 'Orders', path: '/app/orders', icon: ShoppingBag },
@@ -114,8 +114,8 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
 
   const isActive = (path: string) => {
     if (path === '/app/dashboard' && (pathname === '/app' || pathname === '/app/dashboard')) return true;
-    if (path === '/terminal' && pathname === '/terminal') return true;
-    if (path !== '/app/dashboard' && path !== '/terminal') {
+    if (path === '/app/paper-trading' && (pathname === '/terminal' || pathname === '/app/paper-trading')) return true;
+    if (path !== '/app/dashboard' && path !== '/app/paper-trading') {
       return pathname === path || (pathname.startsWith(path) && path !== '/app/research' && path !== '/app/risk' && path !== '/app/learning' && path !== '/app/quant');
     }
     return false;

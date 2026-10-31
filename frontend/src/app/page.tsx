@@ -95,7 +95,7 @@ export default function HomePage() {
               return (
                 <Link
                   key={t.symbol}
-                  href="/terminal"
+                  href={`/app/paper-trading?symbol=${t.symbol}`}
                   className="flex items-center gap-2 shrink-0 hover:bg-slate-800/40 px-2 py-0.5 rounded transition-colors"
                 >
                   <span className="font-bold text-slate-200">{t.symbol}</span>
@@ -136,10 +136,10 @@ export default function HomePage() {
             {/* CTAs */}
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <Link
-                href="/terminal"
+                href="/app/paper-trading"
                 className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.02]"
               >
-                <span>Launch Paper Terminal</span>
+                <span>Launch Institutional Terminal</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
@@ -251,7 +251,7 @@ export default function HomePage() {
                 </div>
 
                 <Link
-                  href="/terminal"
+                  href="/app/paper-trading"
                   className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-center block transition-all shadow-md shadow-emerald-600/20"
                 >
                   Test Auto-Sizer in Live Terminal &rarr;
@@ -476,10 +476,10 @@ export default function HomePage() {
 
           <div className="mt-8 text-center">
             <Link
-              href="/terminal"
+              href="/app/dashboard"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 transition-all"
             >
-              <span>Explore All Tiers in Live Terminal</span>
+              <span>Explore All Tiers in Workstation</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -598,7 +598,7 @@ export default function HomePage() {
             </p>
             <div className="pt-4 flex flex-wrap justify-center gap-4">
               <Link
-                href="/terminal"
+                href="/app/paper-trading"
                 className="px-8 py-3.5 rounded-xl bg-white text-blue-900 hover:bg-blue-50 font-extrabold text-sm shadow-lg transition-all hover:scale-105"
               >
                 Launch Live Terminal Now

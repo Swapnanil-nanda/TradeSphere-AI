@@ -12,7 +12,7 @@ export interface WorkspacePreset {
 }
 
 export const WORKSPACE_PRESETS: WorkspacePreset[] = [
-  { id: 'trading-desk', name: 'Trading Desk', description: '3-column terminal with DOM & ticket', targetPath: '/terminal' },
+  { id: 'trading-desk', name: 'Trading Desk', description: '3-column terminal with DOM & ticket', targetPath: '/app/paper-trading' },
   { id: 'quant-lab', name: 'Quant Command Lab', description: '7-agent research & backtester', targetPath: '/app/quant/multi-agent' },
   { id: 'wealth-mpt', name: 'Wealth & MPT Studio', description: 'Portfolio optimizer & frontier', targetPath: '/app/wealth/optimizer' },
   { id: 'options-risk', name: 'Options & Risk Matrix', description: 'Options chain, Greeks & DOM', targetPath: '/app/risk/options' },

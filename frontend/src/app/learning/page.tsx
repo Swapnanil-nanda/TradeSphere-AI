@@ -192,7 +192,7 @@ export default function LearningPage() {
 
           <div className="pt-2 flex justify-end">
             <Link
-              href="/terminal"
+              href="/app/paper-trading"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300"
             >
               <span>Practice This In The Live Terminal</span>

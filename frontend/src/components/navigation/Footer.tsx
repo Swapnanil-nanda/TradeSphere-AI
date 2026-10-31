@@ -39,7 +39,7 @@ export default function Footer() {
           <div className="space-y-2">
             <h4 className="font-bold text-[#E7EDF3] uppercase tracking-wider text-[10px] font-mono">Product</h4>
             <ul className="space-y-1.5 text-xs">
-              <li><Link href="/terminal" className="text-[#2979FF] font-semibold hover:underline">Trading Terminal</Link></li>
+              <li><Link href="/app/paper-trading" className="text-[#2979FF] font-semibold hover:underline">Trading Terminal</Link></li>
               <li><Link href="/app/dashboard" className="hover:text-[#E7EDF3] transition-colors">Overview Dashboard</Link></li>
               <li><Link href="/app/screener" className="hover:text-[#E7EDF3] transition-colors">Stock Screener</Link></li>
               <li><Link href="/app/quant/multi-agent" className="hover:text-[#E7EDF3] transition-colors">7-Agent Command Center</Link></li>

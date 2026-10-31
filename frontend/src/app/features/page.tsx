@@ -149,7 +149,7 @@ export default function FeaturesPage() {
                     Accessible in Tier 2 &amp; Tier 3 modes inside the live terminal.
                   </p>
                   <Link
-                    href="/terminal"
+                    href="/app/paper-trading"
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all"
                   >
                     <span>Launch in Terminal</span>
@@ -167,7 +167,7 @@ export default function FeaturesPage() {
         <h3 className="text-xl font-bold text-white mb-2">Ready to test these tools yourself?</h3>
         <p className="text-slate-400 text-xs mb-6">Open the free paper trading terminal with ₹10,00,000 starting equity.</p>
         <Link
-          href="/terminal"
+          href="/app/paper-trading"
           className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-xl shadow-blue-600/30 transition-all inline-flex items-center gap-2"
         >
           <span>Open Paper Terminal</span>

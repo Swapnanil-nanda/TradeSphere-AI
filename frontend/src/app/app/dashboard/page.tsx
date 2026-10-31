@@ -180,7 +180,7 @@ export default function DashboardPage() {
             <span>Refresh</span>
           </button>
           <Link
-            href="/terminal"
+            href="/app/paper-trading"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-2xs"
           >
             <Terminal className="w-3.5 h-3.5" />

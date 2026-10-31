@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       await apiClient.login({ email, password });
-      router.push('/terminal');
+      router.push('/app/dashboard');
     } catch (err: any) {
       setError(err.message || 'Unable to authenticate with backend server.');
     } finally {

@@ -22,7 +22,7 @@ export default function RegisterPage() {
 
     try {
       await apiClient.register({ name, email, password, tier });
-      router.push('/terminal');
+      router.push('/app/dashboard');
     } catch (err: any) {
       setError(err.message || 'Unable to connect to backend registration service.');
     } finally {

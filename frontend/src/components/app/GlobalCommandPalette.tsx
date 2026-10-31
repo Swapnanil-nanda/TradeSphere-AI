@@ -20,7 +20,7 @@ interface CommandItem {
 
 const COMMAND_ITEMS: CommandItem[] = [
   // Navigation
-  { id: 'nav-terminal', name: 'Trading Terminal (3-Column)', category: 'Navigation', icon: Terminal, path: '/terminal', shortcut: 'T' },
+  { id: 'nav-terminal', name: 'Trading Terminal (3-Column)', category: 'Navigation', icon: Terminal, path: '/app/paper-trading', shortcut: 'T' },
   { id: 'nav-dashboard', name: 'Overview Dashboard', category: 'Navigation', icon: TrendingUp, path: '/app/dashboard', shortcut: 'D' },
   { id: 'nav-screener', name: 'Stock Screener', category: 'Navigation', icon: LineChart, path: '/app/screener', shortcut: 'S' },
   { id: 'nav-multi-agent', name: '7-Agent Quant Command Center', category: 'Navigation', icon: Cpu, path: '/app/quant/multi-agent', badge: 'AI' },
@@ -36,17 +36,17 @@ const COMMAND_ITEMS: CommandItem[] = [
   { id: 'nav-academy', name: 'Learning Academy & Guides', category: 'Navigation', icon: GraduationCap, path: '/app/learning/guide' },
 
   // Instruments
-  { id: 'sym-reliance', name: 'RELIANCE · Reliance Industries Ltd (NSE)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=RELIANCE', badge: '₹2,985.40' },
-  { id: 'sym-nifty', name: 'NIFTY 50 · Benchmark Index (NSE)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=NIFTY50', badge: '₹24,350.25' },
-  { id: 'sym-tcs', name: 'TCS · Tata Consultancy Services (NSE)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=TCS', badge: '₹4,120.50' },
-  { id: 'sym-infy', name: 'INFY · Infosys Limited (NSE)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=INFY', badge: '₹1,845.00' },
-  { id: 'sym-hdfc', name: 'HDFCBANK · HDFC Bank Limited (NSE)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=HDFCBANK', badge: '₹1,680.75' },
-  { id: 'sym-aapl', name: 'AAPL · Apple Inc. (NASDAQ)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=AAPL', badge: '$232.50' },
-  { id: 'sym-nvda', name: 'NVDA · NVIDIA Corporation (NASDAQ)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=NVDA', badge: '$141.20' },
-  { id: 'sym-tsla', name: 'TSLA · Tesla Inc. (NASDAQ)', category: 'Instruments', icon: LineChart, path: '/terminal?symbol=TSLA', badge: '$265.40' },
+  { id: 'sym-reliance', name: 'RELIANCE · Reliance Industries Ltd (NSE)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=RELIANCE', badge: '₹2,985.40' },
+  { id: 'sym-nifty', name: 'NIFTY 50 · Benchmark Index (NSE)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=NIFTY50', badge: '₹24,350.25' },
+  { id: 'sym-tcs', name: 'TCS · Tata Consultancy Services (NSE)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=TCS', badge: '₹4,120.50' },
+  { id: 'sym-infy', name: 'INFY · Infosys Limited (NSE)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=INFY', badge: '₹1,845.00' },
+  { id: 'sym-hdfc', name: 'HDFCBANK · HDFC Bank Limited (NSE)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=HDFCBANK', badge: '₹1,680.75' },
+  { id: 'sym-aapl', name: 'AAPL · Apple Inc. (NASDAQ)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=AAPL', badge: '$232.50' },
+  { id: 'sym-nvda', name: 'NVDA · NVIDIA Corporation (NASDAQ)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=NVDA', badge: '$141.20' },
+  { id: 'sym-tsla', name: 'TSLA · Tesla Inc. (NASDAQ)', category: 'Instruments', icon: LineChart, path: '/app/paper-trading?symbol=TSLA', badge: '$265.40' },
 
   // Quick Actions
-  { id: 'act-size', name: 'Probe 1% Safe Risk Position Sizer', category: 'Actions', icon: ShieldAlert, path: '/terminal', badge: 'RULE A' },
+  { id: 'act-size', name: 'Probe 1% Safe Risk Position Sizer', category: 'Actions', icon: ShieldAlert, path: '/app/paper-trading', badge: 'RULE A' },
   { id: 'act-reconcile', name: 'Reconcile Cash Ledger & Portfolio Balance', category: 'Actions', icon: TrendingUp, path: '/app/orders' },
   { id: 'act-pdf', name: 'Export Latest Research Run to Institutional PDF', category: 'Actions', icon: FileText, path: '/app/quant/multi-agent', badge: 'PDF' },
 ];

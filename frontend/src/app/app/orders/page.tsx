@@ -59,7 +59,7 @@ export default function OrdersPage() {
             </button>
 
             <Link
-              href="/terminal"
+              href="/app/paper-trading"
               className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
             >
               <Terminal className="w-3.5 h-3.5" />
