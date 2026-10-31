@@ -4,12 +4,13 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
-  LayoutDashboard, Terminal, Compass, Eye, Filter, ShoppingBag,
-  BookOpen, LineChart, FileText, Newspaper, History,
-  Cpu, Sparkles, FlaskConical, PlayCircle, BookmarkCheck,
-  TrendingUp, Activity, PieChart, Calculator, Target,
-  ShieldAlert, Layers, Percent, AlignVerticalSpaceAround, BookMarked,
-  GraduationCap, BookCheck, Lightbulb,
+  LayoutDashboard, Terminal, Compass, Eye, ShoppingBag, Briefcase,
+  Filter, LineChart, FileText, Newspaper, History,
+  Cpu, Sparkles, BookmarkCheck, FileSpreadsheet,
+  FlaskConical, PlayCircle, Sliders, FlaskRound,
+  PieChart, TrendingUp, Activity, Calculator, Target,
+  ShieldAlert, Layers, Percent, BarChart3, AlignVerticalSpaceAround, BookMarked,
+  GraduationCap, BookOpen, HelpCircle, CheckSquare,
   ChevronLeft, ChevronRight
 } from 'lucide-react';
 
@@ -22,7 +23,7 @@ interface NavItem {
   name: string;
   path: string;
   icon: any;
-  external?: boolean;
+  badge?: string;
 }
 
 interface NavSection {
@@ -35,67 +36,78 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
 
   const navigationSections: NavSection[] = [
     {
-      title: 'Overview',
+      title: 'OVERVIEW',
       items: [
         { name: 'Dashboard', path: '/app/dashboard', icon: LayoutDashboard }
       ]
     },
     {
-      title: 'Trading',
+      title: 'TRADING',
       items: [
-        { name: 'Trading Terminal', path: '/terminal', icon: Terminal },
+        { name: 'Terminal', path: '/terminal', icon: Terminal, badge: 'PRO' },
         { name: 'Markets', path: '/app/markets', icon: Compass },
         { name: 'Watchlists', path: '/app/watchlists', icon: Eye },
-        { name: 'Stock Screener', path: '/app/screener', icon: Filter },
-        { name: 'Orders and Trades', path: '/app/orders', icon: ShoppingBag }
+        { name: 'Orders', path: '/app/orders', icon: ShoppingBag },
+        { name: 'Positions', path: '/app/portfolio', icon: Briefcase }
       ]
     },
     {
-      title: 'Research',
+      title: 'RESEARCH',
       items: [
-        { name: 'Stock Research', path: '/app/research', icon: BookOpen },
+        { name: 'Stock Screener', path: '/app/screener', icon: Filter },
         { name: 'Technical Analysis', path: '/app/research/technical', icon: LineChart },
         { name: 'Fundamental Analysis', path: '/app/research/fundamental', icon: FileText },
-        { name: 'News and Sentiment', path: '/app/research/sentiment', icon: Newspaper },
+        { name: 'News & Sentiment', path: '/app/research/sentiment', icon: Newspaper },
         { name: 'Historical Analogues', path: '/app/research/analogues', icon: History }
       ]
     },
     {
-      title: 'Quant Intelligence',
+      title: 'QUANT INTELLIGENCE',
       items: [
-        { name: 'Multi-Agent Research', path: '/app/quant/multi-agent', icon: Cpu },
+        { name: 'Agent Command Center', path: '/app/quant/multi-agent', icon: Cpu, badge: '7 AGENTS' },
         { name: 'AI Predictions', path: '/app/quant/predictions', icon: Sparkles },
-        { name: 'Quant Strategy Lab', path: '/app/quant/strategy-lab', icon: FlaskConical },
-        { name: 'Backtesting', path: '/app/quant/backtesting', icon: PlayCircle },
-        { name: 'Saved Research', path: '/app/quant/saved', icon: BookmarkCheck }
+        { name: 'Saved Research', path: '/app/quant/saved', icon: BookmarkCheck },
+        { name: 'Reports', path: '/app/quant/reports', icon: FileSpreadsheet, badge: 'PDF' }
       ]
     },
     {
-      title: 'Wealth Management',
+      title: 'STRATEGY LAB',
       items: [
-        { name: 'Portfolio Optimizer', path: '/app/wealth/optimizer', icon: TrendingUp },
-        { name: 'Efficient Frontier', path: '/app/wealth/frontier', icon: Activity },
-        { name: 'Mutual Funds', path: '/app/wealth/mutual-funds', icon: PieChart },
-        { name: 'SIP Planner', path: '/app/wealth/sip-planner', icon: Calculator },
-        { name: 'Wealth Scenarios', path: '/app/wealth/scenarios', icon: Target }
+        { name: 'Strategy Builder', path: '/app/strategy-lab/builder', icon: FlaskConical },
+        { name: 'Backtesting', path: '/app/quant/backtesting', icon: PlayCircle },
+        { name: 'Parameter Optimisation', path: '/app/strategy-lab/optimization', icon: Sliders },
+        { name: 'Paper Experiments', path: '/app/strategy-lab/experiments', icon: FlaskRound }
       ]
     },
     {
-      title: 'Risk & Analytics',
+      title: 'WEALTH',
+      items: [
+        { name: 'Portfolio Allocation', path: '/app/wealth/portfolio', icon: PieChart },
+        { name: 'Portfolio Optimizer', path: '/app/wealth/optimizer', icon: TrendingUp, badge: 'MPT' },
+        { name: 'Efficient Frontier', path: '/app/wealth/frontier', icon: Activity },
+        { name: 'Mutual Funds', path: '/app/wealth/mutual-funds', icon: Briefcase },
+        { name: 'SIP Planner', path: '/app/wealth/sip-planner', icon: Calculator },
+        { name: 'Monte Carlo', path: '/app/wealth/scenarios', icon: Target }
+      ]
+    },
+    {
+      title: 'RISK & OPTIONS',
       items: [
         { name: 'Risk Centre', path: '/app/risk', icon: ShieldAlert },
-        { name: 'Options Analytics', path: '/app/risk/options', icon: Layers },
-        { name: 'Greeks Calculator', path: '/app/risk/greeks', icon: Percent },
-        { name: 'Simulated Market Depth', path: '/app/risk/depth', icon: AlignVerticalSpaceAround },
+        { name: 'Options Chain', path: '/app/risk/options', icon: Layers },
+        { name: 'Greeks', path: '/app/risk/greeks', icon: Percent },
+        { name: 'Payoff Analysis', path: '/app/risk/payoff', icon: BarChart3 },
+        { name: 'Simulated DOM', path: '/app/risk/depth', icon: AlignVerticalSpaceAround, badge: 'L2' },
         { name: 'Trade Journal', path: '/app/risk/journal', icon: BookMarked }
       ]
     },
     {
-      title: 'Learning',
+      title: 'LEARNING',
       items: [
-        { name: 'Beginner Academy', path: '/app/learning', icon: GraduationCap },
-        { name: 'Investing Guide', path: '/app/learning/guide', icon: BookCheck },
-        { name: 'Strategy Education', path: '/app/learning/strategies', icon: Lightbulb }
+        { name: 'Academy', path: '/app/learning', icon: GraduationCap },
+        { name: 'Courses', path: '/app/learning/guide', icon: BookOpen },
+        { name: 'Quizzes', path: '/app/learning/quizzes', icon: HelpCircle },
+        { name: 'Practical Exercises', path: '/app/learning/strategies', icon: CheckSquare }
       ]
     }
   ];
@@ -104,34 +116,37 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
     if (path === '/app/dashboard' && (pathname === '/app' || pathname === '/app/dashboard')) return true;
     if (path === '/terminal' && pathname === '/terminal') return true;
     if (path !== '/app/dashboard' && path !== '/terminal') {
-      return pathname === path || (pathname.startsWith(path) && path !== '/app/research' && path !== '/app/risk' && path !== '/app/learning');
+      return pathname === path || (pathname.startsWith(path) && path !== '/app/research' && path !== '/app/risk' && path !== '/app/learning' && path !== '/app/quant');
     }
     return false;
   };
 
   return (
     <aside
-      className={`bg-white dark:bg-[#090d16] border-r border-slate-200 dark:border-[#1b253b] flex flex-col justify-between transition-all duration-200 z-30 select-none ${
-        collapsed ? 'w-16' : 'w-64'
+      className={`bg-[#0D131A] border-r border-[#25313D] flex flex-col justify-between transition-all duration-200 z-30 select-none ${
+        collapsed ? 'w-14' : 'w-60'
       }`}
     >
       <div className="flex flex-col h-full overflow-hidden">
         {/* Brand Header */}
-        <div className="h-13 px-3.5 flex items-center justify-between border-b border-slate-200 dark:border-[#1b253b] shrink-0">
+        <div className="h-12 px-3 flex items-center justify-between border-b border-[#25313D] shrink-0 bg-[#0D131A]">
           {!collapsed ? (
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-xs shadow-sm">
+              <div className="w-6 h-6 rounded bg-[#2979FF] flex items-center justify-center font-black text-white text-xs shadow-xs">
                 Ω
               </div>
-              <div>
-                <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white flex items-center gap-0.5">
-                  TradeSphere<span className="text-blue-600">AI</span>
+              <div className="flex items-center gap-1 font-sans">
+                <span className="font-bold text-xs tracking-tight text-[#E7EDF3]">
+                  TradeSphere<span className="text-[#2979FF]">AI</span>
+                </span>
+                <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#151F29] text-[#35C69A] border border-[#25313D]">
+                  PRO
                 </span>
               </div>
             </Link>
           ) : (
             <Link href="/" className="mx-auto">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-xs shadow-sm">
+              <div className="w-6 h-6 rounded bg-[#2979FF] flex items-center justify-center font-black text-white text-xs shadow-xs">
                 Ω
               </div>
             </Link>
@@ -139,63 +154,78 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
 
           <button
             onClick={onToggleCollapse}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1 rounded text-[#8B99A8] hover:text-[#E7EDF3] hover:bg-[#151F29] transition-colors"
             title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
         </div>
 
-        {/* Scrollable Navigation Sections */}
-        <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-4 custom-scrollbar text-xs">
+        {/* Scrollable Navigation Tree */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar py-2 space-y-4">
           {navigationSections.map((section) => (
-            <div key={section.title} className="space-y-0.5">
-              {!collapsed ? (
-                <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <div key={section.title} className="px-2">
+              {!collapsed && (
+                <div className="px-2 pb-1 text-[10px] font-mono font-bold tracking-wider text-[#8B99A8] uppercase">
                   {section.title}
                 </div>
-              ) : (
-                <div className="border-t border-slate-200 dark:border-slate-800/80 my-1.5" />
               )}
-
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.path);
-
-                return (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-600/15 dark:text-blue-400 font-semibold'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                    }`}
-                    title={collapsed ? `${section.title}: ${item.name}` : undefined}
-                  >
-                    <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`} />
-                    {!collapsed && <span className="truncate">{item.name}</span>}
-                  </Link>
-                );
-              })}
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.path);
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded text-xs transition-colors group relative ${
+                        active
+                          ? 'bg-[#151F29] text-[#E7EDF3] font-medium border-l-2 border-[#2979FF]'
+                          : 'text-[#8B99A8] hover:bg-[#111922] hover:text-[#E7EDF3]'
+                      }`}
+                      title={collapsed ? item.name : undefined}
+                    >
+                      <Icon
+                        className={`w-4 h-4 shrink-0 transition-colors ${
+                          active ? 'text-[#2979FF]' : 'text-[#8B99A8] group-hover:text-[#E7EDF3]'
+                        }`}
+                      />
+                      {!collapsed && (
+                        <div className="flex-1 flex items-center justify-between min-w-0">
+                          <span className="truncate">{item.name}</span>
+                          {item.badge && (
+                            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-[#1C2631] text-[#8B99A8] border border-[#25313D] shrink-0 ml-1">
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           ))}
-        </nav>
-      </div>
+        </div>
 
-      {/* Bottom Simulator Status Indicator */}
-      <div className="p-3 border-t border-slate-200 dark:border-[#1b253b] bg-slate-50 dark:bg-[#070b14] shrink-0">
-        {!collapsed ? (
-          <div className="space-y-0.5 text-[11px]">
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>24/7 GBM ENGINE</span>
+        {/* Bottom User Profile Ribbon */}
+        <div className="p-2 border-t border-[#25313D] bg-[#0D131A] shrink-0">
+          {!collapsed ? (
+            <div className="flex items-center justify-between px-2 py-1.5 rounded bg-[#111922] border border-[#25313D] text-[11px]">
+              <div className="truncate">
+                <div className="font-semibold text-[#E7EDF3] truncate">Virtual Account</div>
+                <div className="text-[10px] font-mono text-[#35C69A] font-semibold">₹10,00,000.00</div>
+              </div>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#151F29] text-[#8B99A8] border border-[#25313D]">
+                SIM
+              </span>
             </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400">Zero-Key Fallback Active</div>
-          </div>
-        ) : (
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse mx-auto" title="24/7 GBM Simulator Active" />
-        )}
+          ) : (
+            <div className="flex justify-center py-1 text-[#35C69A] text-[10px] font-mono font-bold" title="Virtual Capital: ₹10,00,000">
+              ₹10L
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

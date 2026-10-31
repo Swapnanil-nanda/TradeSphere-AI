@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AppSidebar from '../../components/app/AppSidebar';
 import AppHeader from '../../components/app/AppHeader';
+import TopMarketTicker from '../../components/app/TopMarketTicker';
 import { X } from 'lucide-react';
 
 export default function AppLayout({
@@ -21,7 +22,7 @@ export default function AppLayout({
         setSidebarCollapsed(saved === 'true');
       }
     } catch {
-      // ignore SSR or storage exceptions
+      // ignore
     }
   }, []);
 
@@ -38,45 +39,51 @@ export default function AppLayout({
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#060911] text-slate-800 dark:text-slate-100 font-sans transition-colors">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:flex flex-col h-full shrink-0">
-        <AppSidebar
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={handleToggleCollapse}
-        />
-      </div>
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#090D12] text-[#E7EDF3] font-sans select-none">
+      {/* Top Persistent Streaming Market Ticker */}
+      <TopMarketTicker />
 
-      {/* Mobile Drawer Backdrop & Sidebar */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
-          <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
-            onClick={() => setMobileMenuOpen(false)}
+      {/* Main Workstation Layout */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Desktop Collapsible Sidebar */}
+        <div className="hidden md:flex flex-col h-full shrink-0">
+          <AppSidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapse={handleToggleCollapse}
           />
-          <div className="relative z-10 w-64 h-full flex flex-col bg-white dark:bg-[#090d16] shadow-xl">
-            <div className="absolute top-2.5 right-2.5 z-20">
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <AppSidebar
-              collapsed={false}
-              onToggleCollapse={() => setMobileMenuOpen(false)}
-            />
-          </div>
         </div>
-      )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <AppHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
-        <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-[#070b14] p-3 sm:p-4 md:p-5 custom-scrollbar">
-          {children}
-        </main>
+        {/* Mobile Drawer Backdrop & Sidebar */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden flex">
+            <div
+              className="fixed inset-0 bg-[#090D12]/80 backdrop-blur-xs"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="relative z-10 w-60 h-full flex flex-col bg-[#0D131A] border-r border-[#25313D] shadow-2xl">
+              <div className="absolute top-2.5 right-2.5 z-20">
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1 rounded text-[#8B99A8] hover:text-[#E7EDF3] hover:bg-[#151F29]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <AppSidebar
+                collapsed={false}
+                onToggleCollapse={() => setMobileMenuOpen(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Center Main Stage */}
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+          <AppHeader onToggleMobileMenu={() => setMobileMenuOpen(true)} />
+          <main className="flex-1 overflow-y-auto bg-[#090D12] p-2.5 sm:p-3 custom-scrollbar">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );

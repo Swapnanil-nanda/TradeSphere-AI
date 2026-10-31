@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Eye, TrendingUp, TrendingDown, Layers, BarChart2 } from 'lucide-react';
+import { Eye, TrendingUp, TrendingDown, Layers, BarChart2, Crosshair, PenTool, Minus, Trash2 } from 'lucide-react';
 
 export default function TradingChart({ symbol, ticker, candles, timeframe, setTimeframe, mode }) {
   const canvasRef = useRef(null);
@@ -7,6 +7,9 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
   const [showEMA, setShowEMA] = useState(true);
   const [showVWAP, setShowVWAP] = useState(true);
   const [showSR, setShowSR] = useState(true);
+  const [chartType, setChartType] = useState('candles'); // 'candles' | 'line'
+  const [activeDrawingTool, setActiveDrawingTool] = useState(null); // 'line' | 'horizontal' | null
+  const [drawnLines, setDrawnLines] = useState([]);
 
   const currencySymbol = ticker?.currency === 'USD' ? '$' : '₹';
 
@@ -16,8 +19,6 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
     const ctx = canvas.getContext('2d');
     const width = canvas.parentElement.clientWidth;
     const height = canvas.parentElement.clientHeight;
-
-    const isDark = document.documentElement.classList.contains('dark');
 
     // Retina display scaling
     const dpr = window.devicePixelRatio || 1;
@@ -50,8 +51,8 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
     const getY = (price) => margin.top + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
     const getVolY = (vol) => volTop + volHeight - (vol / maxVol) * volHeight;
 
-    // Draw Grid Lines
-    ctx.strokeStyle = isDark ? '#151d2f' : '#f1f5f9';
+    // Draw Grid Lines (Institutional Dark #151F29)
+    ctx.strokeStyle = '#151F29';
     ctx.lineWidth = 1;
 
     // Horizontal price grid lines
@@ -65,10 +66,10 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
       ctx.stroke();
 
       // Price scale label
-      ctx.fillStyle = isDark ? '#64748b' : '#94a3b8';
-      ctx.font = '10px monospace';
+      ctx.fillStyle = '#8B99A8';
+      ctx.font = '10px "IBM Plex Mono", monospace';
       ctx.textAlign = 'left';
-      ctx.fillText(`${currencySymbol}${p.toFixed(2)}`, margin.left + chartWidth + 8, y + 3);
+      ctx.fillText(`${currencySymbol}${p.toFixed(2)}`, margin.left + chartWidth + 6, y + 3);
     }
 
     // Support and Resistance Lines
@@ -76,128 +77,136 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
       const last = visibleCandles[visibleCandles.length - 1];
       if (last.support) {
         ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = isDark ? '#10b98160' : '#16a34a50';
+        ctx.strokeStyle = 'rgba(53, 198, 154, 0.4)';
         ctx.beginPath();
         ctx.moveTo(margin.left, getY(last.support));
         ctx.lineTo(margin.left + chartWidth, getY(last.support));
         ctx.stroke();
-        ctx.fillStyle = isDark ? '#10b981' : '#16a34a';
-        ctx.fillText(`SUP ${last.support.toFixed(1)}`, margin.left + chartWidth + 8, getY(last.support) + 3);
+
+        ctx.fillStyle = '#35C69A';
+        ctx.font = '9px "IBM Plex Mono", monospace';
+        ctx.fillText(`SUP ${last.support.toFixed(1)}`, margin.left + 5, getY(last.support) - 3);
       }
       if (last.resistance) {
         ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = isDark ? '#f43f5e60' : '#dc262650';
+        ctx.strokeStyle = 'rgba(239, 100, 104, 0.4)';
         ctx.beginPath();
         ctx.moveTo(margin.left, getY(last.resistance));
         ctx.lineTo(margin.left + chartWidth, getY(last.resistance));
         ctx.stroke();
-        ctx.fillStyle = isDark ? '#f43f5e' : '#dc2626';
-        ctx.fillText(`RES ${last.resistance.toFixed(1)}`, margin.left + chartWidth + 8, getY(last.resistance) + 3);
+
+        ctx.fillStyle = '#EF6468';
+        ctx.font = '9px "IBM Plex Mono", monospace';
+        ctx.fillText(`RES ${last.resistance.toFixed(1)}`, margin.left + 5, getY(last.resistance) - 3);
       }
       ctx.setLineDash([]);
     }
 
     // Draw Volume Bars
-    const barWidth = Math.max(3, (chartWidth / visibleCandles.length) * 0.65);
-    visibleCandles.forEach((c, i) => {
-      const x = getX(i);
-      const isUp = c.close >= c.open;
+    const barWidth = Math.max(2, (chartWidth / visibleCandles.length) * 0.7);
+    visibleCandles.forEach((c, idx) => {
+      const x = getX(idx) - barWidth / 2;
       const y = getVolY(c.volume);
-      ctx.fillStyle = isUp 
-        ? (isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(22, 163, 74, 0.20)') 
-        : (isDark ? 'rgba(244, 63, 94, 0.25)' : 'rgba(220, 38, 38, 0.20)');
-      ctx.fillRect(x - barWidth / 2, y, barWidth, volTop + volHeight - y);
-    });
-
-    // Draw Candlesticks
-    visibleCandles.forEach((c, i) => {
-      const x = getX(i);
       const isUp = c.close >= c.open;
-      const openY = getY(c.open);
-      const closeY = getY(c.close);
-      const highY = getY(c.high);
-      const lowY = getY(c.low);
 
-      const color = isUp 
-        ? (isDark ? '#10b981' : '#16a34a') 
-        : (isDark ? '#f43f5e' : '#dc2626');
-
-      // Wick
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(x, highY);
-      ctx.lineTo(x, lowY);
-      ctx.stroke();
-
-      // Body
-      ctx.fillStyle = color;
-      const bodyTop = Math.min(openY, closeY);
-      const bodyHeight = Math.max(2, Math.abs(closeY - openY));
-      ctx.fillRect(x - barWidth / 2, bodyTop, barWidth, bodyHeight);
+      ctx.fillStyle = isUp ? 'rgba(53, 198, 154, 0.3)' : 'rgba(239, 100, 104, 0.3)';
+      ctx.fillRect(x, y, barWidth, volTop + volHeight - y);
     });
 
-    // Draw 20-EMA line (Blue in light, Cyan in dark)
-    if (showEMA) {
-      ctx.strokeStyle = isDark ? '#06b6d4' : '#2563eb';
-      ctx.lineWidth = 1.8;
+    // Draw Candlesticks or Line
+    if (chartType === 'candles') {
+      visibleCandles.forEach((c, idx) => {
+        const x = getX(idx);
+        const isUp = c.close >= c.open;
+        const color = isUp ? '#35C69A' : '#EF6468';
+
+        // Draw Wick
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, getY(c.high));
+        ctx.lineTo(x, getY(c.low));
+        ctx.stroke();
+
+        // Draw Body
+        const top = getY(Math.max(c.open, c.close));
+        const bottom = getY(Math.min(c.open, c.close));
+        const bodyHeight = Math.max(1.5, bottom - top);
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x - barWidth / 2, top, barWidth, bodyHeight);
+      });
+    } else {
+      // Line Chart
+      ctx.strokeStyle = '#2979FF';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      visibleCandles.forEach((c, i) => {
-        if (c.ema20) {
-          const x = getX(i);
-          const y = getY(c.ema20);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+      visibleCandles.forEach((c, idx) => {
+        const x = getX(idx);
+        const y = getY(c.close);
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    // Draw 20-EMA Curve (#2979FF)
+    if (showEMA && visibleCandles.length > 20) {
+      ctx.strokeStyle = '#2979FF';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let started = false;
+      visibleCandles.forEach((c, idx) => {
+        if (c.ema) {
+          const x = getX(idx);
+          const y = getY(c.ema);
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
         }
       });
       ctx.stroke();
     }
 
-    // Draw VWAP line (Amber)
-    if (showVWAP) {
-      ctx.strokeStyle = '#d97706';
-      ctx.lineWidth = 1.8;
+    // Draw VWAP Curve (#D8AB5E)
+    if (showVWAP && visibleCandles.length > 0) {
+      ctx.strokeStyle = '#D8AB5E';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      visibleCandles.forEach((c, i) => {
+      let started = false;
+      visibleCandles.forEach((c, idx) => {
         if (c.vwap) {
-          const x = getX(i);
+          const x = getX(idx);
           const y = getY(c.vwap);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
         }
       });
       ctx.stroke();
     }
 
-    // Draw Current Price Pulsing Line
-    if (ticker?.ltp) {
-      const curY = getY(ticker.ltp);
-      const isPositive = (ticker.change || 0) >= 0;
-      const priceColor = isPositive 
-        ? (isDark ? '#10b981' : '#16a34a') 
-        : (isDark ? '#f43f5e' : '#dc2626');
-
-      ctx.setLineDash([2, 2]);
-      ctx.strokeStyle = priceColor;
+    // Draw User Annotations / Drawn Lines
+    drawnLines.forEach(line => {
+      ctx.strokeStyle = '#2979FF';
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(margin.left, curY);
-      ctx.lineTo(margin.left + chartWidth, curY);
+      ctx.moveTo(line.x1, line.y1);
+      ctx.lineTo(line.x2, line.y2);
       ctx.stroke();
-      ctx.setLineDash([]);
+    });
 
-      // Badge on price axis
-      ctx.fillStyle = priceColor;
-      ctx.fillRect(margin.left + chartWidth + 2, curY - 9, 60, 18);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText(`${currencySymbol}${ticker.ltp.toFixed(2)}`, margin.left + chartWidth + 6, curY + 3);
-    }
-
-    // Draw Crosshair if active
-    if (crosshair && crosshair.candle) {
-      ctx.setLineDash([3, 3]);
-      ctx.strokeStyle = isDark ? '#94a3b8' : '#64748b';
+    // Draw Crosshair
+    if (crosshair) {
+      ctx.strokeStyle = '#8B99A8';
       ctx.lineWidth = 0.8;
+      ctx.setLineDash([3, 3]);
 
       // Vertical line
       ctx.beginPath();
@@ -211,8 +220,19 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
       ctx.lineTo(margin.left + chartWidth, crosshair.y);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // Crosshair Price Tag
+      const currentPriceAtCrosshair = minPrice + ((margin.top + chartHeight - crosshair.y) / chartHeight) * priceRange;
+      ctx.fillStyle = '#151F29';
+      ctx.fillRect(margin.left + chartWidth + 2, crosshair.y - 8, 60, 16);
+      ctx.strokeStyle = '#25313D';
+      ctx.strokeRect(margin.left + chartWidth + 2, crosshair.y - 8, 60, 16);
+      ctx.fillStyle = '#E7EDF3';
+      ctx.font = '10px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${currencySymbol}${currentPriceAtCrosshair.toFixed(2)}`, margin.left + chartWidth + 5, crosshair.y + 4);
     }
-  }, [candles, ticker, crosshair, showEMA, showVWAP, showSR, currencySymbol]);
+  }, [candles, showEMA, showVWAP, showSR, chartType, crosshair, drawnLines]);
 
   const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
@@ -221,12 +241,15 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const visible = candles.slice(-70);
-    const chartWidth = canvas.parentElement.clientWidth - 75;
-    const idx = Math.floor((x / chartWidth) * visible.length);
+    const visibleCandles = candles.slice(-70);
+    const margin = { top: 20, right: 65, bottom: 25, left: 10 };
+    const chartWidth = rect.width - margin.left - margin.right;
+    const idx = Math.floor(((x - margin.left) / chartWidth) * visibleCandles.length);
 
-    if (idx >= 0 && idx < visible.length) {
-      setCrosshair({ x, y, candle: visible[idx] });
+    if (idx >= 0 && idx < visibleCandles.length) {
+      setCrosshair({ x, y, candle: visibleCandles[idx] });
+    } else {
+      setCrosshair(null);
     }
   };
 
@@ -234,33 +257,31 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
     setCrosshair(null);
   };
 
-  const activeCandle = crosshair?.candle || (candles && candles[candles.length - 1]);
+  const c = crosshair?.candle || (candles && candles.length > 0 ? candles[candles.length - 1] : null);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#080c15] relative select-none transition-colors">
-      {/* Top Chart Toolbar */}
-      <div className="h-10 border-b border-slate-200 dark:border-[#1b253b] px-3 flex items-center justify-between bg-slate-50 dark:bg-[#0b101c]">
-        {/* Symbol & Indicators */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-slate-900 dark:text-white text-xs font-mono">{symbol}</span>
-            <span className="text-[9px] px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
-              {ticker?.exchange || (ticker?.market === 'US' ? 'NASDAQ' : 'NSE')}
+    <div className="flex flex-col h-full bg-[#090D12] select-none text-xs">
+      {/* Top Chart Controls & Timeframe Selector */}
+      <div className="h-10 px-3 border-b border-[#25313D] bg-[#0D131A] flex items-center justify-between shrink-0 font-sans">
+        {/* Left Side: Symbol, OHLCV Stats, Timeframes */}
+        <div className="flex items-center gap-3 overflow-x-auto">
+          <div className="flex items-center gap-1.5 font-mono">
+            <span className="font-bold text-xs text-[#E7EDF3]">{symbol}</span>
+            <span className="text-[10px] text-[#8B99A8] px-1 py-0.2 rounded bg-[#111922] border border-[#25313D]">
+              NSE
             </span>
           </div>
 
-          <div className="h-3.5 w-[1px] bg-slate-200 dark:bg-slate-800" />
-
-          {/* Timeframe Selector */}
-          <div className="flex items-center gap-0.5 bg-white dark:bg-[#070b14] p-0.5 rounded border border-slate-200 dark:border-[#1b253b] text-[10px]">
-            {['1m', '5m', '15m', '1D'].map(tf => (
+          {/* Timeframe Buttons */}
+          <div className="flex items-center gap-0.5 bg-[#111922] p-0.5 rounded border border-[#25313D] font-mono text-[10px]">
+            {['1m', '5m', '15m', '1h', '1D'].map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
-                className={`px-2 py-0.5 rounded font-semibold transition-all ${
-                  timeframe === tf 
-                    ? 'bg-blue-600 text-white shadow-2xs' 
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                className={`px-1.5 py-0.5 rounded font-semibold transition-all ${
+                  timeframe === tf
+                    ? 'bg-[#2979FF] text-white shadow-2xs'
+                    : 'text-[#8B99A8] hover:text-[#E7EDF3]'
                 }`}
               >
                 {tf}
@@ -268,79 +289,117 @@ export default function TradingChart({ symbol, ticker, candles, timeframe, setTi
             ))}
           </div>
 
-          <div className="h-3.5 w-[1px] bg-slate-200 dark:bg-slate-800 hidden sm:block" />
-
-          {/* Indicators Toggles */}
-          <div className="hidden sm:flex items-center gap-1 text-[11px]">
+          {/* Chart Type Toggle */}
+          <div className="flex items-center gap-0.5 bg-[#111922] p-0.5 rounded border border-[#25313D] font-mono text-[10px]">
             <button
-              onClick={() => setShowEMA(!showEMA)}
-              className={`px-2 py-0.5 rounded border text-[10px] font-semibold flex items-center gap-1 transition-all ${
-                showEMA 
-                  ? 'border-blue-500/50 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' 
-                  : 'border-slate-200 dark:border-slate-800 text-slate-400'
+              onClick={() => setChartType('candles')}
+              className={`px-1.5 py-0.5 rounded font-semibold transition-all ${
+                chartType === 'candles' ? 'bg-[#2979FF] text-white' : 'text-[#8B99A8] hover:text-[#E7EDF3]'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />
-              <span>EMA 20</span>
+              Candles
             </button>
-
             <button
-              onClick={() => setShowVWAP(!showVWAP)}
-              className={`px-2 py-0.5 rounded border text-[10px] font-semibold flex items-center gap-1 transition-all ${
-                showVWAP 
-                  ? 'border-amber-500/50 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' 
-                  : 'border-slate-200 dark:border-slate-800 text-slate-400'
+              onClick={() => setChartType('line')}
+              className={`px-1.5 py-0.5 rounded font-semibold transition-all ${
+                chartType === 'line' ? 'bg-[#2979FF] text-white' : 'text-[#8B99A8] hover:text-[#E7EDF3]'
               }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              <span>VWAP</span>
-            </button>
-
-            <button
-              onClick={() => setShowSR(!showSR)}
-              className={`px-2 py-0.5 rounded border text-[10px] font-semibold flex items-center gap-1 transition-all ${
-                showSR 
-                  ? 'border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' 
-                  : 'border-slate-200 dark:border-slate-800 text-slate-400'
-              }`}
-            >
-              <span>S/R Zones</span>
+              Line
             </button>
           </div>
+
+          {/* Live Crosshair OHLC Inspection */}
+          {c && (
+            <div className="hidden xl:flex items-center gap-2 text-[10px] font-mono text-[#8B99A8]">
+              <span>O: <b className="text-[#E7EDF3] num-tabular">{c.open?.toFixed(2)}</b></span>
+              <span>H: <b className="text-[#35C69A] num-tabular">{c.high?.toFixed(2)}</b></span>
+              <span>L: <b className="text-[#EF6468] num-tabular">{c.low?.toFixed(2)}</b></span>
+              <span>C: <b className="text-[#E7EDF3] num-tabular">{c.close?.toFixed(2)}</b></span>
+              <span>V: <b className="text-[#8B99A8] num-tabular">{c.volume?.toLocaleString()}</b></span>
+            </div>
+          )}
         </div>
 
-        {/* OHLCV Crosshair Display Bar */}
-        {activeCandle && (
-          <div className="hidden lg:flex items-center gap-2.5 text-[11px] font-mono text-slate-600 dark:text-slate-300">
-            <span>O: <b className="text-slate-900 dark:text-white">{currencySymbol}{activeCandle.open?.toFixed(2)}</b></span>
-            <span>H: <b className="text-emerald-600 dark:text-emerald-400">{currencySymbol}{activeCandle.high?.toFixed(2)}</b></span>
-            <span>L: <b className="text-rose-600 dark:text-rose-400">{currencySymbol}{activeCandle.low?.toFixed(2)}</b></span>
-            <span>C: <b className="text-slate-900 dark:text-white">{currencySymbol}{activeCandle.close?.toFixed(2)}</b></span>
-            <span>Vol: <b className="text-blue-600 dark:text-blue-400">{(activeCandle.volume / 1000).toFixed(1)}k</b></span>
-          </div>
-        )}
+        {/* Right Side: Overlay Indicators & Drawing Tools */}
+        <div className="flex items-center gap-1.5">
+          {/* Indicator Quick Toggles */}
+          <button
+            onClick={() => setShowEMA(!showEMA)}
+            className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border transition-all ${
+              showEMA
+                ? 'bg-[#2979FF]/15 text-[#2979FF] border-[#2979FF]/40'
+                : 'bg-[#111922] text-[#8B99A8] border-[#25313D]'
+            }`}
+          >
+            EMA(20)
+          </button>
+
+          <button
+            onClick={() => setShowVWAP(!showVWAP)}
+            className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border transition-all ${
+              showVWAP
+                ? 'bg-[#D8AB5E]/15 text-[#D8AB5E] border-[#D8AB5E]/40'
+                : 'bg-[#111922] text-[#8B99A8] border-[#25313D]'
+            }`}
+          >
+            VWAP
+          </button>
+
+          <button
+            onClick={() => setShowSR(!showSR)}
+            className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border transition-all ${
+              showSR
+                ? 'bg-[#35C69A]/15 text-[#35C69A] border-[#35C69A]/40'
+                : 'bg-[#111922] text-[#8B99A8] border-[#25313D]'
+            }`}
+          >
+            S/R
+          </button>
+
+          {/* Clear Drawings */}
+          {drawnLines.length > 0 && (
+            <button
+              onClick={() => setDrawnLines([])}
+              className="p-1 rounded text-[#8B99A8] hover:text-[#EF6468] bg-[#111922] border border-[#25313D]"
+              title="Clear Annotations"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Basic Mode Trend Banner */}
-      {mode === 'basic' && (
-        <div className="bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-500/20 px-3 py-1 flex items-center justify-between text-xs text-blue-900 dark:text-blue-200">
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-            <span className="font-bold">Guided Mode:</span>
-            <span>20-EMA trend guide active. Trade with the trend; enter with mandatory Stop-Loss.</span>
-          </div>
-          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">1% Max Risk Enforced</span>
-        </div>
-      )}
-
-      {/* Main Canvas Area */}
-      <div className="flex-1 w-full h-full relative">
+      {/* Main Canvas Chart Stage */}
+      <div className="flex-1 relative overflow-hidden bg-[#090D12]">
         <canvas
           ref={canvasRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           className="absolute inset-0 cursor-crosshair"
         />
+
+        {/* Legend */}
+        <div className="absolute top-2 left-3 flex items-center gap-3 text-[10px] font-mono pointer-events-none select-none">
+          {showEMA && (
+            <div className="flex items-center gap-1 text-[#2979FF]">
+              <span className="w-2 h-0.5 bg-[#2979FF]" />
+              <span>EMA 20</span>
+            </div>
+          )}
+          {showVWAP && (
+            <div className="flex items-center gap-1 text-[#D8AB5E]">
+              <span className="w-2 h-0.5 bg-[#D8AB5E]" />
+              <span>VWAP</span>
+            </div>
+          )}
+          {showSR && (
+            <div className="flex items-center gap-1 text-[#35C69A]">
+              <span className="w-2 h-0.5 bg-[#35C69A] border-dashed" />
+              <span>S/R Zones</span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

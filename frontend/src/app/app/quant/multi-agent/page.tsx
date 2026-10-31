@@ -13,7 +13,6 @@ export default function MultiAgentQuantPage() {
   const [query, setQuery] = useState('Evaluate multi-factor risk-reward, sentiment momentum, and forward 10-day price path.');
   const [loading, setLoading] = useState(false);
   const [researchData, setResearchData] = useState<any>(null);
-  const [activeAgentTab, setActiveAgentTab] = useState('all');
 
   const symbolsList = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'TATAMOTORS', 'AAPL', 'NVDA', 'MSFT'];
 
@@ -35,7 +34,8 @@ export default function MultiAgentQuantPage() {
 
   const handleExportPDF = () => {
     if (researchData?.session_id) {
-      const pdfUrl = `${appConfig.quantApiUrl || 'http://localhost:8100'}/api/v1/quant/reports/${researchData.session_id}?format=pdf`;
+      const quantUrl = appConfig.quantApiUrl || 'http://localhost:8100';
+      const pdfUrl = `${quantUrl}/api/v1/quant/reports/${researchData.session_id}?format=pdf`;
       window.open(pdfUrl, '_blank');
     } else {
       window.print();
@@ -63,51 +63,59 @@ export default function MultiAgentQuantPage() {
   ];
 
   return (
-    <div className="space-y-4 select-none pb-8 text-xs">
+    <div className="space-y-4 select-none pb-8 text-xs font-sans">
       {/* Header & Controls */}
-      <div className="bg-white dark:bg-[#0c121f] p-4 rounded-xl border border-slate-200 dark:border-[#1b253b] shadow-2xs">
+      <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
-                <Cpu className="w-4 h-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#2979FF] text-white flex items-center justify-center font-bold">
+              <Cpu className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-[#E7EDF3]">Autonomous Multi-Agent Quantitative Research</h1>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#151F29] text-[#35C69A] border border-[#25313D]">
+                  7 AGENTS ORCHESTRATED
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#090D12] text-[#D8AB5E] border border-[#25313D]">
+                  SIMULATED / AUDITED
+                </span>
               </div>
-              <div>
-                <h1 className="text-base font-bold text-slate-900 dark:text-white">Autonomous Multi-Agent Quantitative Research</h1>
-                <p className="text-slate-500 dark:text-slate-400 text-[11px]">
-                  Seven specialist mathematical agents orchestrated with independent evidence verification.
-                </p>
-              </div>
+              <p className="text-[#8B99A8] text-[11px]">
+                Autonomous multi-agent research synthesis backed by independent mathematical evidence verification.
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportPDF}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#25313D] bg-[#151F29] hover:bg-[#1E2B38] text-[#E7EDF3] font-semibold transition-colors"
             >
-              <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <Download className="w-3.5 h-3.5 text-[#2979FF]" />
               <span>Export Institutional PDF</span>
             </button>
 
             <button
               onClick={handleExportJSON}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#25313D] bg-[#151F29] hover:bg-[#1E2B38] text-[#8B99A8] hover:text-[#E7EDF3] font-semibold transition-colors"
             >
-              <FileText className="w-3.5 h-3.5 text-slate-500" />
+              <FileText className="w-3.5 h-3.5 text-[#8B99A8]" />
               <span>Export JSON</span>
             </button>
           </div>
         </div>
 
         {/* Input & Query Trigger Bar */}
-        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-[#1b253b] grid grid-cols-1 md:grid-cols-4 gap-2.5">
+        <div className="mt-4 pt-3 border-t border-[#25313D] grid grid-cols-1 md:grid-cols-4 gap-2.5">
           <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Target Instrument</label>
+            <label className="text-[10px] font-bold text-[#8B99A8] uppercase tracking-wider block mb-1 font-mono">
+              Target Instrument
+            </label>
             <select
               value={symbol}
               onChange={e => setSymbol(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#0D131A] border border-[#25313D] rounded-lg px-2.5 py-1.5 font-mono font-bold text-[#E7EDF3] focus:outline-none focus:border-[#2979FF]"
             >
               {symbolsList.map(s => (
                 <option key={s} value={s}>{s}</option>
@@ -116,13 +124,15 @@ export default function MultiAgentQuantPage() {
           </div>
 
           <div className="md:col-span-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Research Hypothesis / Query</label>
+            <label className="text-[10px] font-bold text-[#8B99A8] uppercase tracking-wider block mb-1 font-mono">
+              Research Objective / Hypothesis
+            </label>
             <input
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="e.g. Evaluate 10-day risk-reward, sentiment momentum..."
-              className="w-full bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg px-3 py-1.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#0D131A] border border-[#25313D] rounded-lg px-3 py-1.5 text-[#E7EDF3] focus:outline-none focus:border-[#2979FF]"
             />
           </div>
 
@@ -130,7 +140,7 @@ export default function MultiAgentQuantPage() {
             <button
               onClick={handleRunResearch}
               disabled={loading}
-              className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
+              className="w-full py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span>{loading ? 'Orchestrating 7 Agents...' : 'Run Quantitative Synthesis'}</span>
@@ -143,40 +153,42 @@ export default function MultiAgentQuantPage() {
       {researchData && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {/* Executive Verdict Card */}
-          <div className="md:col-span-2 bg-white dark:bg-[#0c121f] p-4 rounded-xl border border-slate-200 dark:border-[#1b253b] shadow-2xs space-y-3">
+          <div className="md:col-span-2 bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Executive Synthesis</span>
-              <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 font-bold border border-blue-200 dark:border-blue-500/20">
-                {researchData.synthesis?.actionable_verdict || 'ACCUMULATE'}
+              <span className="font-bold text-[#8B99A8] uppercase tracking-wider text-[10px] font-mono">
+                Executive Multi-Agent Synthesis
+              </span>
+              <span className="px-2 py-0.5 rounded bg-[#2979FF]/15 text-[#2979FF] font-bold border border-[#2979FF]/30 font-mono">
+                {researchData.synthesis?.actionable_verdict || 'ACCUMULATE_ON_PULLBACK'}
               </span>
             </div>
 
-            <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-sans text-xs">
+            <p className="text-[#E7EDF3] leading-relaxed font-sans text-xs">
               {researchData.synthesis?.summary}
             </p>
 
-            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 dark:border-[#1b253b] font-mono">
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b]">
-                <div className="text-[9px] text-slate-400 font-sans">Confidence</div>
-                <div className="font-bold text-blue-600 dark:text-blue-400">
-                  {Math.round((researchData.synthesis?.confidence_score || 0.75) * 100)}%
+            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-[#25313D] font-mono">
+              <div className="p-2 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <div className="text-[9px] text-[#8B99A8] font-sans">Confidence</div>
+                <div className="font-bold text-[#2979FF]">
+                  {Math.round((researchData.synthesis?.confidence_score || 0.78) * 100)}%
                 </div>
               </div>
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b]">
-                <div className="text-[9px] text-slate-400 font-sans">Support</div>
-                <div className="font-bold text-emerald-600 dark:text-emerald-400">
+              <div className="p-2 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <div className="text-[9px] text-[#8B99A8] font-sans">Support</div>
+                <div className="font-bold text-[#35C69A]">
                   ₹{researchData.synthesis?.key_levels?.support || 2940}
                 </div>
               </div>
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b]">
-                <div className="text-[9px] text-slate-400 font-sans">Resistance</div>
-                <div className="font-bold text-slate-800 dark:text-white">
+              <div className="p-2 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <div className="text-[9px] text-[#8B99A8] font-sans">Resistance</div>
+                <div className="font-bold text-[#E7EDF3]">
                   ₹{researchData.synthesis?.key_levels?.resistance || 3050}
                 </div>
               </div>
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b]">
-                <div className="text-[9px] text-slate-400 font-sans">Hard Stop</div>
-                <div className="font-bold text-rose-600 dark:text-rose-400">
+              <div className="p-2 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <div className="text-[9px] text-[#8B99A8] font-sans">Hard Stop</div>
+                <div className="font-bold text-[#EF6468]">
                   ₹{researchData.synthesis?.key_levels?.stop_loss || 2915}
                 </div>
               </div>
@@ -184,33 +196,33 @@ export default function MultiAgentQuantPage() {
           </div>
 
           {/* Evidence Verification Audit */}
-          <div className="bg-white dark:bg-[#0c121f] p-4 rounded-xl border border-slate-200 dark:border-[#1b253b] shadow-2xs space-y-3">
+          <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center gap-1.5 font-bold text-[#E7EDF3]">
+                <ShieldCheck className="w-4 h-4 text-[#35C69A]" />
                 <span>Evidence Verification</span>
               </div>
-              <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-500/20 text-[10px]">
+              <span className="px-2 py-0.5 rounded bg-[#35C69A]/15 text-[#35C69A] font-bold border border-[#35C69A]/30 text-[10px] font-mono">
                 {researchData.evidence_audit?.status || 'VERIFIED'}
               </span>
             </div>
 
-            <div className="space-y-2 text-[11px]">
-              <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500">Regulatory Disclaimers</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Enforced ✓</span>
+            <div className="space-y-2 text-[11px] font-mono">
+              <div className="flex items-center justify-between py-1 border-b border-[#25313D]">
+                <span className="text-[#8B99A8] font-sans">Regulatory Disclaimers</span>
+                <span className="font-semibold text-[#35C69A]">Enforced ✓</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500">Certainty Claims Scan</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">0 Violations ✓</span>
+              <div className="flex items-center justify-between py-1 border-b border-[#25313D]">
+                <span className="text-[#8B99A8] font-sans">Certainty Claims Scan</span>
+                <span className="font-semibold text-[#35C69A]">0 Violations ✓</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500">Mathematical Invariants</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">18/18 Passed ✓</span>
+              <div className="flex items-center justify-between py-1 border-b border-[#25313D]">
+                <span className="text-[#8B99A8] font-sans">Mathematical Invariants</span>
+                <span className="font-semibold text-[#35C69A]">18/18 Passed ✓</span>
               </div>
               <div className="flex items-center justify-between py-1">
-                <span className="text-slate-500">Order Execution Authority</span>
-                <span className="font-semibold text-blue-600 dark:text-blue-400">Read-Only (Zero Orders)</span>
+                <span className="text-[#8B99A8] font-sans">Order Execution Authority</span>
+                <span className="font-semibold text-[#2979FF]">Read-Only Engine</span>
               </div>
             </div>
           </div>
@@ -219,7 +231,14 @@ export default function MultiAgentQuantPage() {
 
       {/* 7 Specialist Agent Outputs */}
       <div className="space-y-3">
-        <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Specialist Agents Intelligence Dossier</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-[#8B99A8] uppercase tracking-wider font-mono">
+            Specialist Agents Intelligence Dossier
+          </h2>
+          <span className="text-[10px] font-mono text-[#8B99A8]">
+            Multi-Agent Orchestrator v1.0
+          </span>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {agents.map((ag) => {
@@ -227,26 +246,34 @@ export default function MultiAgentQuantPage() {
             const contrib = researchData?.agent_contributions?.[ag.key];
 
             return (
-              <div key={ag.key} className="bg-white dark:bg-[#0c121f] p-3.5 rounded-xl border border-slate-200 dark:border-[#1b253b] shadow-2xs space-y-2.5">
+              <div key={ag.key} className="bg-[#111922] p-3.5 rounded-xl border border-[#25313D] shadow-2xs space-y-2.5">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <div className="w-7 h-7 rounded-lg bg-[#151F29] border border-[#25313D] text-[#2979FF] flex items-center justify-center">
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">{ag.name}</div>
-                      <div className="text-[10px] text-slate-400">{ag.desc}</div>
+                      <div className="font-bold text-[#E7EDF3] text-xs">{ag.name}</div>
+                      <div className="text-[10px] text-[#8B99A8]">{ag.desc}</div>
                     </div>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 mt-1" title="Online" />
+                  <span className="w-2 h-2 rounded-full bg-[#35C69A] shrink-0 mt-1" title="Online" />
                 </div>
 
-                <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#070b14] border border-slate-100 dark:border-[#1b253b] text-slate-700 dark:text-slate-300 text-[11px] leading-relaxed">
+                <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#8B99A8] text-[11px] leading-relaxed">
                   {contrib?.summary || 'Synthesizing agent telemetry and calculating stochastic indicators...'}
                 </div>
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Bottom Mandatory Invariant Footer */}
+      <div className="p-3.5 rounded-xl bg-[#0D131A] border border-[#25313D] flex items-start gap-2.5">
+        <ShieldCheck className="w-4 h-4 text-[#35C69A] shrink-0 mt-0.5" />
+        <div className="text-[10px] text-[#8B99A8] leading-relaxed">
+          <strong className="text-[#E7EDF3]">Research Authority Invariant:</strong> The Python quantitative research engine is strictly read-only. It has zero order execution authority and cannot write directly to paper or live trading accounts.
         </div>
       </div>
     </div>
