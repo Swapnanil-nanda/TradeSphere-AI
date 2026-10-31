@@ -69,6 +69,22 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('error', function(e) {
+                if (e && e.message && (
+                  e.message.indexOf('Loading chunk') !== -1 ||
+                  e.message.indexOf('ChunkLoadError') !== -1 ||
+                  e.message.indexOf('Failed to fetch dynamically imported module') !== -1
+                )) {
+                  console.warn('[Deployment Sync] Stale asset chunk detected from new deployment. Reloading...');
+                  window.location.reload();
+                }
+              });
+            `
+          }}
+        />
       </head>
       <body className="min-h-screen flex flex-col bg-[#090D12] text-[#E7EDF3] selection:bg-[#2979FF] selection:text-white font-sans antialiased">
         <ThemeProvider>

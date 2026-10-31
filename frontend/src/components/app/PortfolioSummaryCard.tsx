@@ -8,8 +8,25 @@ interface PortfolioSummaryCardProps {
 }
 
 export default function PortfolioSummaryCard({ account, onReset }: PortfolioSummaryCardProps) {
-  const isProfit = account.dailyPnL >= 0;
-  const isLocked = account.tradingLocked;
+  const safeAccount = account || {
+    id: 'paper_act_01',
+    name: 'Demo Paper Account',
+    currency: 'INR',
+    initialEquity: 1000000,
+    currentCash: 1000000,
+    netLiquidation: 1000000,
+    totalUnrealizedPnL: 0,
+    dayStartEquity: 1000000,
+    dailyPnL: 0,
+    dailyPnLPct: 0,
+    maxRiskPerTradePct: 1.0,
+    dailyDrawdownLimitPct: 3.0,
+    tradingLocked: false,
+    lockReason: null
+  };
+
+  const isProfit = (safeAccount.dailyPnL ?? 0) >= 0;
+  const isLocked = safeAccount.tradingLocked ?? false;
 
   return (
     <div className="bg-white dark:bg-[#0c121f] border border-slate-200 dark:border-[#1b253b] rounded-xl p-4 shadow-2xs select-none transition-colors">
@@ -46,7 +63,7 @@ export default function PortfolioSummaryCard({ account, onReset }: PortfolioSumm
         <div>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-0.5 font-sans">Net Liquidation:</span>
           <div className="text-lg font-bold text-slate-900 dark:text-white">
-            ₹{account.netLiquidation.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₹{(safeAccount.netLiquidation ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
 
@@ -55,24 +72,24 @@ export default function PortfolioSummaryCard({ account, onReset }: PortfolioSumm
           <div className={`text-lg font-bold flex items-center gap-1 ${
             isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
           }`}>
-            <span>{isProfit ? '+' : ''}₹{account.dailyPnL.toFixed(2)}</span>
-            <span className="text-xs font-semibold font-sans">({account.dailyPnLPct.toFixed(2)}%)</span>
+            <span>{isProfit ? '+' : ''}₹{(safeAccount.dailyPnL ?? 0).toFixed(2)}</span>
+            <span className="text-xs font-semibold font-sans">({(safeAccount.dailyPnLPct ?? 0).toFixed(2)}%)</span>
           </div>
         </div>
 
         <div>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-0.5 font-sans">Unrealized MTM:</span>
           <div className={`text-lg font-bold ${
-            account.totalUnrealizedPnL >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+            (safeAccount.totalUnrealizedPnL ?? 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
           }`}>
-            {account.totalUnrealizedPnL >= 0 ? '+' : ''}₹{account.totalUnrealizedPnL.toFixed(2)}
+            {(safeAccount.totalUnrealizedPnL ?? 0) >= 0 ? '+' : ''}₹{(safeAccount.totalUnrealizedPnL ?? 0).toFixed(2)}
           </div>
         </div>
 
         <div>
           <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-0.5 font-sans">Available Cash:</span>
           <div className="text-lg font-bold text-slate-800 dark:text-slate-200">
-            ₹{account.currentCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ₹{(safeAccount.currentCash ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
         </div>
       </div>

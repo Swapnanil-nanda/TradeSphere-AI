@@ -44,11 +44,12 @@ export default function TopMarketTicker() {
               if (tick && tick.symbol) {
                 setTickers(prev => prev.map(t => {
                   if (t.symbol === tick.symbol) {
+                    const price = tick.price ?? tick.ltp ?? t.price;
                     return {
                       ...t,
-                      price: tick.ltp || t.price,
-                      change: tick.change !== undefined ? tick.change : t.change,
-                      changePct: tick.changePct !== undefined ? tick.changePct : t.changePct,
+                      price: typeof price === 'number' && !isNaN(price) ? price : t.price,
+                      change: typeof tick.change === 'number' && !isNaN(tick.change) ? tick.change : t.change,
+                      changePct: typeof tick.changePct === 'number' && !isNaN(tick.changePct) ? tick.changePct : t.changePct,
                     };
                   }
                   return t;
@@ -73,10 +74,13 @@ export default function TopMarketTicker() {
     // Gentle micro-simulation update fallback if WebSocket is offline
     const fallbackTimer = setInterval(() => {
       setTickers(prev => prev.map(t => {
+        const currentPrice = typeof t.price === 'number' && !isNaN(t.price) ? t.price : 1000;
+        const currentChange = typeof t.change === 'number' && !isNaN(t.change) ? t.change : 0;
         const drift = (Math.random() - 0.49) * 0.001;
-        const newPrice = Number((t.price * (1 + drift)).toFixed(2));
-        const newChange = Number((t.change + (newPrice - t.price)).toFixed(2));
-        const newChangePct = Number(((newChange / (newPrice - newChange)) * 100).toFixed(2));
+        const newPrice = Number((currentPrice * (1 + drift)).toFixed(2));
+        const newChange = Number((currentChange + (newPrice - currentPrice)).toFixed(2));
+        const denom = (newPrice - newChange) || 1;
+        const newChangePct = Number(((newChange / denom) * 100).toFixed(2));
         return {
           ...t,
           price: newPrice,
@@ -107,11 +111,11 @@ export default function TopMarketTicker() {
             <div key={t.symbol} className="flex items-center gap-1.5 shrink-0 hover:bg-[#151F29] px-1.5 py-0.5 rounded transition-colors cursor-pointer">
               <span className="font-semibold text-[11px] text-[#E7EDF3]">{t.symbol}</span>
               <span className="text-[11px] text-[#E7EDF3] num-tabular">
-                {t.currency === 'INR' ? '₹' : '$'}{t.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {t.currency === 'INR' ? '₹' : '$'}{(t.price ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
               <span className={`text-[10px] flex items-center gap-0.5 font-medium num-tabular ${isUp ? 'text-[#35C69A]' : 'text-[#EF6468]'}`}>
                 {isUp ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                {isUp ? '+' : ''}{t.changePct.toFixed(2)}%
+                {isUp ? '+' : ''}{(t.changePct ?? 0).toFixed(2)}%
               </span>
             </div>
           );

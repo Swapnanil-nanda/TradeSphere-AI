@@ -277,82 +277,109 @@ export default function TradingViewChart({
   useEffect(() => {
     if (!candlestickSeriesRef.current || !candles || candles.length === 0) return;
 
-    // Format Candlestick Data (UTC Seconds timestamp)
-    const formattedCandles = candles.map((c) => ({
-      time: c.time as UTCTimestamp,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close
-    }));
-    candlestickSeriesRef.current.setData(formattedCandles);
+    try {
+      // Helper to ensure strictly ascending time and unique timestamps for Lightweight Charts
+      const sanitize = <T extends { time: any }>(data: T[]): T[] => {
+        if (!Array.isArray(data) || data.length === 0) return [];
+        const valid = data.filter(d => d && typeof d.time === 'number' && !isNaN(d.time));
+        valid.sort((a, b) => (a.time as number) - (b.time as number));
+        const unique: T[] = [];
+        const seen = new Set<number>();
+        for (const item of valid) {
+          const t = item.time as number;
+          if (!seen.has(t)) {
+            seen.add(t);
+            unique.push(item);
+          }
+        }
+        return unique;
+      };
 
-    // Format Volume Data
-    if (volumeSeriesRef.current) {
-      const formattedVolume = candles.map((c) => ({
+      // Format Candlestick Data (UTC Seconds timestamp)
+      const rawCandles = candles.map((c) => ({
         time: c.time as UTCTimestamp,
-        value: c.volume,
-        color: c.close >= c.open ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'
+        open: typeof c.open === 'number' && !isNaN(c.open) ? c.open : 1000,
+        high: typeof c.high === 'number' && !isNaN(c.high) ? c.high : 1000,
+        low: typeof c.low === 'number' && !isNaN(c.low) ? c.low : 1000,
+        close: typeof c.close === 'number' && !isNaN(c.close) ? c.close : 1000
       }));
-      volumeSeriesRef.current.setData(formattedVolume);
-    }
-
-    // Update Indicator Series
-    if (indicators) {
-      if (sma20SeriesRef.current) {
-        const smaData = showSMA
-          ? indicators.sma20.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! }))
-          : [];
-        sma20SeriesRef.current.setData(smaData);
+      const formattedCandles = sanitize(rawCandles);
+      if (formattedCandles.length > 0) {
+        candlestickSeriesRef.current.setData(formattedCandles);
       }
 
-      if (ema20SeriesRef.current) {
-        const emaData = showEMA
-          ? indicators.ema20.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! }))
-          : [];
-        ema20SeriesRef.current.setData(emaData);
+      // Format Volume Data
+      if (volumeSeriesRef.current) {
+        const rawVolume = candles.map((c) => ({
+          time: c.time as UTCTimestamp,
+          value: typeof c.volume === 'number' && !isNaN(c.volume) ? c.volume : 0,
+          color: c.close >= c.open ? 'rgba(16, 185, 129, 0.25)' : 'rgba(244, 63, 94, 0.25)'
+        }));
+        const formattedVolume = sanitize(rawVolume);
+        if (formattedVolume.length > 0) {
+          volumeSeriesRef.current.setData(formattedVolume);
+        }
       }
 
-      if (vwapSeriesRef.current) {
-        const vwapData = showVWAP
-          ? indicators.vwap.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! }))
-          : [];
-        vwapSeriesRef.current.setData(vwapData);
+      // Update Indicator Series
+      if (indicators) {
+        if (sma20SeriesRef.current) {
+          const smaData = showSMA
+            ? sanitize(indicators.sma20.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! })))
+            : [];
+          sma20SeriesRef.current.setData(smaData);
+        }
+
+        if (ema20SeriesRef.current) {
+          const emaData = showEMA
+            ? sanitize(indicators.ema20.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! })))
+            : [];
+          ema20SeriesRef.current.setData(emaData);
+        }
+
+        if (vwapSeriesRef.current) {
+          const vwapData = showVWAP
+            ? sanitize(indicators.vwap.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! })))
+            : [];
+          vwapSeriesRef.current.setData(vwapData);
+        }
+
+        if (bbUpperSeriesRef.current && bbLowerSeriesRef.current) {
+          const bbUpperData = showBB
+            ? sanitize(indicators.bollingerBands.filter(p => p.upper !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.upper! })))
+            : [];
+          const bbLowerData = showBB
+            ? sanitize(indicators.bollingerBands.filter(p => p.lower !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.lower! })))
+            : [];
+          bbUpperSeriesRef.current.setData(bbUpperData);
+          bbLowerSeriesRef.current.setData(bbLowerData);
+        }
+
+        if (supertrendSeriesRef.current) {
+          const stData = showSupertrend
+            ? sanitize(indicators.supertrend.filter(p => p.supertrend !== undefined).map(p => ({
+                time: p.time as UTCTimestamp,
+                value: p.supertrend!,
+                color: p.direction === 1 ? '#10b981' : '#f43f5e'
+              })))
+            : [];
+          supertrendSeriesRef.current.setData(stData as any);
+        }
+
+        if (rsiSeriesRef.current) {
+          const rsiData = showRSI
+            ? sanitize(indicators.rsi14.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! })))
+            : [];
+          rsiSeriesRef.current.setData(rsiData);
+        }
       }
 
-      if (bbUpperSeriesRef.current && bbLowerSeriesRef.current) {
-        const bbUpperData = showBB
-          ? indicators.bollingerBands.filter(p => p.upper !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.upper! }))
-          : [];
-        const bbLowerData = showBB
-          ? indicators.bollingerBands.filter(p => p.lower !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.lower! }))
-          : [];
-        bbUpperSeriesRef.current.setData(bbUpperData);
-        bbLowerSeriesRef.current.setData(bbLowerData);
+      // Scroll to end of data
+      if (chartRef.current) {
+        chartRef.current.timeScale().fitContent();
       }
-
-      if (supertrendSeriesRef.current) {
-        const stData = showSupertrend
-          ? indicators.supertrend.filter(p => p.supertrend !== undefined).map(p => ({
-              time: p.time as UTCTimestamp,
-              value: p.supertrend!,
-              color: p.direction === 1 ? '#10b981' : '#f43f5e'
-            }))
-          : [];
-        supertrendSeriesRef.current.setData(stData as any);
-      }
-
-      if (rsiSeriesRef.current) {
-        const rsiData = showRSI
-          ? indicators.rsi14.filter(p => p.value !== undefined).map(p => ({ time: p.time as UTCTimestamp, value: p.value! }))
-          : [];
-        rsiSeriesRef.current.setData(rsiData);
-      }
-    }
-
-    // Scroll to end of data
-    if (chartRef.current) {
-      chartRef.current.timeScale().fitContent();
+    } catch (chartErr) {
+      console.warn('[TradingViewChart] Lightweight Charts data sync caught gracefully:', chartErr);
     }
   }, [candles, indicators, showSMA, showEMA, showBB, showVWAP, showSupertrend, showRSI]);
 
@@ -375,12 +402,12 @@ export default function TradingViewChart({
           {latestCandle && (
             <div className="flex items-baseline gap-2 font-mono">
               <span className="text-sm font-bold text-slate-900 dark:text-white">
-                {currencySymbol}{latestCandle.close.toFixed(2)}
+                {currencySymbol}{(latestCandle.close ?? 0).toFixed(2)}
               </span>
-              <span className={`text-[11px] font-semibold flex items-center ${latestCandle.close >= latestCandle.open ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {latestCandle.close >= latestCandle.open ? '+' : ''}
-                {(latestCandle.close - latestCandle.open).toFixed(2)} (
-                {(((latestCandle.close - latestCandle.open) / latestCandle.open) * 100).toFixed(2)}%)
+              <span className={`text-[11px] font-semibold flex items-center ${(latestCandle.close ?? 0) >= (latestCandle.open ?? 0) ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {(latestCandle.close ?? 0) >= (latestCandle.open ?? 0) ? '+' : ''}
+                {((latestCandle.close ?? 0) - (latestCandle.open ?? 0)).toFixed(2)} (
+                {latestCandle.open ? ((((latestCandle.close ?? 0) - latestCandle.open) / latestCandle.open) * 100).toFixed(2) : '0.00'}%)
               </span>
             </div>
           )}
