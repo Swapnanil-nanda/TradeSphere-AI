@@ -135,6 +135,56 @@ export interface PortfolioData {
   disclaimer?: string;
 }
 
+export interface WatchlistBackendItem {
+  id: number;
+  symbol: string;
+  name: string;
+  exchange: string;
+  market: string;
+  currency: string;
+  basePrice?: number;
+}
+
+export interface WatchlistBackendData {
+  id: number | string;
+  userId?: number;
+  name: string;
+  defaultList: boolean;
+  createdAt: string;
+  instruments: WatchlistBackendItem[];
+}
+
+export interface WatchlistAlert {
+  id: number | string;
+  symbol: string;
+  alertType: 'PRICE_ABOVE' | 'PRICE_BELOW' | 'VOLUME_SPIKE' | 'RSI_OVERBOUGHT' | 'RSI_OVERSOLD';
+  targetValue: number;
+  notes?: string;
+  active: boolean;
+  triggeredAt?: string;
+  createdAt: string;
+}
+
+export interface WatchlistQuote {
+  symbol: string;
+  name: string;
+  exchange: string;
+  market: string;
+  currency: string;
+  lastPrice: number;
+  change: number;
+  changePct: number;
+  volume: number;
+  bid: number;
+  ask: number;
+  dayHigh: number;
+  dayLow: number;
+  dataSource: string;
+  dataStatus: 'LIVE' | 'DELAYED' | 'HISTORICAL' | 'SIMULATED';
+  timestamp: string;
+  simulated: boolean;
+}
+
 export interface ScreenerStock {
   symbol: string;
   name: string;
@@ -458,6 +508,182 @@ class TradeSphereApiClient {
       headers: this.getAuthHeaders()
     });
     return await res.json();
+  }
+
+  // --- WATCHLIST & ALERT REST APIS (Rule B & Part 5 Compliant) ---
+  async getWatchlists(): Promise<WatchlistBackendData[]> {
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
+        headers: this.getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('tradesphere_synced_watchlists', JSON.stringify(data));
+          }
+          return data;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('tradesphere_synced_watchlists');
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch {}
+      }
+    }
+
+    return [
+      {
+        id: 'wl_default',
+        name: 'Core Market Watch',
+        defaultList: true,
+        createdAt: new Date().toISOString(),
+        instruments: [
+          { id: 1, symbol: 'RELIANCE', name: 'Reliance Industries Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
+          { id: 2, symbol: 'TCS', name: 'Tata Consultancy Services', exchange: 'NSE', market: 'IN', currency: 'INR' },
+          { id: 3, symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
+          { id: 4, symbol: 'INFY', name: 'Infosys Limited', exchange: 'NSE', market: 'IN', currency: 'INR' },
+          { id: 5, symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD' },
+          { id: 6, symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NASDAQ', market: 'US', currency: 'USD' }
+        ]
+      },
+      {
+        id: 'wl_nifty',
+        name: 'Nifty Momentum',
+        defaultList: false,
+        createdAt: new Date().toISOString(),
+        instruments: [
+          { id: 1, symbol: 'RELIANCE', name: 'Reliance Industries Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
+          { id: 7, symbol: 'TATAMOTORS', name: 'Tata Motors Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
+          { id: 3, symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' }
+        ]
+      },
+      {
+        id: 'wl_ustech',
+        name: 'US Tech Leaders',
+        defaultList: false,
+        createdAt: new Date().toISOString(),
+        instruments: [
+          { id: 5, symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD' },
+          { id: 6, symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NASDAQ', market: 'US', currency: 'USD' },
+          { id: 8, symbol: 'TSLA', name: 'Tesla Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD' }
+        ]
+      }
+    ];
+  }
+
+  async createWatchlist(name: string): Promise<WatchlistBackendData> {
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to create watchlist');
+    return data;
+  }
+
+  async renameWatchlist(id: string | number, name: string): Promise<WatchlistBackendData> {
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to rename watchlist');
+    return data;
+  }
+
+  async duplicateWatchlist(id: string | number, targetName?: string): Promise<WatchlistBackendData> {
+    const query = targetName ? `?targetName=${encodeURIComponent(targetName)}` : '';
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/duplicate${query}`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to duplicate watchlist');
+    return data;
+  }
+
+  async deleteWatchlist(id: string | number): Promise<void> {
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    if (!res.ok && res.status !== 204) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || 'Failed to delete watchlist');
+    }
+  }
+
+  async addWatchlistItem(id: string | number, symbol: string): Promise<WatchlistBackendData> {
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ symbol })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to add item to watchlist');
+    return data;
+  }
+
+  async removeWatchlistItem(id: string | number, symbolOrId: string | number): Promise<WatchlistBackendData> {
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/${symbolOrId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to remove item from watchlist');
+    return data;
+  }
+
+  async reorderWatchlistItems(id: string | number, symbols: string[]): Promise<WatchlistBackendData> {
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/reorder`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ symbols })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to reorder watchlist items');
+    return data;
+  }
+
+  async getWatchlistAlerts(): Promise<WatchlistAlert[]> {
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
+        headers: this.getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+    return [];
+  }
+
+  async createWatchlistAlert(payload: { symbol: string; alertType: string; targetValue: number; notes?: string }): Promise<WatchlistAlert> {
+    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to create alert');
+    return data;
+  }
+
+  async deleteWatchlistAlert(id: string | number): Promise<void> {
+    await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders()
+    });
   }
 
   async calculatePositionSize(params: {

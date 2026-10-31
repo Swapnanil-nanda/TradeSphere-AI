@@ -22,6 +22,12 @@ public class WatchlistItem {
     @JoinColumn(name = "instrument_id", nullable = false)
     private Instrument instrument;
 
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder = 0;
+
+    @Column(name = "notes")
+    private String notes;
+
     @Column(name = "added_at", nullable = false, updatable = false)
     private Instant addedAt = Instant.now();
 
@@ -30,6 +36,13 @@ public class WatchlistItem {
     public WatchlistItem(Watchlist watchlist, Instrument instrument) {
         this.watchlist = watchlist;
         this.instrument = instrument;
+        this.displayOrder = 0;
+    }
+
+    public WatchlistItem(Watchlist watchlist, Instrument instrument, Integer displayOrder) {
+        this.watchlist = watchlist;
+        this.instrument = instrument;
+        this.displayOrder = displayOrder != null ? displayOrder : 0;
     }
 
     public Long getId() { return id; }
@@ -38,6 +51,10 @@ public class WatchlistItem {
     public void setWatchlist(Watchlist watchlist) { this.watchlist = watchlist; }
     public Instrument getInstrument() { return instrument; }
     public void setInstrument(Instrument instrument) { this.instrument = instrument; }
+    public Integer getDisplayOrder() { return displayOrder; }
+    public void setDisplayOrder(Integer displayOrder) { this.displayOrder = displayOrder; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
     public Instant getAddedAt() { return addedAt; }
     public void setAddedAt(Instant addedAt) { this.addedAt = addedAt; }
 }

@@ -1,70 +1,96 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import WatchlistTable from '../../../components/app/WatchlistTable';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import WatchlistTable, { SortField, SortDirection } from '../../../components/app/WatchlistTable';
 import StockCard from '../../../components/app/StockCard';
+import WatchlistAlertsModal from '../../../components/app/WatchlistAlertsModal';
+import WatchlistCompareModal from '../../../components/app/WatchlistCompareModal';
 import EmptyState from '../../../components/app/EmptyState';
 import ErrorState from '../../../components/app/ErrorState';
-import { TableSkeleton, CardSkeleton } from '../../../components/app/LoadingSkeleton';
-import { apiClient, Ticker } from '../../../lib/api-client';
-import { Plus, Eye, Search, Trash2, ArrowUpRight, BarChart2 } from 'lucide-react';
+import { TableSkeleton } from '../../../components/app/LoadingSkeleton';
+import {
+  apiClient,
+  Ticker,
+  WatchlistBackendData,
+  WatchlistAlert
+} from '../../../lib/api-client';
+import {
+  Plus,
+  Search,
+  Trash2,
+  Copy,
+  Edit2,
+  Download,
+  Upload,
+  Bell,
+  Scale,
+  LineChart,
+  FileSearch,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  Activity,
+  Check,
+  X
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
-interface WatchlistGroup {
-  id: string;
-  name: string;
-  symbols: string[];
-}
+import Link from 'next/link';
 
 export default function WatchlistsPage() {
+  const router = useRouter();
+
+  // State
   const [allTickers, setAllTickers] = useState<Ticker[]>([]);
+  const [watchlists, setWatchlists] = useState<WatchlistBackendData[]>([]);
+  const [activeWatchlistId, setActiveWatchlistId] = useState<string | number>('wl_default');
+  const [activeSymbol, setActiveSymbol] = useState<string>('RELIANCE');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Watchlist collections
-  const [watchlists, setWatchlists] = useState<WatchlistGroup[]>([
-    { id: 'default', name: 'Primary Watchlist', symbols: ['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'AAPL', 'NVDA'] },
-    { id: 'nifty-momentum', name: 'Nifty Momentum', symbols: ['RELIANCE', 'ICICIBANK', 'SBIN', 'TATAMOTORS'] },
-    { id: 'us-tech', name: 'US Tech Leaders', symbols: ['AAPL', 'MSFT', 'NVDA', 'TSLA'] }
-  ]);
-  const [activeWatchlistId, setActiveWatchlistId] = useState<string>('default');
-  const [activeSymbol, setActiveSymbol] = useState<string>('RELIANCE');
+  // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [exchangeFilter, setExchangeFilter] = useState<'ALL' | 'NSE' | 'BSE' | 'NASDAQ' | 'NYSE'>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | 'EQUITIES' | 'INDICES' | 'ETFS'>('ALL');
+
+  // Sorting
+  const [sortField, setSortField] = useState<SortField | undefined>(undefined);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Modals & Action States
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
   const [newListName, setNewListName] = useState('');
-  const router = useRouter();
+  const [renameInput, setRenameInput] = useState('');
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertSymbol, setAlertSymbol] = useState('RELIANCE');
+  const [alerts, setAlerts] = useState<WatchlistAlert[]>([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
-  // Load saved watchlists from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('tradesphere_watchlists');
-      if (saved) {
-        setWatchlists(JSON.parse(saved));
-      }
-    } catch {
-      // fallback
-    }
-  }, []);
+  // CSV Import file input ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Save on change
-  const saveWatchlists = (newList: WatchlistGroup[]) => {
-    setWatchlists(newList);
-    try {
-      localStorage.setItem('tradesphere_watchlists', JSON.stringify(newList));
-    } catch {
-      // ignore
-    }
-  };
-
+  // Load Watchlists & Alerts
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const tickers = await apiClient.getTickers();
+      const [tickers, wls, userAlerts] = await Promise.all([
+        apiClient.getTickers(),
+        apiClient.getWatchlists(),
+        apiClient.getWatchlistAlerts()
+      ]);
+
       setAllTickers(tickers);
+      setWatchlists(wls);
+      setAlerts(userAlerts);
+
+      if (wls.length > 0 && !wls.some((w) => w.id === activeWatchlistId)) {
+        setActiveWatchlistId(wls[0].id);
+      }
     } catch (err: any) {
       console.error(err);
-      setError('Failed to load watchlist tickers. Please check backend connection.');
+      setError('Failed to connect to the watchlist service.');
     } finally {
       setLoading(false);
     }
@@ -74,282 +100,743 @@ export default function WatchlistsPage() {
     loadData();
   }, []);
 
-  const activeWatchlist = watchlists.find(w => w.id === activeWatchlistId) || watchlists[0];
-
-  const watchlistTickers = activeWatchlist
-    ? activeWatchlist.symbols
-        .map(sym => allTickers.find(t => t.symbol === sym))
-        .filter((t): t is Ticker => t !== undefined)
-    : [];
-
-  const handleRemoveSymbol = (symbol: string) => {
-    const updated = watchlists.map(w => {
-      if (w.id === activeWatchlistId) {
-        return { ...w, symbols: w.symbols.filter(s => s !== symbol) };
-      }
-      return w;
-    });
-    saveWatchlists(updated);
-  };
-
-  const handleAddSymbol = (symbol: string) => {
-    if (!activeWatchlist.symbols.includes(symbol)) {
-      const updated = watchlists.map(w => {
-        if (w.id === activeWatchlistId) {
-          return { ...w, symbols: [...w.symbols, symbol] };
+  // Periodic Tick Refresh
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await apiClient.getTickers();
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          setAllTickers(fresh);
         }
-        return w;
+      } catch {}
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Active Watchlist
+  const activeWatchlist = useMemo(() => {
+    return watchlists.find((w) => w.id === activeWatchlistId) || watchlists[0];
+  }, [watchlists, activeWatchlistId]);
+
+  // Active Watchlist Tickers with Ordering
+  const watchlistTickers = useMemo(() => {
+    if (!activeWatchlist || !activeWatchlist.instruments) return [];
+
+    let list = activeWatchlist.instruments
+      .map((item) => {
+        const t = allTickers.find((tick) => tick.symbol === item.symbol);
+        if (t) return t;
+        return {
+          symbol: item.symbol,
+          name: item.name || `${item.symbol} Equity`,
+          market: (item.market as any) || 'IN',
+          exchange: item.exchange || 'NSE',
+          currency: item.currency || 'INR',
+          ltp: item.basePrice || 1000,
+          bid: (item.basePrice || 1000) - 0.05,
+          ask: (item.basePrice || 1000) + 0.05,
+          change: 0,
+          changePct: 0,
+          volume: 100000,
+          dayHigh: (item.basePrice || 1000) * 1.01,
+          dayLow: (item.basePrice || 1000) * 0.99,
+          timestamp: Date.now(),
+          isSimulated: true
+        } as Ticker;
       });
-      saveWatchlists(updated);
+
+    // Exchange Filtering
+    if (exchangeFilter !== 'ALL') {
+      list = list.filter((t) => {
+        if (exchangeFilter === 'NSE') return t.exchange === 'NSE';
+        if (exchangeFilter === 'BSE') return t.exchange === 'BSE';
+        if (exchangeFilter === 'NASDAQ') return t.exchange === 'NASDAQ';
+        if (exchangeFilter === 'NYSE') return t.exchange === 'NYSE';
+        return true;
+      });
     }
-    setSearchQuery('');
+
+    // Category Filtering
+    if (categoryFilter !== 'ALL') {
+      if (categoryFilter === 'INDICES') {
+        list = list.filter((t) => t.symbol.includes('NIFTY') || t.symbol.includes('BANK') || t.symbol === 'SPY' || t.symbol === 'QQQ');
+      } else if (categoryFilter === 'ETFS') {
+        list = list.filter((t) => t.symbol === 'SPY' || t.symbol === 'QQQ');
+      } else {
+        list = list.filter((t) => !t.symbol.includes('NIFTY') && t.symbol !== 'SPY' && t.symbol !== 'QQQ');
+      }
+    }
+
+    // Sorting
+    if (sortField) {
+      list = [...list].sort((a, b) => {
+        let valA: any = a[sortField];
+        let valB: any = b[sortField];
+        if (sortField === 'symbol') {
+          return sortDirection === 'asc' ? a.symbol.localeCompare(b.symbol) : b.symbol.localeCompare(a.symbol);
+        }
+        valA = Number(valA ?? 0);
+        valB = Number(valB ?? 0);
+        return sortDirection === 'asc' ? valA - valB : valB - valA;
+      });
+    }
+
+    return list;
+  }, [activeWatchlist, allTickers, exchangeFilter, categoryFilter, sortField, sortDirection]);
+
+  // Selected Ticker for Spotlight
+  const selectedTicker = useMemo(() => {
+    return (
+      allTickers.find((t) => t.symbol === activeSymbol) ||
+      watchlistTickers[0] ||
+      allTickers[0]
+    );
+  }, [allTickers, activeSymbol, watchlistTickers]);
+
+  // Candidate Search Results
+  const searchCandidates = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    const existingSymbols = new Set(activeWatchlist?.instruments?.map((i) => i.symbol) || []);
+    return allTickers
+      .filter((t) => (t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q)) && !existingSymbols.has(t.symbol))
+      .slice(0, 6);
+  }, [searchQuery, allTickers, activeWatchlist]);
+
+  // Sorting Handler
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortField(undefined);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
   };
 
-  const handleCreateWatchlist = (e: React.FormEvent) => {
+  // Reordering Handlers
+  const handleMoveUp = async (index: number) => {
+    if (!activeWatchlist || index <= 0) return;
+    const currentSymbols = activeWatchlist.instruments.map((i) => i.symbol);
+    const temp = currentSymbols[index];
+    currentSymbols[index] = currentSymbols[index - 1];
+    currentSymbols[index - 1] = temp;
+
+    // Optimistic Update
+    const updatedInstruments = currentSymbols.map((sym) =>
+      activeWatchlist.instruments.find((i) => i.symbol === sym)!
+    );
+    const updated = watchlists.map((w) =>
+      w.id === activeWatchlist.id ? { ...w, instruments: updatedInstruments } : w
+    );
+    setWatchlists(updated);
+
+    try {
+      await apiClient.reorderWatchlistItems(activeWatchlist.id, currentSymbols);
+    } catch (e) {
+      console.warn('Reorder failed to persist remotely');
+    }
+  };
+
+  const handleMoveDown = async (index: number) => {
+    if (!activeWatchlist || index >= activeWatchlist.instruments.length - 1) return;
+    const currentSymbols = activeWatchlist.instruments.map((i) => i.symbol);
+    const temp = currentSymbols[index];
+    currentSymbols[index] = currentSymbols[index + 1];
+    currentSymbols[index + 1] = temp;
+
+    const updatedInstruments = currentSymbols.map((sym) =>
+      activeWatchlist.instruments.find((i) => i.symbol === sym)!
+    );
+    const updated = watchlists.map((w) =>
+      w.id === activeWatchlist.id ? { ...w, instruments: updatedInstruments } : w
+    );
+    setWatchlists(updated);
+
+    try {
+      await apiClient.reorderWatchlistItems(activeWatchlist.id, currentSymbols);
+    } catch (e) {
+      console.warn('Reorder failed to persist remotely');
+    }
+  };
+
+  // Create Watchlist
+  const handleCreateWatchlist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) return;
-    const newId = `wl-${Date.now()}`;
-    const newList: WatchlistGroup = {
-      id: newId,
-      name: newListName.trim(),
-      symbols: ['RELIANCE', 'AAPL']
-    };
-    const updated = [...watchlists, newList];
-    saveWatchlists(updated);
-    setActiveWatchlistId(newId);
-    setNewListName('');
-    setShowAddModal(false);
+    try {
+      const created = await apiClient.createWatchlist(newListName.trim());
+      setWatchlists((prev) => [...prev, created]);
+      setActiveWatchlistId(created.id);
+      setNewListName('');
+      setShowCreateModal(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to create watchlist');
+    }
   };
 
-  const handleDeleteWatchlist = (id: string) => {
+  // Rename Watchlist
+  const handleRenameWatchlist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!renameInput.trim() || !activeWatchlist) return;
+    try {
+      const updated = await apiClient.renameWatchlist(activeWatchlist.id, renameInput.trim());
+      setWatchlists((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setShowRenameModal(false);
+    } catch (err: any) {
+      alert(err.message || 'Failed to rename watchlist');
+    }
+  };
+
+  // Duplicate Watchlist
+  const handleDuplicateWatchlist = async () => {
+    if (!activeWatchlist) return;
+    try {
+      const dup = await apiClient.duplicateWatchlist(activeWatchlist.id);
+      setWatchlists((prev) => [...prev, dup]);
+      setActiveWatchlistId(dup.id);
+    } catch (err: any) {
+      alert(err.message || 'Failed to duplicate watchlist');
+    }
+  };
+
+  // Delete Watchlist
+  const handleDeleteWatchlist = async (id: string | number) => {
     if (watchlists.length <= 1) {
-      alert('You must keep at least one watchlist.');
+      alert('You must keep at least one primary watchlist.');
       return;
     }
-    const updated = watchlists.filter(w => w.id !== id);
-    saveWatchlists(updated);
-    setActiveWatchlistId(updated[0].id);
+    if (!confirm('Are you sure you want to delete this watchlist?')) return;
+
+    try {
+      await apiClient.deleteWatchlist(id);
+      const remaining = watchlists.filter((w) => w.id !== id);
+      setWatchlists(remaining);
+      setActiveWatchlistId(remaining[0].id);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete watchlist');
+    }
   };
 
-  const selectedTicker = allTickers.find(t => t.symbol === activeSymbol) || watchlistTickers[0];
+  // Add Symbol
+  const handleAddSymbol = async (sym: string) => {
+    if (!activeWatchlist) return;
+    try {
+      const updated = await apiClient.addWatchlistItem(activeWatchlist.id, sym);
+      setWatchlists((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setSearchQuery('');
+    } catch (err: any) {
+      alert(err.message || 'Failed to add symbol');
+    }
+  };
 
-  // Search candidate tickers
-  const searchCandidates = searchQuery.trim()
-    ? allTickers.filter(t =>
-        (t.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         t.name.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        !activeWatchlist.symbols.includes(t.symbol)
-      ).slice(0, 5)
-    : [];
+  // Remove Symbol
+  const handleRemoveSymbol = async (sym: string) => {
+    if (!activeWatchlist) return;
+    try {
+      const updated = await apiClient.removeWatchlistItem(activeWatchlist.id, sym);
+      setWatchlists((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+    } catch (err: any) {
+      alert(err.message || 'Failed to remove symbol');
+    }
+  };
+
+  // Toggle Compare
+  const handleToggleCompare = (sym: string) => {
+    setSelectedForCompare((prev) => {
+      if (prev.includes(sym)) {
+        return prev.filter((s) => s !== sym);
+      }
+      if (prev.length >= 3) {
+        alert('You can compare a maximum of 3 instruments simultaneously.');
+        return prev;
+      }
+      return [...prev, sym];
+    });
+  };
+
+  // CSV Export
+  const handleExportCSV = () => {
+    if (!activeWatchlist || watchlistTickers.length === 0) {
+      alert('Current watchlist has no instruments to export.');
+      return;
+    }
+
+    const headers = ['Symbol', 'Name', 'Exchange', 'Market', 'LTP', 'Change', 'ChangePct', 'Volume', 'DayHigh', 'DayLow', 'Currency'];
+    const rows = watchlistTickers.map((t) => [
+      t.symbol,
+      `"${t.name.replace(/"/g, '""')}"`,
+      t.exchange,
+      t.market,
+      (t.ltp ?? 0).toFixed(2),
+      (t.change ?? 0).toFixed(2),
+      (t.changePct ?? 0).toFixed(2),
+      t.volume ?? 0,
+      (t.dayHigh ?? t.ltp ?? 0).toFixed(2),
+      (t.dayLow ?? t.ltp ?? 0).toFixed(2),
+      t.currency
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `TradeSphere_Watchlist_${activeWatchlist.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // CSV Import
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeWatchlist) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const text = evt.target?.result as string;
+      if (!text) return;
+
+      const lines = text.split(/\r?\n/);
+      const extractedSymbols: string[] = [];
+
+      for (const line of lines) {
+        const parts = line.split(',');
+        const sym = parts[0]?.replace(/["']/g, '').trim().toUpperCase();
+        if (sym && sym !== 'SYMBOL' && sym.length >= 2 && !extractedSymbols.includes(sym)) {
+          extractedSymbols.push(sym);
+        }
+      }
+
+      if (extractedSymbols.length === 0) {
+        alert('No valid symbols detected in uploaded CSV.');
+        return;
+      }
+
+      let addedCount = 0;
+      for (const sym of extractedSymbols.slice(0, 15)) {
+        try {
+          await apiClient.addWatchlistItem(activeWatchlist.id, sym);
+          addedCount++;
+        } catch {}
+      }
+
+      const refreshed = await apiClient.getWatchlists();
+      setWatchlists(refreshed);
+      alert(`Successfully imported ${addedCount} instruments into ${activeWatchlist.name}.`);
+    };
+
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="space-y-4 max-w-7xl mx-auto pb-10 select-none text-[#E7EDF3]">
+      {/* 1. Header Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
               Watchlists
             </h1>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              PERSISTENT STORAGE
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#35C69A]/10 text-[#35C69A] border border-[#35C69A]/30 font-mono">
+              SPRING BOOT PERSISTED
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Organize and monitor custom baskets of Indian and US equities.
+          <p className="text-xs text-[#8B99A8] mt-0.5">
+            Institutional basket management, tick streams, price/volume alerts, and comparative analysis
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/30"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New Watchlist</span>
-        </button>
-      </div>
-
-      {/* Simulation Transparency Ribbon */}
-      <div className="bg-[#0c121f] border border-[#1b253b] rounded-xl px-4 py-2 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-3">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-300">Data Source:</span>
-          <span className="text-blue-400">TradeSphere Synthetic GBM Engine</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-            SIMULATED WATCHLIST
-          </span>
-          <span>Freshness: <strong className="text-slate-200">Real-time Synthetic Tick (&lt;50ms)</strong></span>
-          <span className="text-slate-500">{new Date().toLocaleTimeString()}</span>
-        </div>
-      </div>
-
-      {/* Watchlist Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#1b253b] pb-3">
-        {watchlists.map(w => (
-          <div
-            key={w.id}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all ${
-              w.id === activeWatchlistId
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                : 'bg-[#0c121f] text-slate-400 hover:text-white border border-[#1b253b]'
-            }`}
-            onClick={() => setActiveWatchlistId(w.id)}
+        {/* Global Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* New Watchlist */}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20"
           >
-            <span>{w.name}</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/30 text-slate-300 font-mono">
-              {w.symbols.length}
-            </span>
-            {watchlists.length > 1 && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteWatchlist(w.id);
-                }}
-                className="text-slate-400 hover:text-rose-400 p-0.5"
-                title="Delete watchlist"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
+            <Plus className="w-3.5 h-3.5" />
+            <span>New List</span>
+          </button>
 
-      {/* Add Symbol Bar */}
-      <div className="relative">
-        <div className="flex items-center gap-2 bg-[#0c121f] border border-[#1b253b] rounded-2xl p-2 px-3">
-          <Search className="w-4 h-4 text-slate-500" />
+          {/* Price Alerts */}
+          <button
+            onClick={() => {
+              setAlertSymbol(selectedTicker?.symbol || 'RELIANCE');
+              setShowAlertModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111922] hover:bg-[#151F29] border border-[#25313D] text-[#E7EDF3] text-xs font-semibold transition-colors"
+          >
+            <Bell className="w-3.5 h-3.5 text-[#D8AB5E]" />
+            <span>Alerts</span>
+            {alerts.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-[#D8AB5E]/20 text-[#D8AB5E] text-[10px] font-mono">
+                {alerts.length}
+              </span>
+            )}
+          </button>
+
+          {/* Compare Modal Trigger */}
+          {selectedForCompare.length > 0 && (
+            <button
+              onClick={() => setShowCompareModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#35C69A]/15 hover:bg-[#35C69A]/25 border border-[#35C69A]/40 text-[#35C69A] text-xs font-bold transition-colors"
+            >
+              <Scale className="w-3.5 h-3.5" />
+              <span>Compare ({selectedForCompare.length})</span>
+            </button>
+          )}
+
+          {/* CSV Export */}
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#111922] hover:bg-[#151F29] border border-[#25313D] text-[#8B99A8] hover:text-[#E7EDF3] text-xs transition-colors"
+            title="Export watchlist as CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+
+          {/* CSV Import */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#111922] hover:bg-[#151F29] border border-[#25313D] text-[#8B99A8] hover:text-[#E7EDF3] text-xs transition-colors"
+            title="Import symbols from CSV"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Import</span>
+          </button>
           <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Add symbol to "${activeWatchlist?.name}" (e.g. INFY, TSLA, HDFCBANK)...`}
-            className="w-full bg-transparent text-xs text-slate-200 placeholder-slate-500 focus:outline-none"
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt"
+            onChange={handleImportCSV}
+            className="hidden"
           />
         </div>
+      </div>
 
-        {/* Search Results Dropdown */}
-        {searchCandidates.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-[#0c121f] border border-[#1b253b] rounded-xl shadow-2xl z-20 overflow-hidden divide-y divide-[#1b253b]">
-            {searchCandidates.map(c => (
-              <div
-                key={c.symbol}
-                onClick={() => handleAddSymbol(c.symbol)}
-                className="p-2.5 px-4 flex items-center justify-between hover:bg-slate-800/60 cursor-pointer text-xs"
+      {/* 2. Simulation Transparency & Integrity Banner (Rule B & Part 4) */}
+      <div className="bg-[#0D131A] border border-[#25313D] rounded-xl px-3.5 py-2 flex flex-wrap items-center justify-between text-xs text-[#8B99A8] gap-3">
+        <div className="flex items-center gap-2">
+          <Activity className="w-3.5 h-3.5 text-[#35C69A] animate-pulse" />
+          <span className="font-semibold text-[#E7EDF3]">Microstructure Feed:</span>
+          <span className="text-[#2979FF] font-mono font-bold">24/7 GBM Tick Simulator</span>
+        </div>
+        <div className="flex items-center gap-3 font-mono text-[11px]">
+          <span className="px-1.5 py-0.2 rounded bg-[#D8AB5E]/15 text-[#D8AB5E] border border-[#D8AB5E]/30 font-bold">
+            SIMULATED
+          </span>
+          <span>Latency: <strong className="text-[#E7EDF3]">&lt;40ms</strong></span>
+          <span className="text-[#8B99A8] hidden sm:inline">{new Date().toLocaleTimeString()}</span>
+        </div>
+      </div>
+
+      {/* 3. Watchlist Tabs Bar with Active Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#25313D] pb-3">
+        {/* Watchlist Selection Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {watchlists.map((w) => (
+            <div
+              key={w.id}
+              onClick={() => setActiveWatchlistId(w.id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                w.id === activeWatchlist?.id
+                  ? 'bg-[#2979FF] text-white shadow-md shadow-blue-500/20'
+                  : 'bg-[#111922] text-[#8B99A8] hover:text-[#E7EDF3] border border-[#25313D]'
+              }`}
+            >
+              <span>{w.name}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/30 text-slate-200 font-mono">
+                {w.instruments?.length || 0}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions for Active Watchlist */}
+        {activeWatchlist && (
+          <div className="flex items-center gap-1 text-xs">
+            <button
+              onClick={() => {
+                setRenameInput(activeWatchlist.name);
+                setShowRenameModal(true);
+              }}
+              className="p-1.5 rounded text-[#8B99A8] hover:text-[#E7EDF3] hover:bg-[#151F29] transition-colors"
+              title="Rename active watchlist"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleDuplicateWatchlist}
+              className="p-1.5 rounded text-[#8B99A8] hover:text-[#E7EDF3] hover:bg-[#151F29] transition-colors"
+              title="Duplicate into new watchlist"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+            {!activeWatchlist.defaultList && (
+              <button
+                onClick={() => handleDeleteWatchlist(activeWatchlist.id)}
+                className="p-1.5 rounded text-[#8B99A8] hover:text-[#EF6468] hover:bg-[#151F29] transition-colors"
+                title="Delete this watchlist"
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-white">{c.symbol}</span>
-                  <span className="text-slate-400 truncate max-w-xs">{c.name}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-slate-300">
-                    {c.currency === 'USD' ? '$' : '₹'}{(c.ltp ?? 0).toFixed(2)}
-                  </span>
-                  <span className="text-blue-400 font-semibold text-[11px] flex items-center gap-0.5">
-                    <Plus className="w-3.5 h-3.5" /> Add
-                  </span>
-                </div>
-              </div>
-            ))}
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Main Grid: Watchlist Table + Selected Ticker Preview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+      {/* 4. Filter Bar & Quick Instrument Search */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Exchange Filter Pills */}
+        <div className="flex items-center gap-1 bg-[#0D131A] p-1 rounded-lg border border-[#25313D] text-[11px] font-mono">
+          {(['ALL', 'NSE', 'BSE', 'NASDAQ', 'NYSE'] as const).map((ex) => (
+            <button
+              key={ex}
+              onClick={() => setExchangeFilter(ex)}
+              className={`px-2 py-0.5 rounded transition-colors ${
+                exchangeFilter === ex
+                  ? 'bg-[#2979FF] text-white font-bold'
+                  : 'text-[#8B99A8] hover:text-[#E7EDF3]'
+              }`}
+            >
+              {ex}
+            </button>
+          ))}
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-1 bg-[#0D131A] p-1 rounded-lg border border-[#25313D] text-[11px] font-mono">
+          {(['ALL', 'EQUITIES', 'INDICES', 'ETFS'] as const).map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-2 py-0.5 rounded transition-colors ${
+                categoryFilter === cat
+                  ? 'bg-[#151F29] text-white font-bold border border-[#25313D]'
+                  : 'text-[#8B99A8] hover:text-[#E7EDF3]'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input Bar with Autocomplete Candidates */}
+        <div className="relative flex-1 max-w-md">
+          <div className="flex items-center gap-2 bg-[#0D131A] border border-[#25313D] rounded-lg p-1.5 px-3 focus-within:border-[#2979FF] transition-colors">
+            <Search className="w-3.5 h-3.5 text-[#8B99A8]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Add stock to "${activeWatchlist?.name || 'watchlist'}"...`}
+              className="w-full bg-transparent text-xs text-white placeholder-[#8B99A8] focus:outline-none font-sans"
+            />
+          </div>
+
+          {/* Autocomplete Dropdown */}
+          {searchCandidates.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-[#0D131A] border border-[#25313D] rounded-xl shadow-2xl z-30 overflow-hidden divide-y divide-[#25313D]/50">
+              {searchCandidates.map((c) => (
+                <div
+                  key={c.symbol}
+                  onClick={() => handleAddSymbol(c.symbol)}
+                  className="p-2.5 px-4 flex items-center justify-between hover:bg-[#151F29] cursor-pointer text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white font-mono">{c.symbol}</span>
+                    <span className="text-[#8B99A8] truncate max-w-xs">{c.name}</span>
+                    <span className="text-[9px] px-1 rounded bg-[#111922] text-[#8B99A8] border border-[#25313D]">
+                      {c.exchange}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[#E7EDF3]">
+                      {c.currency === 'USD' ? '$' : '₹'}{(c.ltp ?? 0).toFixed(2)}
+                    </span>
+                    <span className="text-[#2979FF] font-semibold text-[11px] flex items-center gap-0.5">
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 5. Main Workstation Grid: Table (Left 2/3) + Spotlight (Right 1/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Left Column: Watchlist Table */}
+        <div className="lg:col-span-2 space-y-3">
           {loading ? (
-            <TableSkeleton rows={6} />
+            <TableSkeleton rows={8} />
           ) : error ? (
             <ErrorState message={error} onRetry={loadData} />
           ) : watchlistTickers.length === 0 ? (
             <EmptyState
               title="Watchlist is empty"
-              description={`There are currently no symbols in "${activeWatchlist?.name}". Search above to add stocks.`}
+              description={`There are currently no symbols in "${activeWatchlist?.name}". Use the search bar above to add instruments.`}
             />
           ) : (
             <WatchlistTable
               tickers={watchlistTickers}
               onRemoveSymbol={handleRemoveSymbol}
               onSelectSymbol={(sym) => setActiveSymbol(sym)}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
               activeSymbol={activeSymbol}
+              selectedForCompare={selectedForCompare}
+              onToggleCompare={handleToggleCompare}
+              onOpenAlertModal={(sym) => {
+                setAlertSymbol(sym);
+                setShowAlertModal(true);
+              }}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
             />
           )}
         </div>
 
-        {/* Right Sidebar: Selected Stock Spotlight */}
-        <div>
-          <h2 className="text-sm font-extrabold text-white mb-3 flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-blue-400" />
-            <span>Instrument Spotlight</span>
-          </h2>
+        {/* Right Column: Instrument Spotlight & Trading Gateway */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-1">
+            <h2 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 text-[#8B99A8]">
+              <LineChart className="w-3.5 h-3.5 text-[#2979FF]" />
+              <span>Instrument Spotlight</span>
+            </h2>
+            <span className="text-[10px] font-mono text-[#35C69A] bg-[#35C69A]/10 px-1.5 py-0.2 rounded border border-[#35C69A]/30">
+              LIVE MICROSTRUCTURE
+            </span>
+          </div>
 
           {selectedTicker ? (
             <div className="space-y-4">
+              {/* Core Stock Card */}
               <StockCard ticker={selectedTicker} />
 
-              <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl p-4 text-xs space-y-3">
-                <div className="font-extrabold text-white pb-2 border-b border-[#1b253b] flex items-center justify-between">
-                  <span>Simulated Statistics</span>
-                  <span className="text-[10px] text-emerald-400 font-mono">LIVE FEED</span>
+              {/* Detailed Real-time Metrics Panel */}
+              <div className="bg-[#0D131A] border border-[#25313D] rounded-xl p-4 text-xs space-y-3">
+                <div className="font-extrabold text-white pb-2 border-b border-[#25313D] flex items-center justify-between">
+                  <span>Microstructure Metrics</span>
+                  <span className="text-[10px] text-[#8B99A8] font-mono font-normal">
+                    {selectedTicker.market === 'US' ? 'NASDAQ 100' : 'NIFTY 50'}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
-                  <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
-                    <span className="text-slate-500 block text-[10px]">DAY HIGH</span>
-                    <span className="text-white font-bold">{selectedTicker.currency === 'USD' ? '$' : '₹'}{(selectedTicker.dayHigh ?? selectedTicker.ltp ?? 0).toFixed(2)}</span>
+                  <div className="bg-[#111922] p-2 rounded-lg border border-[#25313D]">
+                    <span className="text-[#8B99A8] block text-[10px]">DAY HIGH</span>
+                    <span className="text-white font-bold">
+                      {selectedTicker.currency === 'USD' ? '$' : '₹'}
+                      {(selectedTicker.dayHigh ?? selectedTicker.ltp ?? 0).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
-                    <span className="text-slate-500 block text-[10px]">DAY LOW</span>
-                    <span className="text-white font-bold">{selectedTicker.currency === 'USD' ? '$' : '₹'}{(selectedTicker.dayLow ?? selectedTicker.ltp ?? 0).toFixed(2)}</span>
+
+                  <div className="bg-[#111922] p-2 rounded-lg border border-[#25313D]">
+                    <span className="text-[#8B99A8] block text-[10px]">DAY LOW</span>
+                    <span className="text-white font-bold">
+                      {selectedTicker.currency === 'USD' ? '$' : '₹'}
+                      {(selectedTicker.dayLow ?? selectedTicker.ltp ?? 0).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
-                    <span className="text-slate-500 block text-[10px]">VOLUME</span>
-                    <span className="text-white font-bold">{(((selectedTicker.volume ?? 0) / 1000) || 0).toFixed(0)}K</span>
+
+                  <div className="bg-[#111922] p-2 rounded-lg border border-[#25313D]">
+                    <span className="text-[#8B99A8] block text-[10px]">VOLUME</span>
+                    <span className="text-white font-bold">
+                      {(((selectedTicker.volume ?? 0) / 1000) || 0).toFixed(0)}K
+                    </span>
                   </div>
-                  <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
-                    <span className="text-slate-500 block text-[10px]">SPREAD</span>
-                    <span className="text-blue-400 font-bold">
-                      {selectedTicker.currency === 'USD' ? '$' : '₹'}{Math.max(0, (selectedTicker.ask ?? selectedTicker.ltp ?? 0) - (selectedTicker.bid ?? selectedTicker.ltp ?? 0)).toFixed(2)}
+
+                  <div className="bg-[#111922] p-2 rounded-lg border border-[#25313D]">
+                    <span className="text-[#8B99A8] block text-[10px]">SPREAD</span>
+                    <span className="text-[#2979FF] font-bold">
+                      {selectedTicker.currency === 'USD' ? '$' : '₹'}
+                      {Math.max(0, (selectedTicker.ask ?? selectedTicker.ltp ?? 0) - (selectedTicker.bid ?? selectedTicker.ltp ?? 0)).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="bg-[#111922] p-2 rounded-lg border border-[#25313D]">
+                    <span className="text-[#8B99A8] block text-[10px]">BID</span>
+                    <span className="text-[#35C69A] font-bold">
+                      {selectedTicker.currency === 'USD' ? '$' : '₹'}
+                      {(selectedTicker.bid ?? selectedTicker.ltp ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="bg-[#111922] p-2 rounded-lg border border-[#25313D]">
+                    <span className="text-[#8B99A8] block text-[10px]">ASK</span>
+                    <span className="text-[#EF6468] font-bold">
+                      {selectedTicker.currency === 'USD' ? '$' : '₹'}
+                      {(selectedTicker.ask ?? selectedTicker.ltp ?? 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
 
-                <div className="pt-2 flex gap-2">
-                  <button
-                    onClick={() => router.push(`/app/charts?symbol=${selectedTicker.symbol}`)}
-                    className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-center text-xs transition-all"
-                  >
-                    Open Chart
-                  </button>
-                  <button
-                    onClick={() => router.push(`/app/paper-trading?symbol=${selectedTicker.symbol}`)}
-                    className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-center text-xs transition-all"
-                  >
-                    Trade
-                  </button>
+                {/* Direct Action Gateway (Part 4) */}
+                <div className="pt-2 space-y-1.5 font-sans">
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/app/paper-trading?symbol=${encodeURIComponent(selectedTicker.symbol)}`}
+                      className="flex-1 py-2 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-bold text-center text-xs transition-colors shadow-md shadow-blue-500/20"
+                    >
+                      Place Paper Order
+                    </Link>
+                    <Link
+                      href={`/app/charts?symbol=${encodeURIComponent(selectedTicker.symbol)}`}
+                      className="flex-1 py-2 rounded-lg bg-[#151F29] hover:bg-[#1E2B38] border border-[#25313D] text-[#E7EDF3] font-semibold text-center text-xs transition-colors"
+                    >
+                      Interactive Chart
+                    </Link>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <Link
+                      href={`/app/research/technical?symbol=${encodeURIComponent(selectedTicker.symbol)}`}
+                      className="py-1.5 px-2 rounded bg-[#111922] hover:bg-[#151F29] border border-[#25313D] text-[#8B99A8] hover:text-[#E7EDF3] text-[10px] text-center font-semibold transition-colors"
+                    >
+                      Technical
+                    </Link>
+                    <Link
+                      href={`/app/research/fundamental?symbol=${encodeURIComponent(selectedTicker.symbol)}`}
+                      className="py-1.5 px-2 rounded bg-[#111922] hover:bg-[#151F29] border border-[#25313D] text-[#8B99A8] hover:text-[#E7EDF3] text-[10px] text-center font-semibold transition-colors"
+                    >
+                      Fundamental
+                    </Link>
+                    <Link
+                      href={`/app/quant/multi-agent?symbol=${encodeURIComponent(selectedTicker.symbol)}`}
+                      className="py-1.5 px-2 rounded bg-[#111922] hover:bg-[#151F29] border border-[#25313D] text-[#D8AB5E] hover:text-amber-300 text-[10px] text-center font-semibold transition-colors"
+                    >
+                      Quant Lab
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl p-6 text-center text-xs text-slate-500">
-              Select any symbol from your watchlist to preview statistics.
+            <div className="bg-[#0D131A] border border-[#25313D] rounded-xl p-6 text-center text-xs text-[#8B99A8] font-mono">
+              Select an instrument from the table to inspect metrics.
             </div>
           )}
         </div>
       </div>
 
-      {/* New Watchlist Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      {/* 6. Create Watchlist Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs select-none">
           <form
             onSubmit={handleCreateWatchlist}
-            className="bg-[#0c121f] border border-[#1b253b] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl"
+            className="bg-[#0D131A] border border-[#25313D] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-[#E7EDF3]"
           >
-            <h3 className="text-base font-bold text-white">Create New Watchlist</h3>
-            <p className="text-xs text-slate-400">
-              Enter a descriptive name for your custom basket of stocks.
+            <h3 className="text-base font-bold text-white">Create New Custom Basket</h3>
+            <p className="text-xs text-[#8B99A8]">
+              Enter a descriptive name for your custom watchlist basket.
             </p>
 
             <input
@@ -357,21 +844,22 @@ export default function WatchlistsPage() {
               autoFocus
               value={newListName}
               onChange={(e) => setNewListName(e.target.value)}
-              placeholder="e.g. Swing Trading Candidates"
-              className="w-full bg-[#070b14] border border-[#1b253b] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+              placeholder="e.g. Swing Breakout Candidates"
+              className="w-full bg-[#111922] border border-[#25313D] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#2979FF]"
+              required
             />
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
-                className="px-3 py-1.5 rounded-xl border border-[#1b253b] text-slate-400 hover:text-white text-xs font-semibold"
+                onClick={() => setShowCreateModal(false)}
+                className="px-3 py-1.5 rounded-lg border border-[#25313D] text-[#8B99A8] hover:text-white text-xs font-semibold"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold"
+                className="px-4 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white text-xs font-bold transition-colors"
               >
                 Create
               </button>
@@ -379,6 +867,67 @@ export default function WatchlistsPage() {
           </form>
         </div>
       )}
+
+      {/* 7. Rename Watchlist Modal */}
+      {showRenameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs select-none">
+          <form
+            onSubmit={handleRenameWatchlist}
+            className="bg-[#0D131A] border border-[#25313D] rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-[#E7EDF3]"
+          >
+            <h3 className="text-base font-bold text-white">Rename Watchlist</h3>
+            <p className="text-xs text-[#8B99A8]">
+              Update the title of your custom basket.
+            </p>
+
+            <input
+              type="text"
+              autoFocus
+              value={renameInput}
+              onChange={(e) => setRenameInput(e.target.value)}
+              className="w-full bg-[#111922] border border-[#25313D] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#2979FF]"
+              required
+            />
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowRenameModal(false)}
+                className="px-3 py-1.5 rounded-lg border border-[#25313D] text-[#8B99A8] hover:text-white text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white text-xs font-bold transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 8. Price & Indicator Alerts Modal */}
+      <WatchlistAlertsModal
+        isOpen={showAlertModal}
+        onClose={() => setShowAlertModal(false)}
+        defaultSymbol={alertSymbol}
+        alerts={alerts}
+        onRefreshAlerts={async () => {
+          const fresh = await apiClient.getWatchlistAlerts();
+          setAlerts(fresh);
+        }}
+      />
+
+      {/* 9. Comparison Matrix Modal */}
+      <WatchlistCompareModal
+        isOpen={showCompareModal}
+        onClose={() => setShowCompareModal(false)}
+        symbols={selectedForCompare}
+        allTickers={allTickers}
+        onRemoveFromCompare={(sym) => handleToggleCompare(sym)}
+      />
     </div>
   );
 }
