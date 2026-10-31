@@ -61,6 +61,25 @@ export default function ErrorBoundary({
           <span>Overview Dashboard</span>
         </Link>
       </div>
+
+      {error && (
+        <details className="mt-6 text-left max-w-lg w-full bg-[#0D131A] border border-[#25313D] rounded-xl p-3 text-[11px] font-mono text-[#8B99A8]">
+          <summary className="cursor-pointer text-amber-400 font-sans font-semibold hover:text-amber-300">
+            Diagnostic Details
+          </summary>
+          <div className="mt-2 text-rose-400 font-bold break-all">
+            {error.name}: {error.message}
+          </div>
+          {error.digest && (
+            <div className="text-[#8B99A8] mt-1">Digest: {error.digest}</div>
+          )}
+          {error.stack && (
+            <pre className="mt-2 text-[10px] text-slate-500 overflow-x-auto max-h-36 whitespace-pre-wrap">
+              {error.stack}
+            </pre>
+          )}
+        </details>
+      )}
     </div>
   );
 }

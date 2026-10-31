@@ -281,11 +281,11 @@ export default function PortfolioPage() {
                               </span>
                             </td>
                             <td className="py-2.5 font-bold text-slate-200">{pos.quantity}</td>
-                            <td className="py-2.5 text-slate-300">₹{pos.entryPrice.toFixed(2)}</td>
-                            <td className="py-2.5 text-white font-bold">₹{pos.currentPrice.toFixed(2)}</td>
+                            <td className="py-2.5 text-slate-300">₹{(pos.entryPrice ?? (pos as any).averagePrice ?? (pos as any).avgPrice ?? 0).toFixed(2)}</td>
+                            <td className="py-2.5 text-white font-bold">₹{(pos.currentPrice ?? 0).toFixed(2)}</td>
                             <td className="py-2.5 font-bold">
                               <span className={isUp ? 'text-emerald-400' : 'text-rose-400'}>
-                                {isUp ? '+' : ''}₹{pos.unrealizedPnL.toFixed(2)} ({isUp ? '+' : ''}{pos.unrealizedPnLPct.toFixed(2)}%)
+                                {isUp ? '+' : ''}₹{(pos.unrealizedPnL ?? 0).toFixed(2)} ({isUp ? '+' : ''}{(pos.unrealizedPnLPct ?? 0).toFixed(2)}%)
                               </span>
                             </td>
                             <td className="py-2.5 text-right">
@@ -351,7 +351,7 @@ export default function PortfolioPage() {
                           </span>
                         </td>
                         <td className="py-2.5 text-slate-300">{tr.quantity}</td>
-                        <td className="py-2.5 text-slate-300">₹{tr.entryPrice.toFixed(2)}</td>
+                        <td className="py-2.5 text-slate-300">₹{(tr.entryPrice ?? (tr as any).price ?? 0).toFixed(2)}</td>
                         <td className="py-2.5 text-white font-bold">
                           {tr.exitPrice ? `₹${tr.exitPrice.toFixed(2)}` : '—'}
                         </td>

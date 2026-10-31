@@ -11,7 +11,7 @@ interface StockCardProps {
 }
 
 export default function StockCard({ ticker, onSelect }: StockCardProps) {
-  const isUp = ticker.changePct >= 0;
+  const isUp = (ticker.changePct ?? 0) >= 0;
   const currencySymbol = ticker.currency === 'USD' ? '$' : '₹';
 
   return (
@@ -44,21 +44,21 @@ export default function StockCard({ ticker, onSelect }: StockCardProps) {
       <div>
         <div className="flex items-baseline justify-between mb-1.5">
           <div className="text-sm font-bold text-slate-900 dark:text-white font-mono tabular-nums">
-            {currencySymbol}{ticker.ltp.toFixed(2)}
+            {currencySymbol}{(ticker.ltp ?? 0).toFixed(2)}
           </div>
           <div className={`flex items-center gap-0.5 text-[11px] font-semibold font-mono tabular-nums ${
             isUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
           }`}>
             {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            <span>{isUp ? '+' : ''}{ticker.changePct.toFixed(2)}%</span>
+            <span>{isUp ? '+' : ''}{(ticker.changePct ?? 0).toFixed(2)}%</span>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 font-mono">
-          <span>H: {currencySymbol}{ticker.dayHigh.toFixed(1)}</span>
-          <span>L: {currencySymbol}{ticker.dayLow.toFixed(1)}</span>
+          <span>H: {currencySymbol}{(ticker.dayHigh ?? ticker.ltp ?? 0).toFixed(1)}</span>
+          <span>L: {currencySymbol}{(ticker.dayLow ?? ticker.ltp ?? 0).toFixed(1)}</span>
           <Link
-            href={`/app/paper-trading?symbol=${symbol}`}
+            href={`/app/paper-trading?symbol=${encodeURIComponent(ticker.symbol)}`}
             onClick={(e) => e.stopPropagation()}
             className="text-blue-600 dark:text-blue-400 font-sans font-semibold hover:underline flex items-center gap-0.5"
           >

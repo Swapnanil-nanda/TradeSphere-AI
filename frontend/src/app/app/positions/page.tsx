@@ -246,16 +246,16 @@ export default function PositionsPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-right text-[#E7EDF3]">{pos.quantity}</td>
-                      <td className="px-3 py-2.5 text-right text-[#8B99A8]">₹{pos.averagePrice.toFixed(2)}</td>
-                      <td className="px-3 py-2.5 text-right text-[#E7EDF3]">₹{pos.currentPrice.toFixed(2)}</td>
+                      <td className="px-3 py-2.5 text-right text-[#8B99A8]">₹{(pos.averagePrice ?? (pos as any).entryPrice ?? (pos as any).avgPrice ?? 0).toFixed(2)}</td>
+                      <td className="px-3 py-2.5 text-right text-[#E7EDF3]">₹{(pos.currentPrice ?? 0).toFixed(2)}</td>
                       <td className="px-3 py-2.5 text-right text-[#E7EDF3]">
                         ₹{((pos.quantity || 0) * (pos.currentPrice || 0)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                       </td>
                       <td className={`px-3 py-2.5 text-right font-bold ${isPositive ? 'text-[#35C69A]' : 'text-[#EF6468]'}`}>
-                        {isPositive ? '+' : ''}₹{pnl.toFixed(2)}
+                        {isPositive ? '+' : ''}₹{(pnl ?? 0).toFixed(2)}
                       </td>
                       <td className={`px-3 py-2.5 text-right font-bold ${isPositive ? 'text-[#35C69A]' : 'text-[#EF6468]'}`}>
-                        {isPositive ? '+' : ''}{retPct.toFixed(2)}%
+                        {isPositive ? '+' : ''}{(retPct ?? 0).toFixed(2)}%
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <span className="px-1.5 py-0.5 rounded bg-[#151F29] border border-[#25313D] text-[10px] text-[#D8AB5E]">

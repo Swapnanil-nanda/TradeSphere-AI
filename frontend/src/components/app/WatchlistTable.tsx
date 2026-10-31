@@ -58,18 +58,18 @@ export default function WatchlistTable({
                     <div className="text-[10px] text-slate-400 truncate max-w-[120px]">{t.name}</div>
                   </td>
                   <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white text-xs">
-                    {currency}{t.ltp.toFixed(2)}
+                    {currency}{(t.ltp ?? 0).toFixed(2)}
                   </td>
                   <td className="py-2.5 px-3">
                     <span className={`inline-flex items-center gap-1 font-semibold text-[11px] ${
                       isUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}>
                       {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {isUp ? '+' : ''}{t.changePct.toFixed(2)}%
+                      {isUp ? '+' : ''}{(t.changePct ?? 0).toFixed(2)}%
                     </span>
                   </td>
                   <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400 text-[10px]">
-                    {currency}{t.dayLow.toFixed(1)} - {currency}{t.dayHigh.toFixed(1)}
+                    {currency}{(t.dayLow ?? t.ltp ?? 0).toFixed(1)} - {currency}{(t.dayHigh ?? t.ltp ?? 0).toFixed(1)}
                   </td>
                   <td className="py-2.5 px-3 text-right font-sans" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1.5">

@@ -244,7 +244,7 @@ export default function WatchlistsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-slate-300">
-                    {c.currency === 'USD' ? '$' : '₹'}{c.ltp.toFixed(2)}
+                    {c.currency === 'USD' ? '$' : '₹'}{(c.ltp ?? 0).toFixed(2)}
                   </span>
                   <span className="text-blue-400 font-semibold text-[11px] flex items-center gap-0.5">
                     <Plus className="w-3.5 h-3.5" /> Add
@@ -298,20 +298,20 @@ export default function WatchlistsPage() {
                 <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
                   <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
                     <span className="text-slate-500 block text-[10px]">DAY HIGH</span>
-                    <span className="text-white font-bold">{selectedTicker.currency === 'USD' ? '$' : '₹'}{selectedTicker.high.toFixed(2)}</span>
+                    <span className="text-white font-bold">{selectedTicker.currency === 'USD' ? '$' : '₹'}{(selectedTicker.dayHigh ?? selectedTicker.ltp ?? 0).toFixed(2)}</span>
                   </div>
                   <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
                     <span className="text-slate-500 block text-[10px]">DAY LOW</span>
-                    <span className="text-white font-bold">{selectedTicker.currency === 'USD' ? '$' : '₹'}{selectedTicker.low.toFixed(2)}</span>
+                    <span className="text-white font-bold">{selectedTicker.currency === 'USD' ? '$' : '₹'}{(selectedTicker.dayLow ?? selectedTicker.ltp ?? 0).toFixed(2)}</span>
                   </div>
                   <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
                     <span className="text-slate-500 block text-[10px]">VOLUME</span>
-                    <span className="text-white font-bold">{(selectedTicker.volume / 1000).toFixed(0)}K</span>
+                    <span className="text-white font-bold">{(((selectedTicker.volume ?? 0) / 1000) || 0).toFixed(0)}K</span>
                   </div>
                   <div className="bg-[#070b14] p-2 rounded-lg border border-[#1b253b]">
                     <span className="text-slate-500 block text-[10px]">SPREAD</span>
                     <span className="text-blue-400 font-bold">
-                      {selectedTicker.currency === 'USD' ? '$' : '₹'}{(selectedTicker.ask - selectedTicker.bid).toFixed(2)}
+                      {selectedTicker.currency === 'USD' ? '$' : '₹'}{Math.max(0, (selectedTicker.ask ?? selectedTicker.ltp ?? 0) - (selectedTicker.bid ?? selectedTicker.ltp ?? 0)).toFixed(2)}
                     </span>
                   </div>
                 </div>
