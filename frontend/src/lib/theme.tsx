@@ -17,7 +17,7 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -27,12 +27,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeState(stored);
         applyTheme(stored);
       } else {
-        // Default to light theme as per specifications
-        setThemeState('light');
-        applyTheme('light');
+        // Default to institutional dark theme
+        setThemeState('dark');
+        applyTheme('dark');
       }
     } catch {
-      applyTheme('light');
+      applyTheme('dark');
     }
     setMounted(true);
   }, []);

@@ -3,54 +3,61 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --surface: #ffffff;
-  --surface-hover: #f1f5f9;
-  --border: #e2e8f0;
-  --border-subtle: #f1f5f9;
+  --background: #090D12;
+  --foreground: #E7EDF3;
+  --sidebar: #0D131A;
+  --surface: #111922;
+  --surface-hover: #151F29;
+  --surface-elevated: #151F29;
+  --border: #25313D;
+  --border-subtle: #1C2631;
+  --secondary: #8B99A8;
+  --bullish: #35C69A;
+  --bearish: #EF6468;
+  --warning: #D8AB5E;
+  --accent-blue: #2979FF;
 }
 
 .dark {
-  --background: #090d16;
-  --foreground: #f8fafc;
-  --surface: #0f172a;
-  --surface-hover: #1e293b;
-  --border: #1e293b;
-  --border-subtle: #111827;
+  --background: #090D12;
+  --foreground: #E7EDF3;
+  --sidebar: #0D131A;
+  --surface: #111922;
+  --surface-hover: #151F29;
+  --surface-elevated: #151F29;
+  --border: #25313D;
+  --border-subtle: #1C2631;
+  --secondary: #8B99A8;
+  --bullish: #35C69A;
+  --bearish: #EF6468;
+  --warning: #D8AB5E;
+  --accent-blue: #2979FF;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color: #E7EDF3;
+  background: #090D12;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
   font-size: 13px;
   line-height: 18px;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Light / Dark Mode Scrollbar */
+/* Institutional Clean Scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #090D12;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+  background: #25313D;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #364554;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -64,5 +71,11 @@ body {
 /* Financial tabular numbers */
 .num-tabular {
   font-variant-numeric: tabular-nums;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'IBM Plex Mono', 'Geist Mono', 'JetBrains Mono', monospace;
+  letter-spacing: -0.02em;
+}
+
+/* Institutional hairline borders */
+.border-hairline {
+  border: 1px solid #25313D;
 }
