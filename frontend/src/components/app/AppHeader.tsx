@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Menu, ShieldCheck, Activity } from 'lucide-react';
+import { Search, Menu, ShieldCheck, Activity, PanelLeft } from 'lucide-react';
 import GlobalCommandPalette from './GlobalCommandPalette';
 import WorkspaceSelector from './WorkspaceSelector';
 import UserMenu from './UserMenu';
@@ -9,9 +9,10 @@ import { apiClient, PortfolioAccount } from '../../lib/api-client';
 
 interface AppHeaderProps {
   onToggleMobileMenu?: () => void;
+  onOpenSlideNav?: () => void;
 }
 
-export default function AppHeader({ onToggleMobileMenu }: AppHeaderProps) {
+export default function AppHeader({ onToggleMobileMenu, onOpenSlideNav }: AppHeaderProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [account, setAccount] = useState<PortfolioAccount | null>(null);
   const [backendHealth, setBackendHealth] = useState<{ status: string; connected: boolean }>({
@@ -36,25 +37,33 @@ export default function AppHeader({ onToggleMobileMenu }: AppHeaderProps) {
         e.preventDefault();
         setIsSearchOpen(true);
       }
+      if (e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (onOpenSlideNav) onOpenSlideNav();
+        else if (onToggleMobileMenu) onToggleMobileMenu();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [onOpenSlideNav, onToggleMobileMenu]);
 
   return (
     <>
       <header className="h-12 bg-[#000000] border-b border-[#141414] px-3.5 flex items-center justify-between sticky top-0 z-20 select-none">
-        {/* Left Side: Mobile Menu Button & Connection Status */}
-        <div className="flex items-center gap-3">
-          {onToggleMobileMenu && (
-            <button
-              onClick={onToggleMobileMenu}
-              className="md:hidden p-1.5 rounded text-[#808a9d] hover:text-[#f0f3f6] hover:bg-[#121212] transition-colors"
-              aria-label="Toggle mobile menu"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-          )}
+        {/* Left Side: Slide-In All Sites Panel Trigger & Connection Status */}
+        <div className="flex items-center gap-2.5">
+          {/* Slide-In Navigation Panel Trigger Button (Accessible on ALL screens) */}
+          <button
+            onClick={onOpenSlideNav || onToggleMobileMenu}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#080808] hover:bg-[#121212] border border-[#1a1a1a] hover:border-[#2979FF]/50 text-white text-xs font-semibold transition-all group"
+            title="Slide in Left-hand Panel to choose any site (Alt + S)"
+            aria-label="Slide in Left Panel to choose every site"
+          >
+            <PanelLeft className="w-3.5 h-3.5 text-[#2979FF] group-hover:scale-105 transition-transform" />
+            <span className="font-sans text-[11px] font-bold text-[#f0f3f6]">
+              Choose Site
+            </span>
+          </button>
 
           <div className="flex items-center gap-2 font-mono text-xs">
             <span className="flex h-2 w-2 relative">

@@ -11,12 +11,13 @@ import {
   PieChart, TrendingUp, Activity, Calculator, Target,
   ShieldAlert, Layers, Percent, BarChart3, AlignVerticalSpaceAround, BookMarked,
   GraduationCap, BookOpen, HelpCircle, CheckSquare,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, PanelLeft
 } from 'lucide-react';
 
 interface AppSidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  onOpenSlideNav?: () => void;
 }
 
 interface NavItem {
@@ -31,7 +32,7 @@ interface NavSection {
   items: NavItem[];
 }
 
-export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarProps) {
+export default function AppSidebar({ collapsed, onToggleCollapse, onOpenSlideNav }: AppSidebarProps) {
   const pathname = usePathname();
 
   const navigationSections: NavSection[] = [
@@ -160,6 +161,26 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
             {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
         </div>
+
+        {/* Slide-in Navigator Quick Trigger */}
+        {onOpenSlideNav && (
+          <div className="p-1.5 border-b border-[#141414] bg-[#050505]">
+            <button
+              onClick={onOpenSlideNav}
+              className={`w-full flex items-center justify-center gap-2 py-1.5 px-2 rounded bg-[#0a0a0a] hover:bg-[#121212] border border-[#1a1a1a] hover:border-[#2979FF]/50 text-white text-xs font-semibold transition-all group ${
+                collapsed ? 'px-1' : ''
+              }`}
+              title="Slide in Left-hand Panel to choose every site (Alt + S)"
+            >
+              <PanelLeft className="w-3.5 h-3.5 text-[#2979FF] group-hover:scale-105 transition-transform shrink-0" />
+              {!collapsed && (
+                <span className="font-sans text-[11px] font-bold truncate text-[#f0f3f6]">
+                  Choose Every Site
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Scrollable Navigation Tree */}
         <div className="flex-1 overflow-y-auto custom-scrollbar py-2 space-y-4">
