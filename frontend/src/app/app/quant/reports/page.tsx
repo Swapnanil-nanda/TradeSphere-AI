@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   FileSpreadsheet, Download, FileText, CheckCircle2, ShieldCheck, 
@@ -21,59 +22,93 @@ interface ReportItem {
   summary: string;
 }
 
-export default function QuantReportsPage() {
-  const [reports, setReports] = useState<ReportItem[]>([
-    {
-      id: 'run_3939e649',
-      symbol: 'RELIANCE',
-      title: 'Multi-Agent Quantitative Synthesis & Horizon Forecast',
-      timestamp: '2026-10-31T09:05:32Z',
-      status: 'VERIFIED',
-      checksPassed: 18,
-      totalChecks: 18,
-      agents: ['MarketDataAgent', 'TechnicalAnalysisAgent', 'ForecastingAgent', 'RiskManagementAgent'],
-      summary: 'Technical regime expansion with 20-EMA dynamic support. 20-day forecast probabilistic return with non-deterministic confidence bounds.'
-    },
-    {
-      id: 'run_8812a1f4',
-      symbol: 'TCS',
-      title: 'IT Sector Mean-Reversion & Historical Analogue Audit',
-      timestamp: '2026-10-30T16:20:10Z',
-      status: 'VERIFIED',
-      checksPassed: 18,
-      totalChecks: 18,
-      agents: ['MarketDataAgent', 'TechnicalAnalysisAgent', 'HistoricalSimilarityAgent', 'QuantitativeStrategyAgent'],
-      summary: 'Stationary price departure from 20-day mean. Top 3 historical analogues confirm 68% correlation with +2.1% 10-day forward return.'
-    },
-    {
-      id: 'run_5491bc02',
-      symbol: 'HDFCBANK',
-      title: 'Banking Alpha Risk-Reward & 1-Day VaR Assessment',
-      timestamp: '2026-10-30T11:45:00Z',
-      status: 'VERIFIED',
-      checksPassed: 18,
-      totalChecks: 18,
-      agents: ['MarketDataAgent', 'RiskManagementAgent', 'NewsIntelligenceAgent', 'QuantitativeStrategyAgent'],
-      summary: 'Historical 95% 1-day Value at Risk (VaR) of 1.72%. Position sizing strictly capped at 1% equity risk. Positive NLP sentiment.'
-    },
-    {
-      id: 'run_1102ef77',
-      symbol: 'NVDA',
-      title: 'Semiconductor Momentum & Volatility Clustering Audit',
-      timestamp: '2026-10-29T20:15:45Z',
-      status: 'VERIFIED',
-      checksPassed: 18,
-      totalChecks: 18,
-      agents: ['MarketDataAgent', 'TechnicalAnalysisAgent', 'ForecastingAgent'],
-      summary: 'High-volume breakout regime. ARIMA + GBM simulation indicates 10-day upward trajectory within 80% confidence interval.'
-    }
-  ]);
+const ALL_SYMBOLS = [
+  'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN',
+  'TATAMOTORS', 'BHARTIARTL', 'ITC', 'LICI', 'WIPRO',
+  'NIFTY50', 'BANKNIFTY',
+  'AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'AMZN', 'SPY', 'QQQ'
+];
 
+const DEFAULT_REPORTS: ReportItem[] = [
+  {
+    id: 'run_3939e649',
+    symbol: 'RELIANCE',
+    title: 'Multi-Agent Quantitative Synthesis & Horizon Forecast',
+    timestamp: '2026-10-31T09:05:32Z',
+    status: 'VERIFIED',
+    checksPassed: 18,
+    totalChecks: 18,
+    agents: ['MarketDataAgent', 'TechnicalAnalysisAgent', 'ForecastingAgent', 'RiskManagementAgent'],
+    summary: 'Technical regime expansion with 20-EMA dynamic support. 20-day forecast probabilistic return with non-deterministic confidence bounds.'
+  },
+  {
+    id: 'run_8812a1f4',
+    symbol: 'TCS',
+    title: 'IT Sector Mean-Reversion & Historical Analogue Audit',
+    timestamp: '2026-10-30T16:20:10Z',
+    status: 'VERIFIED',
+    checksPassed: 18,
+    totalChecks: 18,
+    agents: ['MarketDataAgent', 'TechnicalAnalysisAgent', 'HistoricalSimilarityAgent', 'QuantitativeStrategyAgent'],
+    summary: 'Stationary price departure from 20-day mean. Top 3 historical analogues confirm 68% correlation with +2.1% 10-day forward return.'
+  },
+  {
+    id: 'run_5491bc02',
+    symbol: 'HDFCBANK',
+    title: 'Banking Alpha Risk-Reward & 1-Day VaR Assessment',
+    timestamp: '2026-10-30T11:45:00Z',
+    status: 'VERIFIED',
+    checksPassed: 18,
+    totalChecks: 18,
+    agents: ['MarketDataAgent', 'RiskManagementAgent', 'NewsIntelligenceAgent', 'QuantitativeStrategyAgent'],
+    summary: 'Historical 95% 1-day Value at Risk (VaR) of 1.72%. Position sizing strictly capped at 1% equity risk. Positive NLP sentiment.'
+  },
+  {
+    id: 'run_1102ef77',
+    symbol: 'NVDA',
+    title: 'Semiconductor Momentum & Volatility Clustering Audit',
+    timestamp: '2026-10-29T20:15:45Z',
+    status: 'VERIFIED',
+    checksPassed: 18,
+    totalChecks: 18,
+    agents: ['MarketDataAgent', 'TechnicalAnalysisAgent', 'ForecastingAgent'],
+    summary: 'High-volume breakout regime. ARIMA + GBM simulation indicates 10-day upward trajectory within 80% confidence interval.'
+  }
+];
+
+function QuantReportsContent() {
+  const searchParams = useSearchParams();
+  const initialSym = searchParams.get('symbol');
+
+  const [reports, setReports] = useState<ReportItem[]>(DEFAULT_REPORTS);
   const [search, setSearch] = useState('');
-  const [selectedSymbol, setSelectedSymbol] = useState('ALL');
+  const [selectedSymbol, setSelectedSymbol] = useState(initialSym || 'ALL');
   const [generating, setGenerating] = useState(false);
-  const [newSymbol, setNewSymbol] = useState('INFY');
+  const [newSymbol, setNewSymbol] = useState(initialSym || 'INFY');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('tradesphere_quant_reports_v2');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setReports(parsed);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const saveReports = (list: ReportItem[]) => {
+    setReports(list);
+    try {
+      localStorage.setItem('tradesphere_quant_reports_v2', JSON.stringify(list));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleDownloadPDF = async (reportId: string, symbol: string) => {
     setDownloadingId(reportId);
@@ -81,7 +116,6 @@ export default function QuantReportsPage() {
       const quantUrl = appConfig.quantApiUrl || 'http://localhost:8100';
       const pdfUrl = `${quantUrl}/api/v1/quant/reports/${reportId}?format=pdf`;
       
-      // Use direct window open / anchor download
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = `TradeSphere_Report_${symbol}_${reportId}.pdf`;
@@ -111,7 +145,8 @@ export default function QuantReportsPage() {
         agents: Object.keys(run.agent_contributions || {}),
         summary: run.synthesis?.summary || `Quantitative evaluation completed for ${newSymbol}.`
       };
-      setReports([newReport, ...reports]);
+      saveReports([newReport, ...reports]);
+      setSelectedSymbol(newSymbol);
     } catch (err) {
       console.error('Failed to generate report:', err);
     } finally {
@@ -128,7 +163,7 @@ export default function QuantReportsPage() {
   });
 
   return (
-    <div className="space-y-4 select-none pb-8 text-xs font-sans">
+    <div className="space-y-4 select-none pb-8 text-xs font-sans text-[#E7EDF3]">
       {/* Header Banner */}
       <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -153,15 +188,11 @@ export default function QuantReportsPage() {
           <select
             value={newSymbol}
             onChange={(e) => setNewSymbol(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg bg-[#151F29] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
+            className="px-2.5 py-1.5 rounded-lg bg-[#151F29] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none focus:border-[#2979FF]"
           >
-            <option value="RELIANCE">RELIANCE</option>
-            <option value="TCS">TCS</option>
-            <option value="INFY">INFY</option>
-            <option value="HDFCBANK">HDFCBANK</option>
-            <option value="TATAMOTORS">TATAMOTORS</option>
-            <option value="AAPL">AAPL</option>
-            <option value="NVDA">NVDA</option>
+            {ALL_SYMBOLS.map(sym => (
+              <option key={sym} value={sym}>{sym}</option>
+            ))}
           </select>
 
           <button
@@ -170,7 +201,7 @@ export default function QuantReportsPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-semibold transition-colors disabled:opacity-50"
           >
             <Sparkles className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
-            <span>{generating ? 'Orchestrating Agents...' : 'Run New Dossier'}</span>
+            <span>{generating ? `Evaluating ${newSymbol}...` : `Run Dossier (${newSymbol})`}</span>
           </button>
         </div>
       </div>
@@ -191,7 +222,7 @@ export default function QuantReportsPage() {
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <span className="text-[11px] text-[#8B99A8]">Ticker:</span>
           <div className="flex items-center gap-1 overflow-x-auto">
-            {['ALL', 'RELIANCE', 'TCS', 'HDFCBANK', 'NVDA'].map((sym) => (
+            {['ALL', 'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'TATAMOTORS', 'NVDA', 'AAPL'].map((sym) => (
               <button
                 key={sym}
                 onClick={() => setSelectedSymbol(sym)}
@@ -210,84 +241,93 @@ export default function QuantReportsPage() {
 
       {/* Reports List */}
       <div className="space-y-3">
-        {filteredReports.map((report) => {
-          const isDownloading = downloadingId === report.id;
+        {filteredReports.length === 0 ? (
+          <div className="p-8 text-center bg-[#111922] rounded-xl border border-[#25313D] text-[#8B99A8]">
+            No reports found matching your search. Click "Run Dossier" above to generate one.
+          </div>
+        ) : (
+          filteredReports.map((report) => {
+            const isDownloading = downloadingId === report.id;
 
-          return (
-            <div
-              key={report.id}
-              className="p-4 rounded-xl bg-[#111922] border border-[#25313D] hover:border-[#2979FF]/50 transition-colors"
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#25313D]">
-                <div className="flex items-center gap-2.5">
-                  <div className="px-2 py-1 rounded bg-[#151F29] border border-[#25313D] text-[#E7EDF3] font-mono font-bold text-xs">
-                    {report.symbol}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-[#E7EDF3]">{report.title}</h3>
-                    <div className="flex items-center gap-2 text-[10px] text-[#8B99A8] font-mono mt-0.5">
-                      <span>ID: {report.id}</span>
-                      <span>•</span>
-                      <span>{new Date(report.timestamp).toLocaleDateString()} {new Date(report.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            return (
+              <div
+                key={report.id}
+                className="p-4 rounded-xl bg-[#111922] border border-[#25313D] hover:border-[#2979FF]/50 transition-colors"
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#25313D]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="px-2 py-1 rounded bg-[#151F29] border border-[#25313D] text-[#E7EDF3] font-mono font-bold text-xs">
+                      {report.symbol}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#E7EDF3]">{report.title}</h3>
+                      <div className="flex items-center gap-2 text-[10px] text-[#8B99A8] font-mono mt-0.5">
+                        <span>ID: {report.id}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(report.timestamp).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-[#35C69A]/10 border border-[#35C69A]/30 text-[#35C69A] font-mono text-[10px] font-semibold">
-                    <ShieldCheck className="w-3 h-3" />
-                    <span>{report.checksPassed}/{report.totalChecks} CHECKS VERIFIED</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0D131A] border border-[#25313D] text-[11px]">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#35C69A]" />
+                      <span className="font-mono text-[#35C69A]">
+                        {report.checksPassed}/{report.totalChecks} Checks Passed
+                      </span>
+                    </div>
 
-                  <button
-                    onClick={() => handleDownloadPDF(report.id, report.symbol)}
-                    disabled={isDownloading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2979FF]/15 hover:bg-[#2979FF]/25 border border-[#2979FF]/30 text-[#2979FF] font-semibold transition-colors"
-                  >
-                    <Download className={`w-3.5 h-3.5 ${isDownloading ? 'animate-bounce' : ''}`} />
-                    <span>{isDownloading ? 'Generating...' : 'Download PDF'}</span>
-                  </button>
-
-                  <Link
-                    href={`/app/quant/multi-agent?symbol=${report.symbol}`}
-                    className="p-1.5 rounded-lg bg-[#151F29] hover:bg-[#1E2B38] text-[#8B99A8] hover:text-[#E7EDF3] border border-[#25313D] transition-colors"
-                    title="View in Multi-Agent Workspace"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Summary Body */}
-              <div className="pt-3">
-                <p className="text-xs text-[#8B99A8] leading-relaxed mb-3">
-                  {report.summary}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] text-[#8B99A8] font-mono mr-1">Specialists:</span>
-                  {report.agents.map((agent, i) => (
-                    <span
-                      key={i}
-                      className="px-1.5 py-0.5 rounded bg-[#0D131A] border border-[#25313D] text-[10px] text-[#8B99A8] font-mono"
+                    <button
+                      onClick={() => handleDownloadPDF(report.id, report.symbol)}
+                      disabled={isDownloading}
+                      className="flex items-center gap-1 px-3 py-1 rounded-md bg-[#151F29] hover:bg-[#25313D] text-[#2979FF] font-semibold transition-colors border border-[#25313D]"
                     >
-                      {agent}
-                    </span>
-                  ))}
+                      <Download className={`w-3.5 h-3.5 ${isDownloading ? 'animate-bounce' : ''}`} />
+                      <span>{isDownloading ? 'Downloading...' : 'PDF'}</span>
+                    </button>
+
+                    <Link
+                      href={`/app/quant/multi-agent?symbol=${report.symbol}`}
+                      className="p-1.5 rounded-md bg-[#151F29] hover:bg-[#25313D] text-[#8B99A8] hover:text-[#E7EDF3] transition-colors border border-[#25313D]"
+                      title="Inspect Agent Telemetry"
+                    >
+                      <Cpu className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="pt-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-[11px]">
+                  <p className="text-[#8B99A8] leading-relaxed max-w-3xl">
+                    {report.summary}
+                  </p>
+
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    {report.agents.map((ag) => (
+                      <span
+                        key={ag}
+                        className="px-2 py-0.5 rounded bg-[#0D131A] border border-[#25313D] text-[#8B99A8] text-[10px] font-mono"
+                      >
+                        {ag.replace('Agent', '')}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Regulatory Invariant Footer */}
-      <div className="p-3.5 rounded-xl bg-[#0D131A] border border-[#25313D] flex items-start gap-3">
-        <ShieldCheck className="w-4 h-4 text-[#35C69A] shrink-0 mt-0.5" />
-        <div className="text-[11px] text-[#8B99A8] leading-relaxed">
-          <strong className="text-[#E7EDF3]">Autonomous Verification Standard:</strong> All quantitative research dossiers undergo automated Evidence Verification before publication. Claims are audited to ensure uncertainty quantification, empirical path drawdown modeling, one-sided VaR mathematical correctness, and mandatory non-fiduciary disclaimers.
-        </div>
+            );
+          })
+        )}
       </div>
     </div>
+  );
+}
+
+export default function QuantReportsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#8B99A8] font-mono text-xs">Loading Quantitative Research Reports...</div>}>
+      <QuantReportsContent />
+    </Suspense>
   );
 }

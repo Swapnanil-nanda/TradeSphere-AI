@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Cpu, Sparkles, ShieldCheck, Download, RefreshCw, FileText, CheckCircle2, 
   AlertCircle, ArrowRight, TrendingUp, BarChart2, Newspaper, Clock, Activity, Zap
@@ -8,13 +8,29 @@ import {
 import { apiClient } from '../../../../lib/api-client';
 import { appConfig } from '../../../../lib/config';
 
-export default function MultiAgentQuantPage() {
-  const [symbol, setSymbol] = useState('RELIANCE');
+import { useSearchParams } from 'next/navigation';
+
+function MultiAgentQuantContent() {
+  const searchParams = useSearchParams();
+  const initialSymbol = searchParams.get('symbol') || 'RELIANCE';
+
+  const [symbol, setSymbol] = useState(initialSymbol);
   const [query, setQuery] = useState('Evaluate multi-factor risk-reward, sentiment momentum, and forward 10-day price path.');
   const [loading, setLoading] = useState(false);
   const [researchData, setResearchData] = useState<any>(null);
 
-  const symbolsList = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'TATAMOTORS', 'AAPL', 'NVDA', 'MSFT'];
+  const symbolsList = [
+    'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'TATAMOTORS', 'BHARTIARTL', 'ITC',
+    'NIFTY50', 'BANKNIFTY',
+    'AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'AMZN', 'SPY', 'QQQ'
+  ];
+
+  useEffect(() => {
+    const sym = searchParams.get('symbol');
+    if (sym && sym !== symbol) {
+      setSymbol(sym);
+    }
+  }, [searchParams]);
 
   const handleRunResearch = async () => {
     setLoading(true);
@@ -277,5 +293,13 @@ export default function MultiAgentQuantPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MultiAgentQuantPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#8B99A8] font-mono text-xs">Loading Multi-Agent Autonomous Center...</div>}>
+      <MultiAgentQuantContent />
+    </Suspense>
   );
 }
