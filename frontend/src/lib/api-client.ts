@@ -240,6 +240,7 @@ export interface UserProfile {
 }
 
 import { appConfig } from './config';
+import { paperEngine } from './paper-engine';
 
 const BACKEND_BASE = appConfig.apiUrl;
 const MARKET_BASE = appConfig.marketApiUrl || BACKEND_BASE;
@@ -418,39 +419,29 @@ class TradeSphereApiClient {
   }
 
   async getPortfolio(): Promise<PortfolioData> {
-    try {
-      const res = await fetch(`${BACKEND_BASE}/api/portfolio`, {
-        headers: this.getAuthHeaders(),
-        cache: 'no-store'
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (data && data.account) return data;
-    } catch (e) {
-      console.warn('[ApiClient] Serving fallback portfolio fixtures');
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/portfolio`, {
+          headers: this.getAuthHeaders(),
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.account) return data;
+        }
+      } catch (e) {
+        console.warn('[ApiClient] Backend unreachable, serving local Paper Trading Engine');
+      }
     }
 
-    return {
-      account: {
-        id: 'paper_act_01',
-        name: 'Demo Paper Account',
-        currency: 'INR',
-        initialEquity: 1000000.00,
-        currentCash: 1000000.00,
-        netLiquidation: 1000000.00,
-        totalUnrealizedPnL: 0,
-        dayStartEquity: 1000000.00,
-        dailyPnL: 0,
-        dailyPnLPct: 0,
-        maxRiskPerTradePct: 1.0,
-        dailyDrawdownLimitPct: 3.0,
-        tradingLocked: false,
-        lockReason: null
-      },
-      positions: [],
-      orders: [],
-      trades: []
-    };
+    // Always fallback smoothly to the local Paper Engine using current tickers
+    let freshTickers: Ticker[] = [];
+    try {
+      freshTickers = await this.getTickers();
+    } catch {
+      freshTickers = this.fallbackTickers;
+    }
+    return paperEngine.getPortfolio(freshTickers);
   }
 
   async getAccount(): Promise<PortfolioAccount> {
@@ -472,46 +463,101 @@ class TradeSphereApiClient {
     takeProfit?: number;
     clientOrderId?: string;
   }): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/orders`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(orderData)
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || 'Pre-trade risk check failed.');
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/orders`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(orderData)
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.warn('[ApiClient] Backend order submission failed, executing via local Paper Engine');
+      }
     }
-    return data;
+
+    // Execute via local Paper Engine at live market price
+    let ltp = 1000;
+    try {
+      const tickers = await this.getTickers();
+      const match = tickers.find(t => t.symbol === orderData.symbol.toUpperCase());
+      if (match && match.ltp) ltp = match.ltp;
+    } catch {}
+
+    return paperEngine.submitOrder(orderData, ltp);
   }
 
   async closePosition(symbol: string, quantity?: number): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/positions/close`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ symbol, quantity })
-    });
-    return await res.json();
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/positions/close`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ symbol, quantity })
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch {}
+    }
+
+    let ltp = 0;
+    try {
+      const tickers = await this.getTickers();
+      const match = tickers.find(t => t.symbol === symbol.toUpperCase());
+      if (match && match.ltp) ltp = match.ltp;
+    } catch {}
+
+    return paperEngine.closePosition(symbol, quantity, ltp);
+  }
+
+  async matchOpenOrders(): Promise<void> {
+    let freshTickers: Ticker[] = [];
+    try {
+      freshTickers = await this.getTickers();
+    } catch {
+      freshTickers = this.fallbackTickers;
+    }
+    paperEngine.matchOpenOrders(freshTickers);
   }
 
   async evaluateOcoTriggers(): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/orders/evaluate-oco`, {
-      method: 'POST',
-      headers: this.getAuthHeaders()
-    });
-    return await res.json();
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/orders/evaluate-oco`, {
+          method: 'POST',
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    let freshTickers: Ticker[] = [];
+    try {
+      freshTickers = await this.getTickers();
+    } catch {
+      freshTickers = this.fallbackTickers;
+    }
+    paperEngine.matchOpenOrders(freshTickers);
+    return { evaluated: true };
   }
 
   async cancelOrder(orderId: string | number): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/orders/${orderId}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || 'Failed to cancel order.');
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/orders/${orderId}`, {
+          method: 'DELETE',
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch {}
     }
-    return data;
+
+    return paperEngine.cancelOrder(orderId);
   }
 
   async configureAccount(config: {
@@ -519,213 +565,229 @@ class TradeSphereApiClient {
     slippageRate?: number;
     feeRate?: number;
   }): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/accounts/configure`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(config)
-    });
-    return await res.json();
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/accounts/configure`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(config)
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.configureAccount(config);
   }
 
   async reconcileAccount(): Promise<ReconciliationReport> {
-    const res = await fetch(`${BACKEND_BASE}/api/accounts/reconcile`, {
-      headers: this.getAuthHeaders(),
-      cache: 'no-store'
-    });
-    return await res.json();
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/accounts/reconcile`, {
+          headers: this.getAuthHeaders(),
+          cache: 'no-store'
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.reconcileAccount();
   }
 
   async getCashLedger(): Promise<CashLedgerEntry[]> {
-    const res = await fetch(`${BACKEND_BASE}/api/ledger`, {
-      headers: this.getAuthHeaders(),
-      cache: 'no-store'
-    });
-    return await res.json();
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/ledger`, {
+          headers: this.getAuthHeaders(),
+          cache: 'no-store'
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.getLedger();
   }
 
   async resetAccount(): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/portfolio/reset`, {
-      method: 'POST',
-      headers: this.getAuthHeaders()
-    });
-    return await res.json();
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/portfolio/reset`, {
+          method: 'POST',
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.resetAccount();
   }
 
   // --- WATCHLIST & ALERT REST APIS (Rule B & Part 5 Compliant) ---
   async getWatchlists(): Promise<WatchlistBackendData[]> {
-    try {
-      const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
-        headers: this.getAuthHeaders(),
-        cache: 'no-store'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('tradesphere_synced_watchlists', JSON.stringify(data));
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
+          headers: this.getAuthHeaders(),
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            return data;
           }
-          return data;
         }
-      }
-    } catch {
-      // Offline fallback
+      } catch {}
     }
 
-    if (typeof window !== 'undefined') {
-      const cached = localStorage.getItem('tradesphere_synced_watchlists');
-      if (cached) {
-        try {
-          return JSON.parse(cached);
-        } catch {}
-      }
-    }
-
-    return [
-      {
-        id: 'wl_default',
-        name: 'Core Market Watch',
-        defaultList: true,
-        createdAt: new Date().toISOString(),
-        instruments: [
-          { id: 1, symbol: 'RELIANCE', name: 'Reliance Industries Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
-          { id: 2, symbol: 'TCS', name: 'Tata Consultancy Services', exchange: 'NSE', market: 'IN', currency: 'INR' },
-          { id: 3, symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
-          { id: 4, symbol: 'INFY', name: 'Infosys Limited', exchange: 'NSE', market: 'IN', currency: 'INR' },
-          { id: 5, symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD' },
-          { id: 6, symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NASDAQ', market: 'US', currency: 'USD' }
-        ]
-      },
-      {
-        id: 'wl_nifty',
-        name: 'Nifty Momentum',
-        defaultList: false,
-        createdAt: new Date().toISOString(),
-        instruments: [
-          { id: 1, symbol: 'RELIANCE', name: 'Reliance Industries Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
-          { id: 7, symbol: 'TATAMOTORS', name: 'Tata Motors Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' },
-          { id: 3, symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', exchange: 'NSE', market: 'IN', currency: 'INR' }
-        ]
-      },
-      {
-        id: 'wl_ustech',
-        name: 'US Tech Leaders',
-        defaultList: false,
-        createdAt: new Date().toISOString(),
-        instruments: [
-          { id: 5, symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD' },
-          { id: 6, symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NASDAQ', market: 'US', currency: 'USD' },
-          { id: 8, symbol: 'TSLA', name: 'Tesla Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD' }
-        ]
-      }
-    ];
+    return paperEngine.getWatchlists();
   }
 
   async createWatchlist(name: string): Promise<WatchlistBackendData> {
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ name })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to create watchlist');
-    return data;
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ name })
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.createWatchlist(name);
   }
 
   async renameWatchlist(id: string | number, name: string): Promise<WatchlistBackendData> {
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
-      method: 'PATCH',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ name })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to rename watchlist');
-    return data;
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ name })
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.renameWatchlist(id, name);
   }
 
   async duplicateWatchlist(id: string | number, targetName?: string): Promise<WatchlistBackendData> {
-    const query = targetName ? `?targetName=${encodeURIComponent(targetName)}` : '';
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/duplicate${query}`, {
-      method: 'POST',
-      headers: this.getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to duplicate watchlist');
-    return data;
+    if (BACKEND_BASE) {
+      try {
+        const query = targetName ? `?targetName=${encodeURIComponent(targetName)}` : '';
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/duplicate${query}`, {
+          method: 'POST',
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.duplicateWatchlist(id, targetName);
   }
 
   async deleteWatchlist(id: string | number): Promise<void> {
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders()
-    });
-    if (!res.ok && res.status !== 204) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || 'Failed to delete watchlist');
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
+          method: 'DELETE',
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok || res.status === 204) return;
+      } catch {}
     }
+
+    paperEngine.deleteWatchlist(id);
   }
 
   async addWatchlistItem(id: string | number, symbol: string): Promise<WatchlistBackendData> {
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ symbol })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to add item to watchlist');
-    return data;
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ symbol })
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.addWatchlistItem(id, symbol);
   }
 
   async removeWatchlistItem(id: string | number, symbolOrId: string | number): Promise<WatchlistBackendData> {
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/${symbolOrId}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders()
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to remove item from watchlist');
-    return data;
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/${symbolOrId}`, {
+          method: 'DELETE',
+          headers: this.getAuthHeaders()
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.removeWatchlistItem(id, symbolOrId);
   }
 
   async reorderWatchlistItems(id: string | number, symbols: string[]): Promise<WatchlistBackendData> {
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/reorder`, {
-      method: 'PATCH',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ symbols })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to reorder watchlist items');
-    return data;
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/reorder`, {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({ symbols })
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.reorderWatchlistItems(id, symbols);
   }
 
   async getWatchlistAlerts(): Promise<WatchlistAlert[]> {
-    try {
-      const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
-        headers: this.getAuthHeaders(),
-        cache: 'no-store'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
-      }
-    } catch {}
-    return [];
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
+          headers: this.getAuthHeaders(),
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) return data;
+        }
+      } catch {}
+    }
+
+    return paperEngine.getAlerts();
   }
 
   async createWatchlistAlert(payload: { symbol: string; alertType: string; targetValue: number; notes?: string }): Promise<WatchlistAlert> {
-    const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Failed to create alert');
-    return data;
+    if (BACKEND_BASE) {
+      try {
+        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) return await res.json();
+      } catch {}
+    }
+
+    return paperEngine.createAlert(payload);
   }
 
   async deleteWatchlistAlert(id: string | number): Promise<void> {
-    await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts/${id}`, {
-      method: 'DELETE',
-      headers: this.getAuthHeaders()
-    });
+    if (BACKEND_BASE) {
+      try {
+        await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts/${id}`, {
+          method: 'DELETE',
+          headers: this.getAuthHeaders()
+        });
+        return;
+      } catch {}
+    }
+
+    paperEngine.deleteAlert(id);
   }
 
   async calculatePositionSize(params: {

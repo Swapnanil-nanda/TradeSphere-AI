@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 // Server-side cache
 let cachedQuotes: any[] = [];
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 5000; // 5-second cache to avoid rate limits
+const CACHE_TTL_MS = 8000; // 8-second cache to protect against rate limits across multiple widgets
 
 // Symbol mapping: internal symbol -> external Yahoo Finance symbol
 const SYMBOL_MAP: Record<string, { yahoo: string; name: string; market: 'IN' | 'US'; exchange: string; currency: string }> = {
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     const config = SYMBOL_MAP[key];
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(config.yahoo)}?interval=1d&range=2d`;
       
       const res = await fetch(url, {
