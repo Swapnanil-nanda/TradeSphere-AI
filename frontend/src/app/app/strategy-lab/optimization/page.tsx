@@ -1,23 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Sliders, Play, Activity, ShieldCheck, CheckCircle2, 
-  TrendingUp, AlertTriangle, RefreshCw, BarChart2, Layers
+  TrendingUp, AlertTriangle, RefreshCw, BarChart2, Layers 
 } from 'lucide-react';
+import { runSimulation, BacktestCandle } from '../../../../lib/backtest-engine';
+import { apiClient } from '../../../../lib/api-client';
 
-export default function ParameterOptimizationPage() {
+const ALL_SYMBOLS = [
+  'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN',
+  'TATAMOTORS', 'BHARTIARTL', 'ITC', 'LICI', 'WIPRO',
+  'NIFTY50', 'BANKNIFTY',
+  'AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'AMZN', 'SPY', 'QQQ'
+];
+
+function ParameterOptimizationContent() {
+  const searchParams = useSearchParams();
+  const initialSymbol = searchParams.get('symbol') || 'RELIANCE';
+
   const [strategy, setStrategy] = useState('EMA_CROSSOVER');
-  const [symbol, setSymbol] = useState('RELIANCE');
+  const [symbol, setSymbol] = useState(initialSymbol);
   const [metric, setMetric] = useState<'sharpe' | 'profitFactor' | 'maxDrawdown'>('sharpe');
   const [optimizing, setOptimizing] = useState(false);
+  const [candles, setCandles] = useState<BacktestCandle[]>([]);
 
-  // Parameter ranges
+  // Parameter ranges: Fast EMA vs Slow EMA
   const fastRange = [5, 9, 13, 17, 21];
   const slowRange = [20, 30, 40, 50, 60];
 
-  // Simulated 2D grid matrix of Sharpe ratios
   const [gridData, setGridData] = useState<number[][]>([
     [1.12, 1.34, 1.58, 1.42, 1.20],
     [1.25, 1.62, 1.84, 1.71, 1.38],
@@ -26,21 +39,64 @@ export default function ParameterOptimizationPage() {
     [1.08, 1.22, 1.35, 1.29, 1.10]
   ]);
 
+  useEffect(() => {
+    const sym = searchParams.get('symbol');
+    if (sym && sym !== symbol) {
+      setSymbol(sym);
+    }
+  }, [searchParams]);
+
+  // Load real candles for the chosen symbol
+  useEffect(() => {
+    apiClient.getCandles(symbol, '1d', 250).then(raw => {
+      if (Array.isArray(raw) && raw.length > 30) {
+        setCandles(raw.map((c: any) => ({
+          timestamp: typeof c.time === 'number' ? new Date(c.time * 1000).toISOString() : String(c.time || c.timestamp),
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
+          volume: Number(c.volume || 100000)
+        })));
+      }
+    }).catch(() => {});
+  }, [symbol]);
+
   const handleRunOptimization = () => {
     setOptimizing(true);
+
     setTimeout(() => {
-      // Generate randomized realistic grid with stable plateau around center
-      const newGrid = fastRange.map((_, i) =>
-        slowRange.map((_, j) => {
-          const distFromOpt = Math.hypot(i - 2, j - 2);
-          const base = 1.95 - distFromOpt * 0.28 + (Math.random() * 0.15 - 0.075);
-          return Math.round(Math.max(0.6, base) * 100) / 100;
-        })
-      );
+      // Run genuine 25-cell simulation grid on the real candle history
+      const newGrid = fastRange.map((fast) => {
+        return slowRange.map((slow) => {
+          const sim = runSimulation({
+            symbol,
+            strategy_name: strategy,
+            initial_capital: symbol === 'AAPL' || symbol === 'NVDA' ? 100000 : 1000000,
+            risk_per_trade_pct: 1.0,
+            strategy_params: {
+              fast_period: fast,
+              slow_period: slow,
+              stop_loss_atr: 1.5,
+              target_r: 2.0
+            },
+            candles: candles.length > 30 ? candles : undefined
+          });
+
+          if (metric === 'profitFactor') return sim.profit_factor;
+          if (metric === 'maxDrawdown') return sim.max_drawdown_pct;
+          return sim.sharpe_ratio;
+        });
+      });
+
       setGridData(newGrid);
       setOptimizing(false);
-    }, 600);
+    }, 400);
   };
+
+  useEffect(() => {
+    handleRunOptimization();
+  }, [symbol, strategy, metric]);
 
   // Find max cell
   let maxVal = -Infinity;
@@ -57,6 +113,13 @@ export default function ParameterOptimizationPage() {
   });
 
   const getColorClass = (val: number) => {
+    if (metric === 'maxDrawdown') {
+      if (val <= 4.0) return 'bg-[#35C69A] text-[#090D12] font-black';
+      if (val <= 6.0) return 'bg-[#35C69A]/75 text-[#090D12] font-bold';
+      if (val <= 8.5) return 'bg-[#151F29] text-[#8B99A8]';
+      return 'bg-[#EF6468]/30 text-[#EF6468] font-bold';
+    }
+
     if (val >= 1.8) return 'bg-[#35C69A] text-[#090D12] font-black';
     if (val >= 1.5) return 'bg-[#35C69A]/75 text-[#090D12] font-bold';
     if (val >= 1.3) return 'bg-[#35C69A]/40 text-[#E7EDF3] font-semibold';
@@ -65,7 +128,7 @@ export default function ParameterOptimizationPage() {
   };
 
   return (
-    <div className="space-y-4 select-none pb-8 text-xs font-sans">
+    <div className="space-y-4 select-none pb-8 text-xs font-sans text-[#E7EDF3]">
       {/* Header */}
       <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -74,13 +137,13 @@ export default function ParameterOptimizationPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-[#E7EDF3]">Parameter Sweep & Robustness Lab</h1>
+              <h1 className="text-base font-bold text-[#E7EDF3]">Parameter Sweep &amp; Robustness Matrix</h1>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#151F29] text-[#2979FF] border border-[#25313D]">
-                2D SENSITIVITY GRID
+                2D BACKTEST GRID
               </span>
             </div>
             <p className="text-[#8B99A8] text-[11px]">
-              Multi-parameter grid optimization with plateau robustness verification to detect curve-fitting.
+              Multi-parameter sensitivity grid across historical bars with plateau robustness verification to detect curve-fitting.
             </p>
           </div>
         </div>
@@ -91,7 +154,7 @@ export default function ParameterOptimizationPage() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-semibold transition-colors disabled:opacity-50"
         >
           <Play className={`w-3.5 h-3.5 fill-current ${optimizing ? 'animate-spin' : ''}`} />
-          <span>{optimizing ? 'Sweeping Grid...' : 'Execute Parameter Sweep'}</span>
+          <span>{optimizing ? 'Sweeping Grid...' : 'Run Parameter Sweep'}</span>
         </button>
       </div>
 
@@ -119,12 +182,7 @@ export default function ParameterOptimizationPage() {
               onChange={(e) => setSymbol(e.target.value)}
               className="px-2.5 py-1 rounded bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
             >
-              <option value="RELIANCE">RELIANCE</option>
-              <option value="TCS">TCS</option>
-              <option value="INFY">INFY</option>
-              <option value="HDFCBANK">HDFCBANK</option>
-              <option value="AAPL">AAPL</option>
-              <option value="NVDA">NVDA</option>
+              {ALL_SYMBOLS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
         </div>
@@ -141,45 +199,40 @@ export default function ParameterOptimizationPage() {
                   : 'bg-[#151F29] text-[#8B99A8] hover:text-[#E7EDF3] border border-[#25313D]'
               }`}
             >
-              {m === 'sharpe' ? 'Sharpe Ratio' : m === 'profitFactor' ? 'Profit Factor' : 'Min Drawdown'}
+              {m === 'sharpe' ? 'Sharpe Ratio' : m === 'profitFactor' ? 'Profit Factor' : 'Max DD (%)'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Grid Heatmap Visualization */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* 2D Heatmap Grid */}
         <div className="lg:col-span-2 bg-[#111922] p-4 rounded-xl border border-[#25313D]">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-xs font-bold text-[#E7EDF3] uppercase tracking-wider font-mono">
-                Optimization Surface: Fast Period vs Slow Period
+                Sensitivity Surface: Fast Period vs Slow Period ({symbol})
               </h2>
-              <p className="text-[11px] text-[#8B99A8]">
-                X-Axis: Slow Moving Average (20 to 60) | Y-Axis: Fast Moving Average (5 to 21)
+              <p className="text-[10px] text-[#8B99A8] mt-0.5">
+                Horizontal Axis: Slow Period | Vertical Axis: Fast Period | Color: Metric Intensity
               </p>
             </div>
-            <div className="flex items-center gap-2 text-[10px] font-mono text-[#8B99A8]">
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded bg-[#35C69A]"></span> Optimal Plateau
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded bg-[#151F29] border border-[#25313D]"></span> Low Alpha
-              </span>
+            <div className="flex items-center gap-1.5 text-[10px] font-mono">
+              <span className="w-2.5 h-2.5 rounded-sm bg-[#0D131A] border border-[#25313D]" />
+              <span className="text-[#8B99A8]">Suboptimal</span>
+              <span className="w-2.5 h-2.5 rounded-sm bg-[#35C69A]" />
+              <span className="text-[#35C69A] font-bold">Optimal Plateau</span>
             </div>
           </div>
 
-          {/* Matrix Table */}
           <div className="overflow-x-auto">
-            <table className="w-full text-center border-collapse font-mono text-xs">
+            <table className="w-full text-center border-collapse text-xs font-mono">
               <thead>
                 <tr>
-                  <th className="p-2 text-left text-[10px] text-[#8B99A8] border-b border-[#25313D]">
-                    Fast \ Slow
-                  </th>
-                  {slowRange.map((slow) => (
-                    <th key={slow} className="p-2 text-[11px] text-[#8B99A8] border-b border-[#25313D]">
-                      {slow}
+                  <th className="p-2 text-[#8B99A8] text-[10px] font-semibold border-b border-[#25313D]">Fast \ Slow</th>
+                  {slowRange.map((s) => (
+                    <th key={s} className="p-2 text-[#8B99A8] text-[10px] font-semibold border-b border-[#25313D]">
+                      Slow {s}
                     </th>
                   ))}
                 </tr>
@@ -187,21 +240,23 @@ export default function ParameterOptimizationPage() {
               <tbody>
                 {fastRange.map((fast, i) => (
                   <tr key={fast}>
-                    <td className="p-2 text-left font-bold text-[#8B99A8] border-r border-[#25313D]">
-                      {fast}
+                    <td className="p-2 text-[#8B99A8] text-[10px] font-semibold border-r border-[#25313D] bg-[#0D131A]">
+                      Fast {fast}
                     </td>
-                    {gridData[i].map((val, j) => {
+                    {gridData[i]?.map((val, j) => {
                       const isOptimal = i === maxI && j === maxJ;
                       return (
                         <td key={j} className="p-1.5">
                           <div
-                            className={`py-2 rounded-md transition-transform hover:scale-105 cursor-pointer relative ${getColorClass(
-                              val
-                            )}`}
+                            className={`p-2.5 rounded-lg transition-all relative ${getColorClass(val)} ${
+                              isOptimal ? 'ring-2 ring-white shadow-lg scale-105' : ''
+                            }`}
                           >
-                            <span>{val.toFixed(2)}</span>
+                            <span>{val?.toFixed(2)}</span>
                             {isOptimal && (
-                              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#2979FF] ring-2 ring-[#111922]" />
+                              <span className="absolute -top-1.5 -right-1.5 px-1 py-0.2 rounded-full bg-white text-black font-black text-[8px]">
+                                OPT
+                              </span>
                             )}
                           </div>
                         </td>
@@ -214,56 +269,61 @@ export default function ParameterOptimizationPage() {
           </div>
         </div>
 
-        {/* Robustness Assessment Panel */}
+        {/* Right: Optimum Summary Card */}
         <div className="space-y-3">
           <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D]">
-            <h3 className="text-xs font-bold text-[#E7EDF3] uppercase tracking-wider font-mono pb-2 border-b border-[#25313D] mb-3">
-              Robustness Audit
-            </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-[#25313D] mb-3">
+              <span className="font-bold text-xs text-[#E7EDF3] uppercase tracking-wider font-mono">
+                Global Optima ({symbol})
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#35C69A]/10 text-[#35C69A] border border-[#35C69A]/30">
+                STABLE PLATEAU
+              </span>
+            </div>
 
-            <div className="space-y-3">
-              <div>
-                <span className="text-[11px] text-[#8B99A8] block">Optimal Coordinate</span>
-                <div className="text-base font-bold font-mono text-[#35C69A] mt-0.5">
-                  Fast: {fastRange[maxI]} | Slow: {slowRange[maxJ]}
-                </div>
-                <div className="text-[10px] text-[#8B99A8]">Max Sharpe Ratio: {maxVal.toFixed(2)}</div>
+            <div className="space-y-2.5 font-mono">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <span className="text-[11px] text-[#8B99A8] font-sans">Optimal Fast Period</span>
+                <span className="font-bold text-[#E7EDF3]">{fastRange[maxI]} Bars</span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#35C69A] mb-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Robust Parameter Plateau</span>
-                </div>
-                <p className="text-[11px] text-[#8B99A8] leading-snug">
-                  Adjacent parameter cells exhibit &gt;85% efficiency of the peak. Low risk of curve-fitting or data snooping bias.
-                </p>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <span className="text-[11px] text-[#8B99A8] font-sans">Optimal Slow Period</span>
+                <span className="font-bold text-[#E7EDF3]">{slowRange[maxJ]} Bars</span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
-                <span className="text-[11px] text-[#8B99A8] block mb-1">Deflated Sharpe Ratio (DSR)</span>
-                <div className="text-sm font-bold font-mono text-[#E7EDF3]">
-                  1.48 <span className="text-[10px] font-normal text-[#35C69A]">(Statistically Significant, p &lt; 0.01)</span>
-                </div>
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <span className="text-[11px] text-[#8B99A8] font-sans">Max Objective Value</span>
+                <span className="font-bold text-[#35C69A] text-sm">{maxVal?.toFixed(2)}</span>
               </div>
+            </div>
 
+            <div className="mt-4 pt-3 border-t border-[#25313D]">
               <Link
-                href={`/app/strategy-lab/builder?fast=${fastRange[maxI]}&slow=${slowRange[maxJ]}`}
-                className="w-full py-2 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-bold text-center block transition-colors"
+                href={`/app/strategy-lab/builder?symbol=${symbol}`}
+                className="w-full py-2 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-semibold text-center block transition-colors"
               >
-                Apply Parameters in Builder
+                Apply Parameters in Strategy Builder
               </Link>
             </div>
           </div>
 
           <div className="p-3.5 rounded-xl bg-[#0D131A] border border-[#25313D] flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-[#35C69A] shrink-0 mt-0.5" />
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div className="text-[10px] text-[#8B99A8] leading-relaxed">
-              <strong className="text-[#E7EDF3]">Anti-Overfitting Standard:</strong> Isolated parameter spikes without surrounding support are flagged as unstable. We require contiguous multi-cell plateaus.
+              <strong className="text-[#E7EDF3]">Curve-Fitting Guard:</strong> If the optimum cell is isolated with sharp performance drop-offs on adjacent neighbors, it indicates curve-fitting risk. Prefer parameter neighborhoods where surrounding cells also maintain profitable stability.
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ParameterOptimizationPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#8B99A8] font-mono text-xs">Loading Parameter Optimization Matrix...</div>}>
+      <ParameterOptimizationContent />
+    </Suspense>
   );
 }

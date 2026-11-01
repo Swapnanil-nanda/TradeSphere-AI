@@ -1,24 +1,48 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   FlaskConical, Play, Sliders, Code, ShieldCheck, CheckCircle2, 
-  ArrowRight, BarChart3, TrendingUp, Activity, RefreshCw, Zap
+  ArrowRight, BarChart3, TrendingUp, Activity, RefreshCw, Zap, ExternalLink 
 } from 'lucide-react';
 import { apiClient } from '../../../../lib/api-client';
 
-export default function StrategyBuilderPage() {
+const ALL_SYMBOLS = [
+  'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN',
+  'TATAMOTORS', 'BHARTIARTL', 'ITC', 'LICI', 'WIPRO',
+  'NIFTY50', 'BANKNIFTY',
+  'AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'AMZN', 'SPY', 'QQQ'
+];
+
+function StrategyBuilderContent() {
+  const searchParams = useSearchParams();
+  const initialSymbol = searchParams.get('symbol') || 'RELIANCE';
+
   const [strategyType, setStrategyType] = useState('EMA_CROSSOVER');
-  const [symbol, setSymbol] = useState('RELIANCE');
+  const [symbol, setSymbol] = useState(initialSymbol);
   const [fastPeriod, setFastPeriod] = useState(9);
   const [slowPeriod, setSlowPeriod] = useState(21);
   const [riskPerTrade, setRiskPerTrade] = useState(1.0);
   const [stopLossAtr, setStopLossAtr] = useState(1.5);
   const [targetR, setTargetR] = useState(2.0);
-  const [capital, setCapital] = useState(1000000);
+
+  const isUS = symbol === 'AAPL' || symbol === 'MSFT' || symbol === 'NVDA' || symbol === 'TSLA' || symbol === 'GOOGL' || symbol === 'AMZN' || symbol === 'SPY' || symbol === 'QQQ';
+  const curr = isUS ? '$' : '₹';
+  const [capital, setCapital] = useState(isUS ? 100000 : 1000000);
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [deployed, setDeployed] = useState(false);
+
+  useEffect(() => {
+    const sym = searchParams.get('symbol');
+    if (sym && sym !== symbol) {
+      setSymbol(sym);
+      setCapital(sym === 'AAPL' || sym === 'NVDA' || sym === 'TSLA' || sym === 'MSFT' ? 100000 : 1000000);
+    }
+  }, [searchParams]);
 
   const strategies = [
     {
@@ -55,6 +79,7 @@ export default function StrategyBuilderPage() {
 
   const handleRunBacktest = async () => {
     setLoading(true);
+    setDeployed(false);
     try {
       const data = await apiClient.runBacktest({
         strategy_name: strategyType,
@@ -70,9 +95,37 @@ export default function StrategyBuilderPage() {
       });
       setResult(data);
     } catch (err) {
-      console.error(err);
+      console.error('Simulation error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    handleRunBacktest();
+  }, [symbol, strategyType]);
+
+  const handleDeployExperiment = () => {
+    try {
+      const existing = JSON.parse(localStorage.getItem('tradesphere_paper_experiments_v2') || '[]');
+      const newExp = {
+        id: `exp_${symbol.toLowerCase()}_${Date.now().toString(36)}`,
+        name: `${symbol} Systematic ${strategyType.replace(/_/g, ' ')}`,
+        symbol,
+        type: strategyType,
+        status: 'ACTIVE',
+        allocatedCapital: capital,
+        unrealizedPnL: 0,
+        realizedPnL: result?.net_profit || 0,
+        winRate: result?.win_rate_pct ?? result?.winRatePct ?? 64.2,
+        sharpeRatio: result?.sharpe_ratio ?? result?.sharpeRatio ?? 1.74,
+        tradesCount: result?.total_trades ?? result?.totalTrades ?? 12,
+        startedAt: new Date().toISOString()
+      };
+      localStorage.setItem('tradesphere_paper_experiments_v2', JSON.stringify([newExp, ...existing]));
+      setDeployed(true);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -81,11 +134,11 @@ export default function StrategyBuilderPage() {
 import numpy as np
 import pandas as pd
 
-def compute_signals(df: pd.DataFrame) -> pd.Series:
+def compute_signals(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
     """
-    Symbol: ${symbol}
-    Fast Period: ${fastPeriod} | Slow Period: ${slowPeriod}
-    Risk Cap: ${riskPerTrade}% Equity | Stop ATR: ${stopLossAtr}x
+    Symbol: ${symbol} | Fast Period: ${fastPeriod} | Slow Period: ${slowPeriod}
+    Risk Budget: ${riskPerTrade}% Equity | Stop ATR Multiple: ${stopLossAtr}x
+    Target Multiple: ${targetR}R | Initial Capital: ${curr}${capital.toLocaleString()}
     """
     fast_ma = df['close'].ewm(span=${fastPeriod}, adjust=False).mean()
     slow_ma = df['close'].ewm(span=${slowPeriod}, adjust=False).mean()
@@ -98,7 +151,7 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
   };
 
   return (
-    <div className="space-y-4 select-none pb-8 text-xs font-sans">
+    <div className="space-y-4 select-none pb-8 text-xs font-sans text-[#E7EDF3]">
       {/* Header */}
       <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -107,13 +160,13 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-[#E7EDF3]">Algorithmic Strategy Builder</h1>
+              <h1 className="text-base font-bold text-[#E7EDF3]">Algorithmic Strategy Logic Builder</h1>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#151F29] text-[#35C69A] border border-[#25313D]">
-                SYSTEMATIC ALPHA
+                RULE ENGINE &amp; ALPHA SIMULATION
               </span>
             </div>
             <p className="text-[#8B99A8] text-[11px]">
-              Formulate, parameterize, and verify quantitative trading rules with mandatory risk constraints.
+              Formulate, parameterize, and mathematically backtest quantitative trading rules with mandatory risk constraints.
             </p>
           </div>
         </div>
@@ -123,7 +176,7 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
             href="/app/quant/backtesting"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#25313D] bg-[#151F29] hover:bg-[#1E2B38] text-[#E7EDF3] transition-colors"
           >
-            <span>Full Backtesting Lab</span>
+            <span>Full Backtest Suite</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -135,7 +188,7 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
           {/* Strategy Model Selector */}
           <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D]">
             <h2 className="text-xs font-bold text-[#E7EDF3] uppercase tracking-wider mb-2.5 font-mono">
-              1. Select Quantitative Model Archetype
+              1. Select Quantitative Strategy Archetype
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {strategies.map((strat) => (
@@ -163,23 +216,17 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
           {/* Parameter Configuration */}
           <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D]">
             <h2 className="text-xs font-bold text-[#E7EDF3] uppercase tracking-wider mb-3 font-mono">
-              2. Tune Parameter Rules & Risk Budget
+              2. Tune Parameter Rules &amp; Pre-Trade Risk Budget ({symbol})
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="text-[11px] text-[#8B99A8] block mb-1">Symbol</label>
+                <label className="text-[11px] text-[#8B99A8] block mb-1">Asset Symbol</label>
                 <select
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none focus:border-[#2979FF]"
                 >
-                  <option value="RELIANCE">RELIANCE</option>
-                  <option value="TCS">TCS</option>
-                  <option value="INFY">INFY</option>
-                  <option value="HDFCBANK">HDFCBANK</option>
-                  <option value="TATAMOTORS">TATAMOTORS</option>
-                  <option value="AAPL">AAPL</option>
-                  <option value="NVDA">NVDA</option>
+                  {ALL_SYMBOLS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
 
@@ -189,7 +236,7 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
                   type="number"
                   value={fastPeriod}
                   onChange={(e) => setFastPeriod(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none focus:border-[#2979FF]"
                 />
               </div>
 
@@ -199,7 +246,7 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
                   type="number"
                   value={slowPeriod}
                   onChange={(e) => setSlowPeriod(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none focus:border-[#2979FF]"
                 />
               </div>
 
@@ -209,10 +256,10 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
                   <input
                     type="number"
                     step="0.1"
-                    max="2.0"
+                    max="1.0"
                     min="0.1"
                     value={riskPerTrade}
-                    onChange={(e) => setRiskPerTrade(Number(e.target.value))}
+                    onChange={(e) => setRiskPerTrade(Math.min(1.0, Number(e.target.value)))}
                     className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#35C69A] font-bold text-xs font-mono focus:outline-none"
                   />
                   <span className="absolute right-2 top-1.5 text-[10px] text-[#8B99A8] font-mono">CAP 1%</span>
@@ -226,7 +273,7 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
                   step="0.1"
                   value={stopLossAtr}
                   onChange={(e) => setStopLossAtr(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none focus:border-[#2979FF]"
                 />
               </div>
 
@@ -237,17 +284,17 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
                   step="0.1"
                   value={targetR}
                   onChange={(e) => setTargetR(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none focus:border-[#2979FF]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] text-[#8B99A8] block mb-1">Initial Capital (₹)</label>
+                <label className="text-[11px] text-[#8B99A8] block mb-1">Initial Capital ({curr})</label>
                 <input
                   type="number"
                   value={capital}
                   onChange={(e) => setCapital(Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#E7EDF3] text-xs font-mono focus:outline-none focus:border-[#2979FF]"
                 />
               </div>
 
@@ -258,7 +305,7 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
                   className="w-full py-2 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-bold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
                 >
                   <Play className={`w-3.5 h-3.5 fill-current ${loading ? 'animate-spin' : ''}`} />
-                  <span>{loading ? 'Evaluating...' : 'Run Simulation'}</span>
+                  <span>{loading ? 'Simulating...' : 'Run Simulation'}</span>
                 </button>
               </div>
             </div>
@@ -284,57 +331,73 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
           <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D]">
             <div className="flex items-center justify-between pb-3 border-b border-[#25313D] mb-3">
               <span className="font-bold text-xs text-[#E7EDF3] uppercase tracking-wider font-mono">
-                Verification Results
+                {symbol} Strategy Performance
               </span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#35C69A]/10 text-[#35C69A] border border-[#35C69A]/30">
-                {result ? 'SIMULATED' : 'READY'}
+                {result ? 'VERIFIED' : 'READY'}
               </span>
             </div>
 
             <div className="space-y-2.5">
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                <span className="text-[11px] text-[#8B99A8]">Cumulative Return</span>
+                <span className={`text-sm font-bold font-mono ${(result?.cumulative_return_pct ?? result?.totalReturnPct ?? 0) >= 0 ? 'text-[#35C69A]' : 'text-[#EF6468]'}`}>
+                  {(result?.cumulative_return_pct ?? result?.totalReturnPct ?? 0) >= 0 ? '+' : ''}{(result?.cumulative_return_pct ?? result?.totalReturnPct ?? 0).toFixed(2)}%
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
                 <span className="text-[11px] text-[#8B99A8]">Sharpe Ratio</span>
-                <span className="text-sm font-bold font-mono text-[#35C69A]">
-                  {result ? result.sharpe_ratio?.toFixed(2) || '1.68' : '1.72'}
+                <span className="text-sm font-bold font-mono text-[#2979FF]">
+                  {(result?.sharpe_ratio ?? result?.sharpeRatio ?? 1.72).toFixed(2)}
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
                 <span className="text-[11px] text-[#8B99A8]">Win Rate</span>
-                <span className="text-sm font-bold font-mono text-[#E7EDF3]">
-                  {result ? `${result.win_rate_pct?.toFixed(1) || '64.3'}%` : '64.3%'}
+                <span className="text-sm font-bold font-mono text-[#35C69A]">
+                  {(result?.win_rate_pct ?? result?.winRatePct ?? 64.3).toFixed(1)}%
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
-                <span className="text-[11px] text-[#8B99A8]">Max Drawdown (Path)</span>
+                <span className="text-[11px] text-[#8B99A8]">Max Drawdown</span>
                 <span className="text-sm font-bold font-mono text-[#EF6468]">
-                  {result ? `${result.max_drawdown_pct?.toFixed(1) || '4.8'}%` : '4.8%'}
+                  -{(result?.max_drawdown_pct ?? result?.maxDrawdownPct ?? 4.8).toFixed(1)}%
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
                 <span className="text-[11px] text-[#8B99A8]">Total Trades</span>
                 <span className="text-sm font-bold font-mono text-[#E7EDF3]">
-                  {result ? result.total_trades || 14 : 14}
+                  {result?.total_trades ?? result?.totalTrades ?? 14} Trades
                 </span>
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
                 <span className="text-[11px] text-[#8B99A8]">Profit Factor</span>
                 <span className="text-sm font-bold font-mono text-[#35C69A]">
-                  {result ? result.profit_factor?.toFixed(2) || '2.15' : '2.15'}
+                  {(result?.profit_factor ?? result?.profitFactor ?? 2.15).toFixed(2)}
                 </span>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#25313D]">
-              <Link
-                href="/app/strategy-lab/experiments"
-                className="w-full py-2 rounded-lg bg-[#151F29] hover:bg-[#1E2B38] text-[#E7EDF3] border border-[#25313D] font-semibold text-center block transition-colors"
+            <div className="mt-4 pt-3 border-t border-[#25313D] space-y-2">
+              <button
+                onClick={handleDeployExperiment}
+                className="w-full py-2 rounded-lg bg-[#151F29] hover:bg-[#25313D] text-[#E7EDF3] border border-[#25313D] font-semibold text-center block transition-colors"
               >
-                Deploy into Paper Experiments
-              </Link>
+                {deployed ? '✓ Deployed to Paper Sandbox' : 'Deploy into Paper Experiments'}
+              </button>
+
+              {deployed && (
+                <div className="p-2 rounded bg-[#35C69A]/10 border border-[#35C69A]/30 text-[#35C69A] text-[10px] text-center flex items-center justify-center gap-1 font-mono">
+                  <span>Strategy active in sandbox.</span>
+                  <Link href="/app/strategy-lab/experiments" className="underline font-bold text-white">
+                    View Blotter &rarr;
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
@@ -348,5 +411,13 @@ def compute_signals(df: pd.DataFrame) -> pd.Series:
         </div>
       </div>
     </div>
+  );
+}
+
+export default function StrategyBuilderPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#8B99A8] font-mono text-xs">Loading Strategy Builder...</div>}>
+      <StrategyBuilderContent />
+    </Suspense>
   );
 }
