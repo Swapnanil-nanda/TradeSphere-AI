@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
       const [candleData, coach] = await Promise.all([
         apiClient.getCandles(sym, timeframe),
-        apiClient.getCoachFeedback()
+        apiClient.getCoachFeedback(sym)
       ]);
       setCandles(candleData);
       setCoachAdvice(coach);
@@ -80,8 +80,12 @@ export default function DashboardPage() {
   const handleSelectSymbol = async (sym: string) => {
     setSelectedSymbol(sym);
     try {
-      const c = await apiClient.getCandles(sym, timeframe);
+      const [c, coach] = await Promise.all([
+        apiClient.getCandles(sym, timeframe),
+        apiClient.getCoachFeedback(sym)
+      ]);
       setCandles(c);
+      setCoachAdvice(coach);
     } catch (e) {
       console.error(e);
     }
@@ -284,7 +288,7 @@ export default function DashboardPage() {
             </div>
 
             <QuoteTable
-              tickers={tickers.slice(0, 7)}
+              tickers={tickers.slice(0, 15)}
               onSelectSymbol={handleSelectSymbol}
               flashes={flashes}
             />

@@ -167,18 +167,38 @@ function ChartsContent() {
                 </div>
               </div>
 
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                SIMULATED GBM
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
+                metadata?.dataType === 'LIVE'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+              }`}>
+                {metadata?.dataType === 'LIVE' ? 'LIVE DATA (NSE/US)' : 'SIMULATED'}
               </span>
             </div>
           )}
         </div>
 
-        {/* Action Button: Quick Paper Trade */}
-        <div className="flex items-center gap-3 self-end lg:self-center">
+        {/* Quick Instrument Switching Pills & Trade CTA */}
+        <div className="flex flex-wrap items-center gap-2 self-end lg:self-center">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-sm">
+            {['RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'TATAMOTORS', 'NIFTY50', 'AAPL', 'NVDA', 'TSLA'].map(s => (
+              <button
+                key={s}
+                onClick={() => selectInstrument(s)}
+                className={`px-2 py-1 rounded text-[10px] font-bold font-mono transition-colors ${
+                  symbol === s
+                    ? 'bg-[#2979FF] text-white'
+                    : 'bg-[#151F29] text-[#8B99A8] hover:text-white border border-[#25313D]'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
           <Link
             href={`/app/paper-trading?symbol=${symbol}`}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/30"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/30"
           >
             <span>Trade {symbol}</span>
             <ArrowRight className="w-3.5 h-3.5" />

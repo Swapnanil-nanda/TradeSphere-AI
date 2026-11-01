@@ -1,55 +1,111 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { AlignVerticalSpaceAround, ShieldCheck, Activity } from 'lucide-react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { AlignVerticalSpaceAround, ShieldCheck, Activity, RefreshCw } from 'lucide-react';
 import OrderBookDOM from '../../../../components/OrderBookDOM';
 import { apiClient, Ticker } from '../../../../lib/api-client';
 
-export default function MarketDepthPage() {
-  const [symbol, setSymbol] = useState('RELIANCE');
-  const [ticker, setTicker] = useState<any>(null);
-  const symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'TATAMOTORS', 'AAPL', 'NVDA'];
+const ALL_SYMBOLS = [
+  'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN',
+  'TATAMOTORS', 'BHARTIARTL', 'ITC', 'LICI', 'WIPRO',
+  'NIFTY50', 'BANKNIFTY',
+  'AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'AMZN'
+];
+
+function DepthContent() {
+  const searchParams = useSearchParams();
+  const initialSymbol = searchParams.get('symbol') || 'RELIANCE';
+
+  const [symbol, setSymbol] = useState(initialSymbol);
+  const [ticker, setTicker] = useState<Ticker | null>(null);
 
   useEffect(() => {
-    apiClient.getTickers().then(list => {
-      const found = list.find(t => t.symbol === symbol) || list[0];
-      if (found) setTicker(found);
-    });
+    const sym = searchParams.get('symbol');
+    if (sym && sym !== symbol) {
+      setSymbol(sym);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTicker = async () => {
+      try {
+        const list = await apiClient.getTickers();
+        if (isMounted && Array.isArray(list) && list.length > 0) {
+          const found = list.find(t => t.symbol === symbol) || list[0];
+          if (found) setTicker(found);
+        }
+      } catch {}
+    };
+
+    fetchTicker();
+    // Live tick refresh every 2.5 seconds for active order book ladder simulation
+    const interval = setInterval(fetchTicker, 2500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [symbol]);
 
   return (
-    <div className="space-y-4 select-none pb-8 text-xs">
+    <div className="space-y-4 select-none pb-8 text-xs text-[#F0F3F6]">
       {/* Header */}
-      <div className="bg-white dark:bg-[#0c121f] p-4 rounded-xl border border-slate-200 dark:border-[#1b253b] shadow-2xs">
+      <div className="bg-[#050505] p-4 rounded-xl border border-[#141414] shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
-              <AlignVerticalSpaceAround className="w-4 h-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-lg bg-[#2979FF]/10 border border-[#2979FF]/30 text-[#2979FF] flex items-center justify-center font-bold">
+              <AlignVerticalSpaceAround className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-slate-900 dark:text-white">Level 2 Depth of Market (DOM Ladder)</h1>
-              <p className="text-slate-500 dark:text-slate-400 text-[11px]">
-                20-depth institutional order book ladder with realistic geometric Brownian distribution.
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-white font-sans">Level 2 Depth of Market (DOM Ladder)</h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#00c805]/10 text-[#00c805] border border-[#00c805]/30 font-mono">
+                  20-LEVEL TICK STREAM
+                </span>
+              </div>
+              <p className="text-[#808a9d] text-[11px]">
+                High-frequency order book ladder with live bid/ask queue geometry and realistic liquidity distribution.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {ticker && (
+              <div className="flex items-center gap-2 bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-1.5 font-mono">
+                <span className="text-white font-bold">{ticker.symbol}</span>
+                <span className="text-slate-400 tabular-nums">
+                  {ticker.currency === 'USD' ? '$' : '₹'}{Number(ticker.ltp ?? 0).toFixed(2)}
+                </span>
+                <span className={`text-[10px] font-bold ${Number(ticker.changePct ?? 0) >= 0 ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>
+                  {Number(ticker.changePct ?? 0) >= 0 ? '+' : ''}{Number(ticker.changePct ?? 0).toFixed(2)}%
+                </span>
+              </div>
+            )}
+
             <select
               value={symbol}
               onChange={e => setSymbol(e.target.value)}
-              className="bg-slate-50 dark:bg-[#070b14] border border-slate-200 dark:border-[#1b253b] rounded-lg px-3 py-1.5 font-mono font-bold text-slate-800 dark:text-slate-200"
+              className="bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-1.5 font-mono font-bold text-white focus:outline-none focus:border-[#2979FF]"
             >
-              {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+              {ALL_SYMBOLS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
         </div>
       </div>
 
       {/* DOM Ladder View */}
-      <div className="max-w-xl mx-auto bg-white dark:bg-[#0c121f] rounded-xl border border-slate-200 dark:border-[#1b253b] shadow-2xs h-[540px] overflow-hidden">
+      <div className="max-w-xl mx-auto bg-[#050505] rounded-xl border border-[#141414] shadow-md h-[560px] overflow-hidden">
         <OrderBookDOM ticker={ticker} />
       </div>
     </div>
+  );
+}
+
+export default function MarketDepthPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#808a9d] font-mono text-xs">Loading Order Book DOM...</div>}>
+      <DepthContent />
+    </Suspense>
   );
 }

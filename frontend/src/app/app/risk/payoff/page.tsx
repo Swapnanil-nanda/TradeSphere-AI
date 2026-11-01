@@ -1,11 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   BarChart3, Layers, Percent, ShieldCheck, Activity, 
   ArrowUpRight, Sliders, RefreshCw, CheckCircle2
 } from 'lucide-react';
+import { apiClient } from '../../../../lib/api-client';
+
+const ALL_SYMBOLS = [
+  'NIFTY50', 'BANKNIFTY', 'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'TATAMOTORS',
+  'AAPL', 'NVDA', 'TSLA', 'MSFT', 'SPY', 'QQQ'
+];
 
 type OptionStrategy = 
   | 'LONG_CALL' 
@@ -16,14 +22,37 @@ type OptionStrategy =
   | 'IRON_CONDOR';
 
 export default function OptionsPayoffPage() {
+  const [symbol, setSymbol] = useState('RELIANCE');
   const [strategy, setStrategy] = useState<OptionStrategy>('BULL_CALL_SPREAD');
-  const [spotPrice, setSpotPrice] = useState(3000);
-  const [strike1, setStrike1] = useState(2950);
-  const [strike2, setStrike2] = useState(3050);
-  const [netDebit, setNetDebit] = useState(35);
-  const [lotSize, setLotSize] = useState(250); // e.g. NSE Reliance lot
+  const [spotPrice, setSpotPrice] = useState(1165);
+  const [strike1, setStrike1] = useState(1150);
+  const [strike2, setStrike2] = useState(1180);
+  const [netDebit, setNetDebit] = useState(15);
+  const [lotSize, setLotSize] = useState(250);
   const [ivPct, setIvPct] = useState(21);
   const [dte, setDte] = useState(14);
+
+  // Auto-adjust spot & strikes to actual live price of chosen symbol
+  useEffect(() => {
+    apiClient.getTickers().then(list => {
+      const found = list.find(t => t.symbol === symbol);
+      if (found && found.ltp) {
+        const p = Math.round(Number(found.ltp));
+        setSpotPrice(p);
+        const step = p > 10000 ? 100 : p > 1000 ? 50 : 5;
+        const s1 = Math.round((p * 0.985) / step) * step;
+        const s2 = Math.round((p * 1.015) / step) * step;
+        setStrike1(s1);
+        setStrike2(s2);
+        setNetDebit(Math.max(1, Math.round(p * 0.012)));
+
+        if (symbol === 'NIFTY50') setLotSize(50);
+        else if (symbol === 'BANKNIFTY') setLotSize(15);
+        else if (found.market === 'US') setLotSize(100);
+        else setLotSize(250);
+      }
+    }).catch(() => {});
+  }, [symbol]);
 
   // Calculate payoff at a given price at expiration
   const calcPayoff = (price: number): number => {
@@ -121,11 +150,19 @@ export default function OptionsPayoffPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <select
+            value={symbol}
+            onChange={e => setSymbol(e.target.value)}
+            className="bg-[#080808] border border-[#25313D] rounded-lg px-3 py-1.5 font-mono font-bold text-white focus:outline-none focus:border-[#2979FF]"
+          >
+            {ALL_SYMBOLS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+
           <Link
             href="/app/risk/options"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#25313D] bg-[#151F29] hover:bg-[#1E2B38] text-[#E7EDF3] transition-colors"
           >
-            <span>Options Chain Ladder</span>
+            <span>Options Chain</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </Link>
         </div>
