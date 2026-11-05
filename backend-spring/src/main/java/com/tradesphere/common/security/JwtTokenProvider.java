@@ -30,17 +30,17 @@ public class JwtTokenProvider {
             @Value("${jwt.expiration-ms:86400000}") long expirationMs,
             @Value("${jwt.allow-ephemeral-fallback:true}") boolean allowEphemeralFallback,
             org.springframework.core.env.Environment env) {
-        boolean isProduction = env != null && env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod"));
+        boolean isProduction = env != null && env.acceptsProfiles(org.springframework.core.env.Profiles.of("prod", "production", "staging"));
 
         SecretKey resolvedKey;
         if (secret != null && !secret.isBlank() && !INSECURE_DEFAULT_SECRET.equals(secret.trim())) {
             resolvedKey = Keys.hmacShaKeyFor(secret.trim().getBytes(StandardCharsets.UTF_8));
         } else if (isProduction) {
             if (!allowEphemeralFallback) {
-                throw new IllegalStateException("CRITICAL SECURITY CONFIGURATION FAILURE: JWT_SECRET environment variable is missing or matches the insecure default key in production profile.");
+                throw new IllegalStateException("CRITICAL SECURITY CONFIGURATION FAILURE: JWT_SECRET environment variable is missing or matches the insecure default key in production/staging profile.");
             }
             log.warn("================================================================================");
-            log.warn("⚠️  SECURITY NOTICE: JWT_SECRET environment variable was not supplied in prod.");
+            log.warn("⚠️  SECURITY NOTICE: JWT_SECRET environment variable was not supplied in prod/staging.");
             log.warn("👉 An ephemeral, cryptographically secure 256-bit signing key was generated.");
             log.warn("👉 User sessions will reset on container restart until JWT_SECRET is set.");
             log.warn("👉 In Render/Railway/Fly dashboard, set environment variable JWT_SECRET=<64-char-hex>.");

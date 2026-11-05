@@ -92,6 +92,11 @@ export default function OrderForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!apiClient.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: `Placing ${side} order for ${symbol}` } }));
+      return;
+    }
+
     if (quantity <= 0) {
       setFeedback({ type: 'error', message: 'Quantity must be at least 1 unit to place an order.' });
       return;

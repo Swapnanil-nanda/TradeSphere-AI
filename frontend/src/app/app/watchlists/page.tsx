@@ -261,6 +261,10 @@ export default function WatchlistsPage() {
   // Create Watchlist
   const handleCreateWatchlist = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!apiClient.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: 'Create Custom Watchlist' } }));
+      return;
+    }
     if (!newListName.trim()) return;
     try {
       const created = await apiClient.createWatchlist(newListName.trim());
@@ -276,6 +280,10 @@ export default function WatchlistsPage() {
   // Rename Watchlist
   const handleRenameWatchlist = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!apiClient.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: 'Rename Watchlist' } }));
+      return;
+    }
     if (!renameInput.trim() || !activeWatchlist) return;
     try {
       const updated = await apiClient.renameWatchlist(activeWatchlist.id, renameInput.trim());
@@ -288,6 +296,10 @@ export default function WatchlistsPage() {
 
   // Duplicate Watchlist
   const handleDuplicateWatchlist = async () => {
+    if (!apiClient.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: 'Duplicate Watchlist' } }));
+      return;
+    }
     if (!activeWatchlist) return;
     try {
       const dup = await apiClient.duplicateWatchlist(activeWatchlist.id);
@@ -300,6 +312,10 @@ export default function WatchlistsPage() {
 
   // Delete Watchlist
   const handleDeleteWatchlist = async (id: string | number) => {
+    if (!apiClient.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: 'Delete Watchlist' } }));
+      return;
+    }
     if (watchlists.length <= 1) {
       alert('You must keep at least one primary watchlist.');
       return;
@@ -318,6 +334,10 @@ export default function WatchlistsPage() {
 
   // Add Symbol
   const handleAddSymbol = async (sym: string) => {
+    if (!apiClient.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: 'Add Symbol to Watchlist' } }));
+      return;
+    }
     if (!activeWatchlist) return;
     try {
       const updated = await apiClient.addWatchlistItem(activeWatchlist.id, sym);
@@ -330,6 +350,10 @@ export default function WatchlistsPage() {
 
   // Remove Symbol
   const handleRemoveSymbol = async (sym: string) => {
+    if (!apiClient.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: 'Remove Symbol from Watchlist' } }));
+      return;
+    }
     if (!activeWatchlist) return;
     try {
       const updated = await apiClient.removeWatchlistItem(activeWatchlist.id, sym);

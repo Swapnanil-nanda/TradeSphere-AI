@@ -71,7 +71,8 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.GET, "/api/quotes/**", "/api/quotes").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/api/candles/**", "/api/candles").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/api/dom/**", "/api/dom").permitAll();
-                    auth.requestMatchers(HttpMethod.GET, "/api/screener/**").permitAll();
+                    auth.requestMatchers("/api/screener/saved/**", "/api/screener/saved").authenticated();
+                    auth.requestMatchers(HttpMethod.GET, "/api/screener/**", "/api/screener").permitAll();
                     auth.requestMatchers(HttpMethod.POST, "/api/orders/size", "/api/risk/size").permitAll();
 
                     if (swaggerEnabled) {

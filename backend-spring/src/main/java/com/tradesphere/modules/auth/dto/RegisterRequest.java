@@ -17,7 +17,7 @@ public class RegisterRequest {
     @NotBlank(message = "Full name is required")
     private String fullName;
 
-    private String tier = "ACTIVE"; // BASIC, ACTIVE, PRO
+    private String tier = "BASIC"; // BASIC, ACTIVE, PRO
 
     public RegisterRequest() {}
 

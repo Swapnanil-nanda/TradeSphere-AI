@@ -190,14 +190,53 @@ export interface ScreenerStock {
   name: string;
   market: 'IN' | 'US';
   sector: string;
+  exchange?: string;
+  currency?: string;
   price: number;
   changePct: number;
   volume: number;
-  peRatio: number;
-  marketCapCr: number;
+  peRatio: number | null;
+  marketCapCr?: number | null;
   rsi14: number;
   trend: 'BULLISH' | 'BEARISH' | 'CONSOLIDATION';
   setup: string;
+  provenance?: string;
+  lastUpdated?: string;
+}
+
+export interface SavedScreen {
+  id: number;
+  userId?: number;
+  name: string;
+  market?: string;
+  sector?: string;
+  trend?: string;
+  rsiFilter?: string;
+  minPe?: number;
+  maxPe?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minMarketCapCr?: number;
+  maxMarketCapCr?: number;
+  minVolume?: number;
+  search?: string;
+  sortBy?: string;
+  sortDirection?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ScreenerPageResponse {
+  items: ScreenerStock[];
+  totalResults: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  dataSource: string;
+  dataProvenance: string;
+  dataStatus: string;
+  lastUpdated: string;
+  isStale: boolean;
 }
 
 export interface CompanyResearch {
@@ -262,6 +301,60 @@ class TradeSphereApiClient {
       }
     }
     return headers;
+  }
+
+  isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
+    const token = localStorage.getItem('tradesphere_token');
+    if (!token || token === 'mock-jwt-token') return false;
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          this.logout();
+          return false;
+        }
+        return true;
+      }
+    } catch {
+      return false;
+    }
+    return false;
+  }
+
+  logout(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('tradesphere_token');
+      localStorage.removeItem('tradesphere_active_email');
+      localStorage.removeItem('tradesphere_user');
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_change', { detail: null }));
+      window.dispatchEvent(new CustomEvent('tradesphere_tier_change', { detail: null }));
+    }
+  }
+
+  async googleLogin(payload: { email: string; fullName: string; idToken?: string }): Promise<any> {
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('tradesphere_token', data.token);
+        }
+        this.switchUserContext(data.email, data.fullName);
+        return data;
+      }
+    } catch (e) {
+      console.warn('Backend Google OAuth unavailable, activating simulated Google session:', e);
+    }
+    if (typeof window !== 'undefined') {
+      this.switchUserContext(payload.email, payload.fullName);
+    }
+    return { token: 'mock-jwt-token', user: { email: payload.email, name: payload.fullName } };
   }
 
   switchUserContext(email: string, name?: string): UserProfile {
@@ -1014,6 +1107,161 @@ class TradeSphereApiClient {
     };
   }
 
+  async getScreenerPage(filters?: any): Promise<ScreenerPageResponse> {
+    try {
+      const params = new URLSearchParams();
+      if (filters) {
+        if (filters.market && filters.market !== 'ALL') params.append('market', filters.market);
+        if (filters.sector && filters.sector !== 'ALL') params.append('sector', filters.sector);
+        if (filters.trend && filters.trend !== 'ALL') params.append('trend', filters.trend);
+        if (filters.minPrice !== undefined && filters.minPrice !== '') params.append('minPrice', String(filters.minPrice));
+        if (filters.maxPrice !== undefined && filters.maxPrice !== '') params.append('maxPrice', String(filters.maxPrice));
+        if (filters.minMarketCapCr !== undefined && filters.minMarketCapCr !== '') params.append('minMarketCapCr', String(filters.minMarketCapCr));
+        if (filters.maxMarketCapCr !== undefined && filters.maxMarketCapCr !== '') params.append('maxMarketCapCr', String(filters.maxMarketCapCr));
+        if (filters.minVolume !== undefined && filters.minVolume !== '') params.append('minVolume', String(filters.minVolume));
+        if (filters.minPe !== undefined && filters.minPe !== '') params.append('minPe', String(filters.minPe));
+        if (filters.maxPe !== undefined && filters.maxPe !== '') params.append('maxPe', String(filters.maxPe));
+        if (filters.minRsi !== undefined && filters.minRsi !== '') params.append('minRsi', String(filters.minRsi));
+        if (filters.maxRsi !== undefined && filters.maxRsi !== '') params.append('maxRsi', String(filters.maxRsi));
+        if (filters.search && filters.search.trim() !== '') params.append('search', filters.search.trim());
+        if (filters.sortBy) params.append('sortBy', filters.sortBy);
+        if (filters.sortDirection) params.append('sortDirection', filters.sortDirection);
+        if (filters.page !== undefined) params.append('page', String(filters.page));
+        if (filters.pageSize !== undefined) params.append('pageSize', String(filters.pageSize));
+      }
+
+      const queryString = params.toString();
+      const url = `${BACKEND_BASE}/api/screener${queryString ? `?${queryString}` : ''}`;
+      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.items)) {
+          return {
+            items: data.items.map((it: any) => ({
+              symbol: it.symbol,
+              name: it.name,
+              market: it.market,
+              sector: it.sector,
+              exchange: it.exchange,
+              currency: it.currency,
+              price: Number(it.price ?? 0),
+              changePct: Number(it.changePct ?? 0),
+              volume: Number(it.volume ?? 0),
+              peRatio: it.peRatio !== null && it.peRatio !== undefined ? Number(it.peRatio) : null,
+              marketCapCr: it.marketCapCr !== null && it.marketCapCr !== undefined ? Number(it.marketCapCr) : null,
+              rsi14: Number(it.rsi14 ?? 50),
+              trend: it.trend,
+              setup: it.setup,
+              provenance: it.provenance || 'SIMULATED',
+              lastUpdated: it.lastUpdated
+            })),
+            totalResults: data.totalResults ?? data.items.length,
+            page: data.page ?? 0,
+            pageSize: data.pageSize ?? 20,
+            totalPages: data.totalPages ?? 1,
+            dataSource: data.dataSource || 'GEOMETRIC_BROWNIAN_MOTION_GBM',
+            dataProvenance: data.dataProvenance || 'SIMULATED',
+            dataStatus: data.dataStatus || 'ACTIVE_SIMULATION',
+            lastUpdated: data.lastUpdated || new Date().toISOString(),
+            isStale: Boolean(data.isStale)
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Backend screener API unavailable, using client-side simulation:', err);
+    }
+
+    // Client-side fallback
+    const fallbackList = await this.getScreenerStocks(filters);
+    return {
+      items: fallbackList,
+      totalResults: fallbackList.length,
+      page: filters?.page || 0,
+      pageSize: filters?.pageSize || 20,
+      totalPages: 1,
+      dataSource: 'GEOMETRIC_BROWNIAN_MOTION_GBM',
+      dataProvenance: 'SIMULATED',
+      dataStatus: 'ACTIVE_SIMULATION',
+      lastUpdated: new Date().toISOString(),
+      isStale: false
+    };
+  }
+
+  getScreenerExportUrl(filters?: any): string {
+    const params = new URLSearchParams();
+    if (filters) {
+      if (filters.market && filters.market !== 'ALL') params.append('market', filters.market);
+      if (filters.sector && filters.sector !== 'ALL') params.append('sector', filters.sector);
+      if (filters.trend && filters.trend !== 'ALL') params.append('trend', filters.trend);
+      if (filters.minPrice !== undefined && filters.minPrice !== '') params.append('minPrice', String(filters.minPrice));
+      if (filters.maxPrice !== undefined && filters.maxPrice !== '') params.append('maxPrice', String(filters.maxPrice));
+      if (filters.minMarketCapCr !== undefined && filters.minMarketCapCr !== '') params.append('minMarketCapCr', String(filters.minMarketCapCr));
+      if (filters.maxMarketCapCr !== undefined && filters.maxMarketCapCr !== '') params.append('maxMarketCapCr', String(filters.maxMarketCapCr));
+      if (filters.minVolume !== undefined && filters.minVolume !== '') params.append('minVolume', String(filters.minVolume));
+      if (filters.minPe !== undefined && filters.minPe !== '') params.append('minPe', String(filters.minPe));
+      if (filters.maxPe !== undefined && filters.maxPe !== '') params.append('maxPe', String(filters.maxPe));
+      if (filters.minRsi !== undefined && filters.minRsi !== '') params.append('minRsi', String(filters.minRsi));
+      if (filters.maxRsi !== undefined && filters.maxRsi !== '') params.append('maxRsi', String(filters.maxRsi));
+      if (filters.search && filters.search.trim() !== '') params.append('search', filters.search.trim());
+      if (filters.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters.sortDirection) params.append('sortDirection', filters.sortDirection);
+    }
+    const queryString = params.toString();
+    return `${BACKEND_BASE}/api/screener/export${queryString ? `?${queryString}` : ''}`;
+  }
+
+  async getSavedScreens(): Promise<SavedScreen[]> {
+    if (!this.isAuthenticated()) {
+      return [];
+    }
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/screener/saved`, {
+        headers: this.getAuthHeaders(),
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn('Failed to load saved screens from backend:', err);
+    }
+    return [];
+  }
+
+  async createSavedScreen(data: Partial<SavedScreen>): Promise<SavedScreen | null> {
+    if (!this.isAuthenticated()) {
+      window.dispatchEvent(new CustomEvent('tradesphere_auth_required', { detail: { action: 'Save Screener Preset' } }));
+      return null;
+    }
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/screener/saved`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.error('Failed to create saved screen:', err);
+    }
+    return null;
+  }
+
+  async deleteSavedScreen(id: number | string): Promise<boolean> {
+    if (!this.isAuthenticated()) return false;
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/screener/saved/${id}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('Failed to delete saved screen:', err);
+      return false;
+    }
+  }
+
   async getScreenerStocks(filters?: any): Promise<ScreenerStock[]> {
     let liveTickers: Ticker[] = [];
     try {
@@ -1022,42 +1270,42 @@ class TradeSphereApiClient {
       liveTickers = this.fallbackTickers;
     }
 
-    const sectorMap: Record<string, { sector: string; peRatio: number; marketCapCr: number }> = {
-      'RELIANCE': { sector: 'Energy & Retail', peRatio: 26.4, marketCapCr: 2015000 },
-      'TCS': { sector: 'IT Services', peRatio: 31.8, marketCapCr: 1495000 },
-      'INFY': { sector: 'IT Services', peRatio: 28.1, marketCapCr: 785000 },
-      'HDFCBANK': { sector: 'Banking & Financials', peRatio: 19.4, marketCapCr: 1328000 },
-      'ICICIBANK': { sector: 'Banking & Financials', peRatio: 18.2, marketCapCr: 885000 },
-      'SBIN': { sector: 'Banking & Financials', peRatio: 11.4, marketCapCr: 735000 },
+    const sectorMap: Record<string, { sector: string; peRatio: number | null; marketCapCr: number }> = {
+      'RELIANCE': { sector: 'Energy & Retail', peRatio: 26.4, marketCapCr: 1980000 },
+      'TCS': { sector: 'IT Services', peRatio: 31.8, marketCapCr: 1450000 },
+      'INFY': { sector: 'IT Services', peRatio: 28.1, marketCapCr: 760000 },
+      'HDFCBANK': { sector: 'Banking & Financials', peRatio: 19.4, marketCapCr: 1320000 },
+      'ICICIBANK': { sector: 'Banking & Financials', peRatio: 18.5, marketCapCr: 860000 },
+      'SBIN': { sector: 'Banking & Financials', peRatio: 11.3, marketCapCr: 730000 },
       'BHARTIARTL': { sector: 'Telecommunications', peRatio: 42.5, marketCapCr: 960000 },
       'ITC': { sector: 'FMCG', peRatio: 27.8, marketCapCr: 595000 },
-      'TATAMOTORS': { sector: 'Automobile', peRatio: 16.2, marketCapCr: 362000 },
+      'TATAMOTORS': { sector: 'Automobile', peRatio: 16.2, marketCapCr: 340000 },
       'LICI': { sector: 'Insurance', peRatio: 14.5, marketCapCr: 610000 },
       'WIPRO': { sector: 'IT Services', peRatio: 23.4, marketCapCr: 285000 },
       'NIFTY50': { sector: 'Benchmark Index', peRatio: 22.8, marketCapCr: 18500000 },
       'SENSEX': { sector: 'Benchmark Index', peRatio: 23.1, marketCapCr: 16200000 },
       'BANKNIFTY': { sector: 'Banking Index', peRatio: 17.5, marketCapCr: 5400000 },
-      'AAPL': { sector: 'Consumer Technology', peRatio: 34.1, marketCapCr: 34500000 },
-      'MSFT': { sector: 'Cloud & Enterprise', peRatio: 35.8, marketCapCr: 32100000 },
-      'NVDA': { sector: 'Semiconductors', peRatio: 52.3, marketCapCr: 35200000 },
-      'TSLA': { sector: 'Automotive & Clean Energy', peRatio: 68.4, marketCapCr: 11200000 },
-      'GOOGL': { sector: 'Internet & AI', peRatio: 24.2, marketCapCr: 22800000 },
-      'AMZN': { sector: 'E-Commerce & Cloud', peRatio: 41.5, marketCapCr: 21500000 },
-      'SPY': { sector: 'Benchmark ETF', peRatio: 26.5, marketCapCr: 45000000 },
-      'QQQ': { sector: 'Tech Benchmark ETF', peRatio: 31.2, marketCapCr: 28000000 }
+      'AAPL': { sector: 'Technology', peRatio: 34.2, marketCapCr: 2900000 },
+      'MSFT': { sector: 'Technology', peRatio: 36.1, marketCapCr: 2650000 },
+      'NVDA': { sector: 'Semiconductor', peRatio: 48.5, marketCapCr: 2800000 },
+      'TSLA': { sector: 'Automobile', peRatio: 68.2, marketCapCr: 680000 },
+      'GOOGL': { sector: 'Technology', peRatio: 24.2, marketCapCr: 2280000 },
+      'AMZN': { sector: 'Technology', peRatio: 41.5, marketCapCr: 2150000 },
+      'SPY': { sector: 'Index ETF', peRatio: null, marketCapCr: 4500000 },
+      'QQQ': { sector: 'Index ETF', peRatio: null, marketCapCr: 2400000 }
     };
 
     return liveTickers.map(t => {
       const meta = sectorMap[t.symbol] || {
         sector: t.market === 'US' ? 'Technology' : 'Diversified',
-        peRatio: 25.0,
+        peRatio: 24.0,
         marketCapCr: 500000
       };
 
       const changePct = Number(t.changePct ?? 0);
       const rsi14 = Math.min(88, Math.max(18, Number((50 + (changePct * 4.8)).toFixed(1))));
       const trend: 'BULLISH' | 'BEARISH' | 'CONSOLIDATION' =
-        changePct > 0.4 ? 'BULLISH' : changePct < -0.4 ? 'BEARISH' : 'CONSOLIDATION';
+        changePct > 0.5 ? 'BULLISH' : changePct < -0.5 ? 'BEARISH' : 'CONSOLIDATION';
 
       const setup = changePct > 1.5
         ? 'High-Volume Breakout'
@@ -1072,7 +1320,7 @@ class TradeSphereApiClient {
       return {
         symbol: t.symbol,
         name: t.name || `${t.symbol} Equity`,
-        market: t.market || (t.currency === 'USD' ? 'US' : 'IN'),
+        market: (t.market || (t.currency === 'USD' ? 'US' : 'IN')) as 'IN' | 'US',
         sector: meta.sector,
         price: Number(t.ltp ?? 100),
         changePct,
@@ -1081,7 +1329,9 @@ class TradeSphereApiClient {
         marketCapCr: meta.marketCapCr,
         rsi14,
         trend,
-        setup
+        setup,
+        provenance: 'SIMULATED',
+        lastUpdated: new Date().toISOString()
       };
     });
   }
@@ -1649,6 +1899,21 @@ class TradeSphereApiClient {
       }
       localStorage.setItem('tradesphere_user', JSON.stringify(updated));
       window.dispatchEvent(new CustomEvent('tradesphere_tier_change', { detail: updated }));
+
+      // Persist to Spring Boot backend if authenticated
+      if (this.isAuthenticated()) {
+        fetch(`${BACKEND_BASE}/api/users/me`, {
+          method: 'PUT',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify({
+            fullName: updated.name,
+            tier: updated.tier ? updated.tier.toUpperCase() : undefined,
+            riskCapPct: updated.riskCapPct,
+            dailyDrawdownLimitPct: updated.circuitBreakerPct
+          })
+        }).catch(err => console.warn('Failed to sync profile preferences with backend:', err));
+      }
+
       return updated;
     }
     return {

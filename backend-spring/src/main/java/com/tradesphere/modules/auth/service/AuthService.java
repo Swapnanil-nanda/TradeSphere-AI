@@ -5,6 +5,7 @@ import com.tradesphere.common.security.JwtTokenProvider;
 import com.tradesphere.common.security.UserPrincipal;
 import com.tradesphere.modules.audit.service.AuditEventService;
 import com.tradesphere.modules.auth.dto.AuthResponse;
+import com.tradesphere.modules.auth.dto.GoogleLoginRequest;
 import com.tradesphere.modules.auth.dto.LoginRequest;
 import com.tradesphere.modules.auth.dto.RegisterRequest;
 import com.tradesphere.modules.auth.entity.Role;
@@ -68,6 +69,8 @@ public class AuthService {
         user.setFullName(req.getFullName().trim());
         if (req.getTier() != null && !req.getTier().isBlank()) {
             user.setTier(req.getTier().toUpperCase());
+        } else {
+            user.setTier("BASIC");
         }
 
         Role userRole = roleRepository.findByName("ROLE_USER")
@@ -106,6 +109,64 @@ public class AuthService {
                 savedUser.getEmail(),
                 savedUser.getFullName(),
                 savedUser.getTier(),
+                authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList())
+        );
+    }
+
+    @Transactional
+    public AuthResponse googleLogin(GoogleLoginRequest req) {
+        String email = req.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
+
+        if (user == null) {
+            user = new User();
+            user.setEmail(email);
+            user.setFullName(req.getFullName() != null && !req.getFullName().isBlank() ? req.getFullName().trim() : "Google Trader");
+            user.setPasswordHash(passwordEncoder.encode(java.util.UUID.randomUUID().toString()));
+            user.setTier("BASIC");
+
+            Role userRole = roleRepository.findByName("ROLE_USER")
+                    .orElseGet(() -> roleRepository.save(new Role("ROLE_USER")));
+            user.getRoles().add(userRole);
+
+            user = userRepository.save(user);
+
+            // Provision paper account & default watchlist
+            paperAccountService.provisionDefaultAccount(user);
+            watchlistService.provisionDefaultWatchlist(user);
+
+            auditEventService.logEvent(user.getId(), "USER_REGISTER",
+                    "User auto-registered via Google OAuth with default tier BASIC");
+        } else {
+            if (req.getFullName() != null && !req.getFullName().isBlank()) {
+                user.setFullName(req.getFullName().trim());
+                userRepository.save(user);
+            }
+            auditEventService.logEvent(user.getId(), "USER_LOGIN",
+                    "User authenticated successfully via Google OAuth");
+        }
+
+        var authorities = user.getRoles().stream()
+                .map(r -> (GrantedAuthority) r::getName)
+                .collect(Collectors.toList());
+
+        UserPrincipal principal = new UserPrincipal(
+                user.getId(),
+                user.getEmail(),
+                user.getPasswordHash(),
+                user.getFullName(),
+                user.getTier(),
+                authorities
+        );
+
+        String token = tokenProvider.generateToken(principal);
+
+        return new AuthResponse(
+                token,
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getTier(),
                 authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList())
         );
     }

@@ -1,6 +1,7 @@
 package com.tradesphere.modules.auth.controller;
 
 import com.tradesphere.modules.auth.dto.AuthResponse;
+import com.tradesphere.modules.auth.dto.GoogleLoginRequest;
 import com.tradesphere.modules.auth.dto.LoginRequest;
 import com.tradesphere.modules.auth.dto.RegisterRequest;
 import com.tradesphere.modules.auth.service.AuthService;
@@ -33,6 +34,13 @@ public class AuthController {
     @Operation(summary = "Authenticate user credentials and receive JWT bearer token")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/google")
+    @Operation(summary = "Authenticate or auto-provision user via Google Sign-In")
+    public ResponseEntity<AuthResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        AuthResponse response = authService.googleLogin(request);
         return ResponseEntity.ok(response);
     }
 }

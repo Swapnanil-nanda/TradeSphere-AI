@@ -24,7 +24,7 @@ public class User {
     private String fullName;
 
     @Column(nullable = false, length = 50)
-    private String tier = "ACTIVE"; // BASIC, ACTIVE, PRO
+    private String tier = "BASIC"; // BASIC, ACTIVE, PRO
 
     @Column(name = "risk_cap_pct", nullable = false, precision = 5, scale = 2)
     private BigDecimal riskCapPct = new BigDecimal("1.00");

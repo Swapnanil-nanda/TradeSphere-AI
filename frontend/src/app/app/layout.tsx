@@ -6,6 +6,8 @@ import AppHeader from '../../components/app/AppHeader';
 import TopMarketTicker from '../../components/app/TopMarketTicker';
 import SlideNavigationPanel from '../../components/app/SlideNavigationPanel';
 import OnboardingModal from '../../components/app/OnboardingModal';
+import DemoBanner from '../../components/app/DemoBanner';
+import AuthRequiredModal from '../../components/app/AuthRequiredModal';
 
 export default function AppLayout({
   children,
@@ -43,6 +45,12 @@ export default function AppLayout({
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#000000] text-[#F0F3F6] font-sans select-none">
       {/* Top Persistent Streaming Market Ticker */}
       <TopMarketTicker />
+
+      {/* Guest Demo Notice Banner */}
+      <DemoBanner />
+
+      {/* Auth Barrier Interceptor Modal */}
+      <AuthRequiredModal />
 
       {/* Trader Onboarding & Tier Allocation Survey (Opens on first login/entry) */}
       <OnboardingModal />
