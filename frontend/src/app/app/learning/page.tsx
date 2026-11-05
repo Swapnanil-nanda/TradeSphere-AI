@@ -1,330 +1,363 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GraduationCap, BookOpen, CheckCircle2, ShieldCheck, ArrowRight, Award, HelpCircle, Check, X } from 'lucide-react';
 import Link from 'next/link';
+import {
+  GraduationCap, BookOpen, CheckCircle2, ShieldCheck, ArrowRight,
+  Award, HelpCircle, Video, ExternalLink, PlayCircle, Sparkles,
+  Layers, BarChart3, TrendingUp, Compass, Cpu, Wallet
+} from 'lucide-react';
+import {
+  FREE_EXTERNAL_RESOURCES,
+  PLATFORM_FEATURE_GUIDES,
+  ExternalResource
+} from '../../../lib/academy-data';
 
-interface CourseModule {
+interface LearningTrack {
   id: string;
-  title: string;
-  tier: 'Basic' | 'Active' | 'Pro';
-  estimatedTime: string;
-  summary: string;
-  lessons: string[];
-  completed: boolean;
+  name: string;
+  tier: 'Tier 1 — Beginner' | 'Tier 2 — Active Trader' | 'Tier 3 — Pro Quant';
+  badgeColor: string;
+  description: string;
+  duration: string;
+  prerequisites: string;
+  modules: { title: string; desc: string; link: string }[];
 }
 
-export default function LearningPage() {
-  const [modules, setModules] = useState<CourseModule[]>([
-    {
-      id: 'mod-1',
-      title: 'Module 1: The 1% Account-Risk Rule & Capital Preservation',
-      tier: 'Basic',
-      estimatedTime: '15 mins',
-      summary: 'Learn how professional risk managers size positions so no single bad trade can damage long-term capital.',
-      lessons: [
-        'Why position size is calculated from the Stop-Loss, not available cash',
-        'Mathematical proof: 20 consecutive losses at 1% risk leaves 81.8% equity intact',
-        'Setting mandatory hard Stop-Loss orders prior to execution'
-      ],
-      completed: true
-    },
-    {
-      id: 'mod-2',
-      title: 'Module 2: Dynamic Trend Regimes with 20-EMA & VWAP',
-      tier: 'Active',
-      estimatedTime: '20 mins',
-      summary: 'Distinguish between trending and mean-reverting market conditions using exponential moving averages and session VWAP.',
-      lessons: [
-        'The 20-EMA slope as a trend direction filter',
-        'Equilibrium VWAP: identifying institutional value areas',
-        'Dynamic Support & Resistance zones in Indian and US equities'
-      ],
-      completed: true
-    },
-    {
-      id: 'mod-3',
-      title: 'Module 3: Bracket OCO (One-Cancels-the-Other) Orders',
-      tier: 'Active',
-      estimatedTime: '25 mins',
-      summary: 'Automate trade exits with synchronized Take-Profit and Stop-Loss orders.',
-      lessons: [
-        'How OCO child legs are managed by the execution state machine',
-        'Risk-to-Reward ratio optimization (targeting minimum 1.5R)',
-        'Trailing stop adjustments during strong breakout trends'
-      ],
-      completed: false
-    },
-    {
-      id: 'mod-4',
-      title: 'Module 4: Level 2 Depth of Market (DOM) Order Flow',
-      tier: 'Pro',
-      estimatedTime: '30 mins',
-      summary: 'Read the 20-depth order book ladder to detect institutional liquidity, bid/ask walls, and spoofing.',
-      lessons: [
-        'Interpreting bid-ask spreads and liquidity depth',
-        'Cumulative delta and micro-price movements',
-        'Execution queues and simulated slip models'
-      ],
-      completed: false
-    },
-    {
-      id: 'mod-5',
-      title: 'Module 5: Black-Scholes Options Greeks & Volatility Surface',
-      tier: 'Pro',
-      estimatedTime: '35 mins',
-      summary: 'Master Delta, Gamma, Theta, Vega, and Implied Volatility calculation via Newton-Raphson.',
-      lessons: [
-        'Delta hedging and Gamma curvature risk',
-        'Theta decay curves approaching weekly expiry',
-        'Vega exposure and IV skew across strike prices'
-      ],
-      completed: false
-    }
-  ]);
+export default function TraderAcademyOverviewPage() {
+  const [completedModules, setCompletedModules] = useState<Record<string, boolean>>({
+    'trk-1-m1': true,
+    'trk-1-m2': true
+  });
 
-  // Quiz state
-  const quizQuestions = [
+  const [activeCategory, setActiveCategory] = useState<string>('ALL');
+
+  const learningTracks: LearningTrack[] = [
     {
-      question: 'Under TradeSphere AI Rule A, what is the maximum single-trade risk allowed on a ₹10,00,000 account?',
-      options: ['₹50,000 (5.0%)', '₹10,000 (1.0%)', '₹1,00,000 (10.0%)', 'Whatever margin is available'],
-      correctIndex: 1,
-      explanation: 'TradeSphere AI strictly limits maximum single-trade loss to 1.0% of account equity (₹10,000 on a ₹10L starting balance).'
+      id: 'trk-1',
+      name: 'Tier 1: Beginner Foundations & Risk Capital',
+      tier: 'Tier 1 — Beginner',
+      badgeColor: 'text-[#35C69A] bg-[#35C69A]/15 border-[#35C69A]/30',
+      description: 'Master the non-negotiable fundamentals: order types, bid/ask spreads, market mechanics, and the mandatory 1.0% account risk rule.',
+      duration: '45 mins • 3 Modules',
+      prerequisites: 'Zero prior experience required',
+      modules: [
+        {
+          title: 'Module 1: Market Mechanics & Order Execution',
+          desc: 'Understand Bids, Asks, Spreads, Market orders vs Limit orders, and order queue priority.',
+          link: '/app/paper-trading'
+        },
+        {
+          title: 'Module 2: The 1.0% Rule & Capital Preservation',
+          desc: 'Why position size must be derived from Stop-Loss distance, not available cash. Sizing to zero on risk breach.',
+          link: '/app/risk'
+        },
+        {
+          title: 'Module 3: Systematic Trend Following with 20-EMA',
+          desc: 'Using the 20-period Exponential Moving Average as dynamic support, resistance, and equilibrium.',
+          link: '/app/charts'
+        }
+      ]
     },
     {
-      question: 'If your entry price is ₹3,000 and your Stop-Loss is ₹2,950, what is your risk per share?',
-      options: ['₹3,000', '₹100', '₹50', '₹2,950'],
-      correctIndex: 2,
-      explanation: 'Risk per share = Entry (₹3,000) - Stop-Loss (₹2,950) = ₹50.'
+      id: 'trk-2',
+      name: 'Tier 2: Active Trader & Market Microstructure',
+      tier: 'Tier 2 — Active Trader',
+      badgeColor: 'text-[#2979FF] bg-[#2979FF]/15 border-[#2979FF]/30',
+      description: 'Learn multi-timeframe confirmation, session VWAP equilibrium, Bracket OCO child execution, and Level 2 DOM order books.',
+      duration: '1 hr 15 mins • 3 Modules',
+      prerequisites: 'Completion of Beginner Foundations',
+      modules: [
+        {
+          title: 'Module 4: Bracket OCO State Machine Architecture',
+          desc: 'Automating synchronized Take-Profit and Stop-Loss orders; child-leg cancellation mechanics.',
+          link: '/app/paper-trading'
+        },
+        {
+          title: 'Module 5: 20-Level Depth of Market (DOM) Order Flow',
+          desc: 'Reading bid/ask queues 20 levels deep to spot institutional liquidity walls and depth imbalances.',
+          link: '/app/risk/depth'
+        },
+        {
+          title: 'Module 6: Trade Journaling & Psychological Tilt Defense',
+          desc: 'Auditing R-multiples, profit factor, win rates, and preventing post-loss revenge trading.',
+          link: '/app/risk/journal'
+        }
+      ]
     },
     {
-      question: 'When a bracket OCO order fills its Take-Profit leg, what happens to the Stop-Loss leg?',
-      options: [
-        'It remains active until manually canceled',
-        'It turns into a market sell order',
-        'It is immediately and automatically canceled by the OMS state machine',
-        'It doubles the position size'
-      ],
-      correctIndex: 2,
-      explanation: 'One-Cancels-the-Other (OCO) child legs monitor each other; when one triggers, the counter-leg is immediately canceled.'
+      id: 'trk-3',
+      name: 'Tier 3: Quantitative Options & Modern Portfolio Theory',
+      tier: 'Tier 3 — Pro Quant',
+      badgeColor: 'text-[#D8AB5E] bg-[#D8AB5E]/15 border-[#D8AB5E]/30',
+      description: 'Black-Scholes-Merton derivatives pricing, Greeks partial derivatives, multi-leg payoff geometry, and Markowitz portfolio optimization.',
+      duration: '2 hrs • 4 Modules',
+      prerequisites: 'Comfort with basic statistics and algebra',
+      modules: [
+        {
+          title: 'Module 7: Black-Scholes Greeks & Volatility Surface',
+          desc: 'Analytical derivation of Delta, Gamma curvature, Theta decay, Vega, and Newton-Raphson IV solver.',
+          link: '/app/risk/greeks'
+        },
+        {
+          title: 'Module 8: Multi-Leg Payoff Geometry & Spreads',
+          desc: 'Designing Bull Call Spreads, Straddles, and Iron Condors with defined risk, breakevens, and POP %.',
+          link: '/app/risk/payoff'
+        },
+        {
+          title: 'Module 9: Markowitz MPT & Efficient Frontier',
+          desc: 'Dirichlet covariance sampling, Tangency (Max Sharpe) portfolio, and cross-border Indo-US diversification.',
+          link: '/app/wealth/optimizer'
+        },
+        {
+          title: 'Module 10: Stochastic Monte Carlo Fan Charting',
+          desc: 'Simulating 350 geometric Brownian motion paths to stress-test P95 Bull and P5 Bear horizons.',
+          link: '/app/wealth/scenarios'
+        }
+      ]
     }
   ];
 
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
-  const [submittedQuiz, setSubmittedQuiz] = useState(false);
-
-  const toggleModuleCompletion = (id: string) => {
-    setModules(prev =>
-      prev.map(m => (m.id === id ? { ...m, completed: !m.completed } : m))
-    );
+  const toggleModule = (id: string) => {
+    setCompletedModules(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
   };
 
-  const completedCount = modules.filter(m => m.completed).length;
-  const progressPct = Math.round((completedCount / modules.length) * 100);
+  const totalModCount = learningTracks.reduce((acc, t) => acc + t.modules.length, 0);
+  const completedModCount = Object.values(completedModules).filter(Boolean).length;
+  const overallProgress = Math.round((completedModCount / totalModCount) * 100);
 
-  const handleSelectOption = (qIdx: number, oIdx: number) => {
-    if (!submittedQuiz) {
-      setSelectedAnswers(prev => ({ ...prev, [qIdx]: oIdx }));
-    }
-  };
-
-  const calculateScore = () => {
-    let score = 0;
-    quizQuestions.forEach((q, idx) => {
-      if (selectedAnswers[idx] === q.correctIndex) score += 1;
-    });
-    return score;
-  };
+  const filteredResources = activeCategory === 'ALL'
+    ? FREE_EXTERNAL_RESOURCES
+    : FREE_EXTERNAL_RESOURCES.filter(r => r.category === activeCategory);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Learning Academy &amp; Risk Mastery
-            </h1>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              FREE CURRICULUM
-            </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Systematic education in risk management, market structure, bracket orders, and quant analytics.
-          </p>
-        </div>
-
-        {/* Progress Badge */}
-        <div className="bg-[#0c121f] border border-[#1b253b] px-4 py-2 rounded-2xl flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs">
-            {completedCount}/{modules.length}
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 text-[#E7EDF3]">
+      {/* Academy Hero Header */}
+      <div className="bg-[#0D131A] p-5 rounded-xl border border-[#25313D] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-[#2979FF]/10 text-[#2979FF] border border-[#2979FF]/30 flex items-center justify-center font-bold">
+            <GraduationCap className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-[11px] text-slate-400 block font-semibold">Course Progress</span>
-            <span className="text-xs font-mono font-bold text-white">{progressPct}% Complete</span>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                Trader Academy &amp; Quantitative Education
+              </h1>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#35C69A]/15 text-[#35C69A] border border-[#35C69A]/30 font-mono">
+                100% FREE &amp; OPEN
+              </span>
+            </div>
+            <p className="text-xs text-[#8B99A8] mt-1 max-w-2xl">
+              Zero-cost institutional curriculum bridging financial theory, quantitative derivatives, and hands-on simulated execution across all 23 platform instruments.
+            </p>
+          </div>
+        </div>
+
+        {/* Progress Card */}
+        <div className="bg-[#111922] border border-[#25313D] px-4 py-2.5 rounded-xl flex items-center gap-4 shrink-0">
+          <div className="text-right font-mono">
+            <span className="text-[10px] text-[#8B99A8] block font-sans">Overall Mastery</span>
+            <span className="text-sm font-bold text-white">{completedModCount} / {totalModCount} Modules</span>
+          </div>
+          <div className="w-10 h-10 rounded-full border-2 border-[#2979FF] flex items-center justify-center font-mono font-bold text-xs text-[#2979FF]">
+            {overallProgress}%
           </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="w-full h-2 bg-[#0c121f] rounded-full overflow-hidden border border-[#1b253b]">
-        <div
-          className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500"
-          style={{ width: `${progressPct}%` }}
-        />
-      </div>
-
-      {/* Course Modules Grid */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-blue-400" />
-          <span>Core Interactive Curriculum</span>
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {modules.map(mod => (
-            <div
-              key={mod.id}
-              className={`bg-[#0c121f] border rounded-2xl p-5 shadow-xl transition-all ${
-                mod.completed ? 'border-emerald-500/30' : 'border-[#1b253b]'
-              }`}
-            >
-              <div className="flex items-center justify-between pb-3 border-b border-[#1b253b] mb-3">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  mod.tier === 'Basic' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                  mod.tier === 'Active' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
-                  'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-                }`}>
-                  {mod.tier} Mode
-                </span>
-                <span className="text-[11px] text-slate-500 font-mono">{mod.estimatedTime}</span>
-              </div>
-
-              <h3 className="font-extrabold text-sm text-white mb-2">{mod.title}</h3>
-              <p className="text-xs text-slate-300 leading-relaxed mb-4">{mod.summary}</p>
-
-              <div className="space-y-1.5 mb-4">
-                {mod.lessons.map((les, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-[11px] text-slate-400">
-                    <span className="text-blue-500 font-bold">•</span>
-                    <span>{les}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-3 border-t border-[#1b253b] flex items-center justify-between">
-                <button
-                  onClick={() => toggleModuleCompletion(mod.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                    mod.completed
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-slate-800 text-slate-300 hover:text-white'
-                  }`}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{mod.completed ? 'Completed' : 'Mark as Done'}</span>
-                </button>
-
-                <Link
-                  href="/app/paper-trading"
-                  className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1"
-                >
-                  <span>Practice in Terminal</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Interactive Risk Mastery Quiz */}
-      <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl p-6 shadow-xl space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-[#1b253b]">
-          <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-indigo-400" />
+      {/* Navigation Tabs to Academy Sub-sections */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Link
+          href="/app/learning/guide"
+          className="p-3.5 bg-[#111922] hover:bg-[#151F29] border border-[#25313D] hover:border-[#2979FF]/40 rounded-xl transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2.5">
+            <BookOpen className="w-4 h-4 text-[#2979FF]" />
             <div>
-              <h2 className="text-base font-extrabold text-white">
-                Interactive Risk Mastery Quiz
-              </h2>
-              <p className="text-xs text-slate-400">
-                Test your understanding of TradeSphere AI risk guardrails and order routing.
-              </p>
+              <span className="text-xs font-bold text-white block">Platform Feature Guides &amp; FAQ</span>
+              <span className="text-[11px] text-[#8B99A8]">Step-by-step documentation for every feature</span>
             </div>
           </div>
+          <ArrowRight className="w-4 h-4 text-[#8B99A8] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+        </Link>
 
-          {submittedQuiz && (
-            <div className="px-3 py-1.5 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-300 font-bold text-xs font-mono">
-              Score: {calculateScore()} / {quizQuestions.length} ({Math.round((calculateScore() / quizQuestions.length) * 100)}%)
+        <Link
+          href="/app/learning/quizzes"
+          className="p-3.5 bg-[#111922] hover:bg-[#151F29] border border-[#25313D] hover:border-[#35C69A]/40 rounded-xl transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2.5">
+            <Award className="w-4 h-4 text-[#35C69A]" />
+            <div>
+              <span className="text-xs font-bold text-white block">Interactive Academy Quizzes</span>
+              <span className="text-[11px] text-[#8B99A8]">Test knowledge across 5 categories</span>
             </div>
-          )}
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#8B99A8] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+        </Link>
+
+        <Link
+          href="/app/learning/strategies"
+          className="p-3.5 bg-[#111922] hover:bg-[#151F29] border border-[#25313D] hover:border-[#D8AB5E]/40 rounded-xl transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-2.5">
+            <PlayCircle className="w-4 h-4 text-[#D8AB5E]" />
+            <div>
+              <span className="text-xs font-bold text-white block">Practical Trading Exercises</span>
+              <span className="text-[11px] text-[#8B99A8]">Hands-on interactive scenarios &amp; rulebooks</span>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#8B99A8] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+        </Link>
+      </div>
+
+      {/* Progressive Complexity Learning Pathways */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-extrabold text-white flex items-center gap-2 font-sans">
+            <Compass className="w-4 h-4 text-[#2979FF]" />
+            <span>Progressive Learning Pathways (Tier 1 → Tier 3)</span>
+          </h2>
+          <span className="text-[11px] text-[#8B99A8] font-mono">ADAPTIVE PROGRESSIVE COMPLEXITY</span>
         </div>
 
-        <div className="space-y-6">
-          {quizQuestions.map((q, qIdx) => (
-            <div key={qIdx} className="space-y-3 bg-[#070b14] p-4 rounded-xl border border-[#1b253b]">
-              <div className="font-extrabold text-xs text-white flex items-start gap-2">
-                <span className="text-blue-400 font-mono">Q{qIdx + 1}.</span>
-                <span>{q.question}</span>
+        <div className="space-y-4">
+          {learningTracks.map((track) => (
+            <div key={track.id} className="bg-[#111922] border border-[#25313D] rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#25313D]">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border font-mono ${track.badgeColor}`}>
+                      {track.tier}
+                    </span>
+                    <h3 className="text-sm font-bold text-white">{track.name}</h3>
+                  </div>
+                  <p className="text-xs text-[#8B99A8] mt-1">{track.description}</p>
+                </div>
+
+                <div className="flex items-center gap-3 text-[11px] font-mono text-[#8B99A8] shrink-0">
+                  <span>{track.duration}</span>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                {q.options.map((opt, oIdx) => {
-                  const isSelected = selectedAnswers[qIdx] === oIdx;
-                  const isCorrect = q.correctIndex === oIdx;
-
-                  let optClass = 'bg-[#0c121f] text-slate-300 border-[#1b253b] hover:border-slate-700';
-                  if (submittedQuiz) {
-                    if (isCorrect) optClass = 'bg-emerald-500/10 text-emerald-300 border-emerald-500/40';
-                    else if (isSelected && !isCorrect) optClass = 'bg-rose-500/10 text-rose-300 border-rose-500/40';
-                  } else if (isSelected) {
-                    optClass = 'bg-blue-600 text-white border-blue-500 shadow-md';
-                  }
+              {/* Modules List */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {track.modules.map((m, mIdx) => {
+                  const modKey = `${track.id}-m${mIdx + 1}`;
+                  const isDone = !!completedModules[modKey];
 
                   return (
                     <div
-                      key={oIdx}
-                      onClick={() => handleSelectOption(qIdx, oIdx)}
-                      className={`p-2.5 px-3 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between ${optClass}`}
+                      key={mIdx}
+                      className={`p-3.5 rounded-lg border transition-all flex flex-col justify-between ${
+                        isDone
+                          ? 'bg-[#0D131A] border-[#35C69A]/30'
+                          : 'bg-[#0D131A] border-[#25313D] hover:border-[#2979FF]/40'
+                      }`}
                     >
-                      <span>{opt}</span>
-                      {submittedQuiz && isCorrect && <Check className="w-4 h-4 text-emerald-400" />}
-                      {submittedQuiz && isSelected && !isCorrect && <X className="w-4 h-4 text-rose-400" />}
+                      <div className="space-y-1.5 mb-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-mono text-[#8B99A8]">0{mIdx + 1}</span>
+                          <button
+                            onClick={() => toggleModule(modKey)}
+                            className={`flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors ${
+                              isDone
+                                ? 'bg-[#35C69A]/15 text-[#35C69A]'
+                                : 'bg-[#151F29] text-[#8B99A8] hover:text-white'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>{isDone ? 'Done' : 'Mark'}</span>
+                          </button>
+                        </div>
+                        <h4 className="text-xs font-bold text-white">{m.title}</h4>
+                        <p className="text-[11px] text-[#8B99A8] leading-relaxed">{m.desc}</p>
+                      </div>
+
+                      <div className="pt-2 border-t border-[#25313D]/50 flex justify-end">
+                        <Link
+                          href={m.link}
+                          className="text-[11px] font-semibold text-[#2979FF] hover:text-[#5CA0FF] flex items-center gap-1 transition-colors"
+                        >
+                          <span>Practice Live</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-
-              {submittedQuiz && (
-                <div className="text-[11px] text-slate-400 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                  <span className="font-bold text-blue-300">Explanation: </span>
-                  {q.explanation}
-                </div>
-              )}
             </div>
           ))}
         </div>
+      </div>
 
-        <div className="flex items-center justify-between pt-2">
-          {!submittedQuiz ? (
-            <button
-              onClick={() => setSubmittedQuiz(true)}
-              disabled={Object.keys(selectedAnswers).length < quizQuestions.length}
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/30"
+      {/* Curated Free Best External Resources & Video Series */}
+      <div className="space-y-4 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-extrabold text-white flex items-center gap-2 font-sans">
+              <Video className="w-4 h-4 text-[#D8AB5E]" />
+              <span>Curated Free External Masterclasses &amp; Video Series</span>
+            </h2>
+            <p className="text-xs text-[#8B99A8]">
+              The highest quality free courses, university lectures, and video series across global institutions.
+            </p>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap gap-1 font-mono text-[10px]">
+            {['ALL', 'BEGINNER', 'OPTIONS', 'QUANT', 'WEALTH'].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-2 py-0.5 rounded border transition-colors ${
+                  activeCategory === cat
+                    ? 'bg-[#2979FF] text-white border-[#2979FF] font-bold'
+                    : 'bg-[#111922] text-[#8B99A8] border-[#25313D] hover:text-white'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredResources.map((res) => (
+            <div
+              key={res.id}
+              className="bg-[#111922] border border-[#25313D] rounded-xl p-4 shadow-sm hover:border-[#25313D]/80 transition-all flex flex-col justify-between"
             >
-              Submit Quiz Answers
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                setSelectedAnswers({});
-                setSubmittedQuiz(false);
-              }}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all"
-            >
-              Retake Quiz
-            </button>
-          )}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#0D131A] text-[#2979FF] border border-[#25313D] font-mono">
+                    {res.category} • {res.type}
+                  </span>
+                  <span className="text-[10px] text-[#8B99A8] font-mono">{res.duration}</span>
+                </div>
+
+                <h3 className="text-xs sm:text-sm font-bold text-white">{res.title}</h3>
+                <span className="text-[11px] text-[#D8AB5E] font-medium block">by {res.provider}</span>
+                <p className="text-xs text-[#8B99A8] leading-relaxed">{res.description}</p>
+              </div>
+
+              <div className="pt-3 border-t border-[#25313D] mt-3 flex items-center justify-between text-xs">
+                <span className="text-[10px] text-[#35C69A] font-mono font-medium">{res.highlight}</span>
+                <a
+                  href={res.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#0D131A] hover:bg-[#151F29] border border-[#25313D] text-[#2979FF] font-bold text-[11px] transition-colors"
+                >
+                  <span>Open Free Resource</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
