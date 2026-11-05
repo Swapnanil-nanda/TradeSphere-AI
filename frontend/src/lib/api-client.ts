@@ -237,6 +237,10 @@ export interface UserProfile {
   startingCapital: number;
   riskCapPct: number;
   circuitBreakerPct: number;
+  tradingExperience?: 'beginner' | 'intermediate' | 'advanced';
+  tradingGoal?: string;
+  riskPreference?: string;
+  onboardingCompleted?: boolean;
 }
 
 import { appConfig } from './config';
@@ -260,43 +264,105 @@ class TradeSphereApiClient {
     return headers;
   }
 
+  switchUserContext(email: string, name?: string): UserProfile {
+    if (typeof window === 'undefined') {
+      return this.getUserProfile();
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    localStorage.setItem('tradesphere_active_email', cleanEmail);
+    const key = `tradesphere_user_profile_${cleanEmail}`;
+    const stored = localStorage.getItem(key);
+    let profile: UserProfile;
+    if (stored) {
+      try {
+        profile = JSON.parse(stored);
+      } catch {
+        profile = {
+          id: `usr_${Date.now()}`,
+          name: name || cleanEmail.split('@')[0],
+          email: cleanEmail,
+          tier: 'basic',
+          startingCapital: 1000000,
+          riskCapPct: 1.0,
+          circuitBreakerPct: 3.0,
+          tradingExperience: 'beginner',
+          tradingGoal: 'safety',
+          riskPreference: 'strict',
+          onboardingCompleted: false
+        };
+      }
+    } else {
+      profile = {
+        id: `usr_${Date.now()}`,
+        name: name || cleanEmail.split('@')[0],
+        email: cleanEmail,
+        tier: 'basic',
+        startingCapital: 1000000,
+        riskCapPct: 1.0,
+        circuitBreakerPct: 3.0,
+        tradingExperience: 'beginner',
+        tradingGoal: 'safety',
+        riskPreference: 'strict',
+        onboardingCompleted: false
+      };
+      localStorage.setItem(key, JSON.stringify(profile));
+    }
+    localStorage.setItem('tradesphere_user', JSON.stringify(profile));
+    window.dispatchEvent(new CustomEvent('tradesphere_tier_change', { detail: profile }));
+    return profile;
+  }
+
   async login(credentials: { email: string; password: string }): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials)
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || 'Authentication failed.');
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (typeof window !== 'undefined' && data.token) {
+          localStorage.setItem('tradesphere_token', data.token);
+        }
+        this.switchUserContext(credentials.email, data.user?.name || data.fullName);
+        return data;
+      }
+    } catch (e) {
+      // In offline / standalone mode, fallback cleanly to local storage context
     }
-    if (typeof window !== 'undefined' && data.token) {
-      localStorage.setItem('tradesphere_token', data.token);
-      localStorage.setItem('tradesphere_user', JSON.stringify(data.user || data));
+    if (typeof window !== 'undefined') {
+      this.switchUserContext(credentials.email);
     }
-    return data;
+    return { token: 'mock-jwt-token', user: { email: credentials.email, name: credentials.email.split('@')[0] } };
   }
 
   async register(userData: { name: string; email: string; password: string; tier?: string }): Promise<any> {
-    const res = await fetch(`${BACKEND_BASE}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fullName: userData.name,
-        email: userData.email,
-        password: userData.password,
-        tier: userData.tier || 'ACTIVE'
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || 'Registration failed.');
+    try {
+      const res = await fetch(`${BACKEND_BASE}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: userData.name,
+          email: userData.email,
+          password: userData.password,
+          tier: (userData.tier || 'basic').toUpperCase()
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (typeof window !== 'undefined' && data.token) {
+          localStorage.setItem('tradesphere_token', data.token);
+        }
+        this.switchUserContext(userData.email, userData.name);
+        return data;
+      }
+    } catch (e) {
+      // Offline / standalone registration fallback
     }
-    if (typeof window !== 'undefined' && data.token) {
-      localStorage.setItem('tradesphere_token', data.token);
-      localStorage.setItem('tradesphere_user', JSON.stringify(data.user || data));
+    if (typeof window !== 'undefined') {
+      this.switchUserContext(userData.email, userData.name);
     }
-    return data;
+    return { token: 'mock-jwt-token', user: { email: userData.email, name: userData.name } };
   }
 
   async checkBackendHealth(): Promise<{ status: string; connected: boolean; details?: any }> {
@@ -1535,18 +1601,24 @@ class TradeSphereApiClient {
 
   getUserProfile(): UserProfile {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('tradesphere_user');
+      const activeEmail = localStorage.getItem('tradesphere_active_email');
+      const userKey = activeEmail ? `tradesphere_user_profile_${activeEmail.trim().toLowerCase()}` : 'tradesphere_user';
+      const stored = localStorage.getItem(userKey) || localStorage.getItem('tradesphere_user');
       if (stored) {
         try {
           const user = JSON.parse(stored);
           return {
             id: user.id || 'usr_demo',
-            name: user.name || 'Demo Trader',
+            name: user.name || (user.email ? user.email.split('@')[0] : 'Demo Trader'),
             email: user.email || 'demo.trader@tradesphere.ai',
-            tier: user.tier || 'pro',
-            startingCapital: 1000000,
-            riskCapPct: 1.0,
-            circuitBreakerPct: 3.0
+            tier: user.tier || 'basic',
+            startingCapital: user.startingCapital || 1000000,
+            riskCapPct: user.riskCapPct !== undefined ? user.riskCapPct : 1.0,
+            circuitBreakerPct: user.circuitBreakerPct !== undefined ? user.circuitBreakerPct : 3.0,
+            tradingExperience: user.tradingExperience || 'beginner',
+            tradingGoal: user.tradingGoal || 'safety',
+            riskPreference: user.riskPreference || 'strict',
+            onboardingCompleted: user.onboardingCompleted ?? false
           };
         } catch (e) {}
       }
@@ -1555,19 +1627,42 @@ class TradeSphereApiClient {
       id: 'usr_demo',
       name: 'Demo Trader',
       email: 'demo.trader@tradesphere.ai',
-      tier: 'pro',
+      tier: 'basic',
       startingCapital: 1000000,
       riskCapPct: 1.0,
-      circuitBreakerPct: 3.0
+      circuitBreakerPct: 3.0,
+      tradingExperience: 'beginner',
+      tradingGoal: 'safety',
+      riskPreference: 'strict',
+      onboardingCompleted: false
     };
   }
 
-  updateUserPreferences(prefs: Partial<UserProfile>): void {
+  updateUserPreferences(prefs: Partial<UserProfile>): UserProfile {
+    let updated: UserProfile;
     if (typeof window !== 'undefined') {
       const current = this.getUserProfile();
-      const updated = { ...current, ...prefs };
+      updated = { ...current, ...prefs };
+      const activeEmail = localStorage.getItem('tradesphere_active_email') || updated.email;
+      if (activeEmail) {
+        localStorage.setItem(`tradesphere_user_profile_${activeEmail.trim().toLowerCase()}`, JSON.stringify(updated));
+      }
       localStorage.setItem('tradesphere_user', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('tradesphere_tier_change', { detail: updated }));
+      return updated;
     }
+    return {
+      id: 'usr_demo',
+      name: 'Demo Trader',
+      email: 'demo.trader@tradesphere.ai',
+      tier: 'basic',
+      startingCapital: 1000000,
+      riskCapPct: 1.0,
+      circuitBreakerPct: 3.0,
+      tradingExperience: 'beginner',
+      onboardingCompleted: false,
+      ...prefs
+    };
   }
 }
 

@@ -702,6 +702,113 @@ export const ACADEMY_QUIZ_QUESTIONS: AcademyQuizQuestion[] = [
     correctIndex: 0,
     explanation: 'The P5 path is the 5th percentile outcome across 350 geometric Brownian motion paths, representing severe downside stress for risk planning.',
     relatedFeatureRoute: '/app/wealth/scenarios'
+  },
+
+  // Category 6: PLATFORM TOOLS & ADVANCED QUANTITATIVE FEATURES
+  {
+    id: 601,
+    category: 'BEGINNER',
+    difficulty: 'Intermediate',
+    question: 'In a Bracket OCO (One-Cancels-the-Other) order on TradeSphere AI, what happens when the Take-Profit leg is filled?',
+    options: [
+      'The Stop-Loss leg remains open and can be triggered later.',
+      'The Stop-Loss child leg is immediately and automatically cancelled by the state machine.',
+      'Both legs are doubled in size.',
+      'The trader must manually log in and click cancel.'
+    ],
+    correctIndex: 1,
+    explanation: 'Bracket OCO orders couple the Take-Profit and Stop-Loss orders. When one child leg executes, the counter-leg is immediately cancelled by the OMS to prevent accidental counter-trend exposure.',
+    relatedFeatureRoute: '/app/paper-trading'
+  },
+  {
+    id: 602,
+    category: 'RISK',
+    difficulty: 'Intermediate',
+    question: 'How does the Trade Journal Tilt Auditor detect potential revenge trading?',
+    options: [
+      'By checking if the user typed angry keywords in their notes.',
+      'By flagging trades placed within 60 seconds of a stopped-out loss or trades with oversized position sizing.',
+      'By measuring the trader\'s physical heart rate via webcam.',
+      'By randomly locking the terminal after 5 trades.'
+    ],
+    correctIndex: 1,
+    explanation: 'The Tilt Auditor analyzes order timestamps and sizing. Entering positions immediately after taking a loss or dramatically increasing quantity is an empirical signature of emotional tilt and revenge trading.',
+    relatedFeatureRoute: '/app/risk/journal'
+  },
+  {
+    id: 603,
+    category: 'OPTIONS',
+    difficulty: 'Advanced',
+    question: 'Why does option Vega peak for At-the-Money (ATM) contracts and drop off for deep In-the-Money or deep Out-of-the-Money contracts?',
+    options: [
+      'Because exchanges apply special margin fees only to ATM options.',
+      'Because ATM options have the maximum extrinsic time value and uncertainty, making their fair price most sensitive to shifts in volatility.',
+      'Because Vega is always equal to 1.0 for all strikes.',
+      'Because ATM options are exclusively cash-settled.'
+    ],
+    correctIndex: 1,
+    explanation: 'Vega measures ∂V/∂σ. Deep ITM options behave like underlying stock (Delta ~ 1.0, low time value) and deep OTM options have low probability of expiring in the money. ATM options contain peak extrinsic value and maximum volatility sensitivity.',
+    relatedFeatureRoute: '/app/risk/greeks'
+  },
+  {
+    id: 604,
+    category: 'WEALTH',
+    difficulty: 'Intermediate',
+    question: 'In the Step-Up SIP Planner, what is the impact of a 10% annual Step-Up compared to a fixed monthly SIP over 20 years?',
+    options: [
+      'It has no effect because interest rates remain flat.',
+      'It significantly expands the final maturity corpus because higher contributions are invested during higher-income career years, multiplying compounding growth.',
+      'It halves your total wealth due to taxation.',
+      'It forces the trader to liquidate their stock portfolio every December.'
+    ],
+    correctIndex: 1,
+    explanation: 'A Step-Up SIP increases monthly contributions each year inline with career salary growth (e.g. 10%). Because later contributions are larger, the terminal corpus often exceeds a flat SIP by 80% to 150% over a 20-year horizon.',
+    relatedFeatureRoute: '/app/wealth/sip-planner'
+  },
+  {
+    id: 605,
+    category: 'QUANT',
+    difficulty: 'Advanced',
+    question: 'What is the role of the Evidence Verification Engine in the 7-Agent Quantitative Architecture?',
+    options: [
+      'To execute high-frequency arbitrage trades directly on live stock exchanges.',
+      'To autonomously audit specialist agent outputs against regulatory invariants, verifying that mathematical formulas and risk constraints are strictly satisfied.',
+      'To delete all negative financial news articles.',
+      'To generate random buy signals when market volume is low.'
+    ],
+    correctIndex: 1,
+    explanation: 'The Evidence Verification Engine acts as an independent auditor. It verifies that agent claims adhere to mathematical invariants (such as valid Sharpe ratios, bounded probabilities, and non-empty evidence citations) before results are presented.',
+    relatedFeatureRoute: '/app/quant/multi-agent'
+  },
+  {
+    id: 606,
+    category: 'QUANT',
+    difficulty: 'Advanced',
+    question: 'In the Vectorized Strategy Backtester, why is accounting for bid-ask slippage and commissions essential?',
+    options: [
+      'To make backtest results look artificially higher.',
+      'Because frictionless backtests create severe overfitting illusions where strategies that appear profitable on paper actually lose money in real execution.',
+      'Because regulatory exchanges require backtests to simulate a 50% commission rate.',
+      'Slippage has zero impact on intraday trading strategies.'
+    ],
+    correctIndex: 1,
+    explanation: 'Frictionless backtests assume every fill occurs at the exact mid-price with zero execution delay. In reality, crossing the bid-ask spread and paying transaction costs can turn a theoretically profitable strategy into a net losing one.',
+    relatedFeatureRoute: '/app/quant/backtesting'
+  },
+  {
+    id: 607,
+    category: 'TECHNICAL',
+    difficulty: 'Intermediate',
+    question: 'When analyzing the 20-Level Depth of Market (DOM) ladder, what does a large resting Bid Wall represent?',
+    options: [
+      'An indicator that all buyers have cancelled their accounts.',
+      'A dense concentration of limit buy orders at a specific price tier that can absorb aggressive market sell orders and act as short-term support.',
+      'A regulatory halt placed on the stock.',
+      'An order book that has run out of liquidity.'
+    ],
+    correctIndex: 1,
+    explanation: 'A Bid Wall represents significant resting liquidity on the buy side of the order book ladder. For market price to decline through that level, aggressive sellers must consume all resting buy quantity at that price.',
+    relatedFeatureRoute: '/app/risk/depth'
   }
 ];
 

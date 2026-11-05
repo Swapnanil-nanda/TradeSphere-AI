@@ -50,19 +50,16 @@ export default function AppHeader({ onToggleMobileMenu, onOpenSlideNav }: AppHea
   return (
     <>
       <header className="h-12 bg-[#000000] border-b border-[#141414] px-3.5 flex items-center justify-between sticky top-0 z-20 select-none">
-        {/* Left Side: Slide-In All Sites Panel Trigger & Connection Status */}
+        {/* Left Side: Workstation Brand & Connection Status */}
         <div className="flex items-center gap-2.5">
-          {/* Slide-In Navigation Panel Trigger Button (Accessible on ALL screens) */}
+          {/* Mobile Navigation Trigger (Hidden on Desktop) */}
           <button
-            onClick={onOpenSlideNav || onToggleMobileMenu}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#080808] hover:bg-[#121212] border border-[#1a1a1a] hover:border-[#2979FF]/50 text-white text-xs font-semibold transition-all group"
-            title="Slide in Left-hand Panel to choose any site (Alt + S)"
-            aria-label="Slide in Left Panel to choose every site"
+            onClick={onToggleMobileMenu || onOpenSlideNav}
+            className="md:hidden flex items-center gap-1.5 px-2 py-1 rounded bg-[#080808] hover:bg-[#121212] border border-[#1a1a1a] text-white text-xs font-semibold transition-all"
+            title="Open Navigation"
+            aria-label="Open Navigation Menu"
           >
-            <PanelLeft className="w-3.5 h-3.5 text-[#2979FF] group-hover:scale-105 transition-transform" />
-            <span className="font-sans text-[11px] font-bold text-[#f0f3f6]">
-              Choose Site
-            </span>
+            <Menu className="w-4 h-4 text-[#2979FF]" />
           </button>
 
           <div className="flex items-center gap-2 font-mono text-xs">
