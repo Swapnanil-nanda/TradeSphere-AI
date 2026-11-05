@@ -66,6 +66,38 @@ body {
   background: #2E2E2E;
 }
 
+/* Visible Institutional Scrollbars for Sidebar and Navigation Trees */
+.custom-scrollbar,
+.sidebar-scroll {
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #3B4E63 #05080E;
+}
+
+.custom-scrollbar::-webkit-scrollbar,
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: #05080E;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #3B4E63;
+  border-radius: 4px;
+  border: 1px solid #141B22;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: #2979FF;
+}
+
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

@@ -175,11 +175,11 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
 
   return (
     <aside
-      className={`bg-[#000000] border-r border-[#141414] flex flex-col justify-between transition-all duration-200 z-30 select-none ${
+      className={`bg-[#000000] border-r border-[#141414] h-full min-h-0 flex flex-col transition-all duration-200 z-30 select-none ${
         collapsed ? 'w-14' : 'w-60'
       }`}
     >
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col h-full min-h-0 overflow-hidden">
         {/* Brand Header */}
         <div className="h-12 px-3 flex items-center justify-between border-b border-[#141414] shrink-0 bg-[#000000]">
           {!collapsed ? (
@@ -286,7 +286,10 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
         </div>
 
         {/* Scrollable Navigation Tree */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar py-2 space-y-4">
+        <div
+          tabIndex={0}
+          className="flex-1 min-h-0 overflow-y-auto sidebar-scroll custom-scrollbar py-2 space-y-4 pr-1 focus:outline-none"
+        >
           {navigationSections.map((section) => {
             // Filter section items if filterUnlockedOnly is enabled
             const visibleItems = filterUnlockedOnly

@@ -50,7 +50,7 @@ export default function AppLayout({
       {/* Main Workstation Layout */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Desktop Collapsible Sidebar */}
-        <div className="hidden md:flex flex-col h-full shrink-0">
+        <div className="hidden md:flex flex-col h-full shrink-0 min-h-0">
           <AppSidebar
             collapsed={sidebarCollapsed}
             onToggleCollapse={handleToggleCollapse}
