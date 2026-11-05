@@ -1,13 +1,23 @@
 import React from 'react';
+import { generate20LevelDOM } from '../lib/options-risk-engine';
 
 export default function OrderBookDOM({ ticker, onQuickFill }) {
-  const bids = ticker?.bids || [];
-  const asks = ticker?.asks || [];
-  const currencySymbol = ticker?.currency === 'USD' ? '$' : '₹';
+  const sym = ticker?.symbol || 'RELIANCE';
+  const ltp = Number(ticker?.ltp || 1000);
+  const fallback = React.useMemo(() => generate20LevelDOM(sym, ltp), [sym, ltp]);
 
-  const maxBidQty = Math.max(1, ...bids.map(b => b[1]));
-  const maxAskQty = Math.max(1, ...asks.map(a => a[1]));
-  const spread = ticker ? Math.round(((ticker.ask || ticker.ltp * 1.0005) - (ticker.bid || ticker.ltp * 0.9995)) * 100) / 100 : 0.05;
+  const rawBids = (ticker?.bids && ticker.bids.length > 0) ? ticker.bids : fallback.bids.map(b => [b.price, b.quantity]);
+  const rawAsks = (ticker?.asks && ticker.asks.length > 0) ? ticker.asks : fallback.asks.map(a => [a.price, a.quantity]);
+
+  const bids = rawBids.map(b => Array.isArray(b) ? [b[0], b[1]] : [b.price, b.quantity]);
+  const asks = rawAsks.map(a => Array.isArray(a) ? [a[0], a[1]] : [a.price, a.quantity]);
+
+  const isUS = ticker?.currency === 'USD' || sym === 'AAPL' || sym === 'NVDA' || sym === 'TSLA' || sym === 'MSFT' || sym === 'GOOGL' || sym === 'AMZN' || sym === 'SPY' || sym === 'QQQ';
+  const currencySymbol = isUS ? '$' : '₹';
+
+  const maxBidQty = Math.max(1, ...bids.map(b => b[1] || 0));
+  const maxAskQty = Math.max(1, ...asks.map(a => a[1] || 0));
+  const spread = ticker ? Math.round(((ticker.ask || ltp * 1.0005) - (ticker.bid || ltp * 0.9995)) * 100) / 100 : fallback.spread;
 
   return (
     <div className="h-full flex flex-col bg-[#111922] text-xs font-mono select-none">

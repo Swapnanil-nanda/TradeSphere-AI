@@ -243,6 +243,7 @@ import { appConfig } from './config';
 import { paperEngine } from './paper-engine';
 import { runSimulation, BacktestCandle } from './backtest-engine';
 import { solveMPT } from './mpt-solver';
+import { generateOptionsChainEngine } from './options-risk-engine';
 
 const BACKEND_BASE = appConfig.apiUrl;
 const MARKET_BASE = appConfig.marketApiUrl || BACKEND_BASE;
@@ -827,9 +828,13 @@ class TradeSphereApiClient {
   async getOptionsChain(symbol: string = 'NIFTY50', days: number = 7): Promise<any> {
     try {
       const res = await fetch(`${MARKET_BASE}/api/options-chain?symbol=${symbol}&days=${days}`);
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.chain) && data.chain.length > 0) return data;
+      }
     } catch (e) {}
-    return { symbol, spotPrice: 24350, expiryDays: days, chain: [] };
+    // Offline / Standalone analytical Black-Scholes Greeks generator
+    return generateOptionsChainEngine(symbol, undefined, days);
   }
 
   async runBacktest(body: any): Promise<any> {

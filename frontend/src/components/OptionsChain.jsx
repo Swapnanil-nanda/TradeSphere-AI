@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { apiClient } from '../lib/api-client';
+import { generateOptionsChainEngine } from '../lib/options-risk-engine';
 
 export default function OptionsChain({ symbol, spotPrice }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [days, setDays] = useState(7);
 
+  const isUS = symbol === 'AAPL' || symbol === 'NVDA' || symbol === 'TSLA' || symbol === 'MSFT' || symbol === 'GOOGL' || symbol === 'AMZN' || symbol === 'SPY' || symbol === 'QQQ';
+  const currSym = isUS ? '$' : '₹';
+
   const fetchChain = async () => {
     setLoading(true);
     try {
       const json = await apiClient.getOptionsChain(symbol, days);
-      setData(json);
+      if (json && Array.isArray(json.chain) && json.chain.length > 0) {
+        setData(json);
+      } else {
+        setData(generateOptionsChainEngine(symbol, spotPrice, days));
+      }
     } catch (e) {
-      console.error('Failed to fetch options chain:', e);
+      setData(generateOptionsChainEngine(symbol, spotPrice, days));
     } finally {
       setLoading(false);
     }
@@ -21,7 +29,7 @@ export default function OptionsChain({ symbol, spotPrice }) {
 
   useEffect(() => {
     fetchChain();
-  }, [symbol, days]);
+  }, [symbol, days, spotPrice]);
 
   const chain = data?.chain || [];
 
@@ -34,7 +42,7 @@ export default function OptionsChain({ symbol, spotPrice }) {
             OPTIONS CHAIN &amp; GREEKS
           </span>
           <span className="text-[10px] text-[#8B99A8] bg-[#151F29] px-2 py-0.5 rounded border border-[#25313D] font-mono">
-            Spot: <b className="text-[#E7EDF3]">₹{spotPrice?.toFixed(2)}</b>
+            Spot: <b className="text-[#E7EDF3]">{currSym}{spotPrice?.toFixed(2)}</b>
           </span>
         </div>
 
@@ -102,7 +110,7 @@ export default function OptionsChain({ symbol, spotPrice }) {
               <span className="text-[#8B99A8]">{row.call?.bid?.toFixed(1)}</span>
               <span className="text-[#8B99A8]">{row.call?.ask?.toFixed(1)}</span>
               <span className={`font-bold ${isCallITM ? 'text-[#35C69A]' : 'text-[#35C69A]/80'}`}>
-                ₹{row.call?.ltp?.toFixed(2)}
+                {currSym}{row.call?.ltp?.toFixed(2)}
               </span>
 
               {/* Center Strike */}
@@ -111,7 +119,7 @@ export default function OptionsChain({ symbol, spotPrice }) {
               </span>
 
               <span className={`font-bold ${isPutITM ? 'text-[#EF6468]' : 'text-[#EF6468]/80'}`}>
-                ₹{row.put?.ltp?.toFixed(2)}
+                {currSym}{row.put?.ltp?.toFixed(2)}
               </span>
               <span className="text-[#8B99A8]">{row.put?.bid?.toFixed(1)}</span>
               <span className="text-[#8B99A8]">{row.put?.ask?.toFixed(1)}</span>
