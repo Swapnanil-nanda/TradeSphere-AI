@@ -91,7 +91,9 @@ export async function GET(request: Request) {
           low: Number(low.toFixed(2)),
           close: Number(close.toFixed(2)),
           volume: Math.floor(volume),
-          isLive: true
+          isDelayed: true,
+          isLive: false,
+          isSimulated: false
         });
       }
     }

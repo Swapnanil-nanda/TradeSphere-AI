@@ -466,7 +466,7 @@ export default function WatchlistsPage() {
             title="Toggle between Live Exchange Data (NSE/US) and 24/7 Simulation"
           >
             <span className={`w-2 h-2 rounded-full ${isLiveFeed ? 'bg-[#00c805] animate-pulse' : 'bg-[#2979ff]'}`}></span>
-            <span>{isLiveFeed ? 'LIVE FEED (NSE/US)' : '24/7 SIMULATOR'}</span>
+            <span>{isLiveFeed ? 'SIMULATED (GBM TICK STREAM)' : '24/7 SIMULATOR'}</span>
           </button>
 
           {/* New Watchlist */}

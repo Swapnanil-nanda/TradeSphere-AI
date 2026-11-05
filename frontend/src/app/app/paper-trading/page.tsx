@@ -359,6 +359,10 @@ function PaperTradingContent() {
                 <div className={`text-xs font-mono font-bold tabular-nums ${isUp ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>
                   {isUp ? '+' : ''}{currentChangePct.toFixed(2)}%
                 </div>
+
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 font-bold hidden sm:inline-block">
+                  SIMULATED (GBM)
+                </span>
               </div>
 
               {/* Timeframe Buttons */}

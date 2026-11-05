@@ -203,6 +203,17 @@ function OptionsContent() {
       <div className="bg-[#0D131A] rounded-xl border border-[#25313D] shadow-md h-[580px] overflow-hidden">
         <OptionsChain symbol={symbol} spotPrice={spotPrice} />
       </div>
+
+      {/* Model Provenance & Regulatory Notice */}
+      <div className="p-3 bg-[#0D131A] rounded-xl border border-[#25313D] text-[11px] text-[#8B99A8] flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono">
+        <div className="flex items-center gap-2">
+          <span className="text-[#2979FF] font-bold">PROVENANCE:</span>
+          <span>SIMULATED (24/7 GBM Engine with Newton-Raphson IV Inversion)</span>
+        </div>
+        <div className="text-[10px] text-[#8B99A8]">
+          European exercise assumption. For educational simulation only.
+        </div>
+      </div>
     </div>
   );
 }

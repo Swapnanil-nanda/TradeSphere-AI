@@ -39,17 +39,28 @@ export default function AppSidebar({ collapsed, onToggleCollapse }: AppSidebarPr
   const router = useRouter();
 
   const [currentTier, setCurrentTier] = useState<'basic' | 'active' | 'pro'>('basic');
-  const [filterUnlockedOnly, setFilterUnlockedOnly] = useState(false);
+  const [filterUnlockedOnly, setFilterUnlockedOnly] = useState(true); // Default ON to prevent beginner cognitive overload
   const [lockedModalItem, setLockedModalItem] = useState<NavItem | null>(null);
 
   // Sync active tier with apiClient and custom event
   useEffect(() => {
     const profile = apiClient.getUserProfile();
-    setCurrentTier(profile.tier || 'basic');
+    const userTier = profile.tier || 'basic';
+    setCurrentTier(userTier);
+    // For Basic tier, automatically default filter to ON to protect beginners
+    if (userTier === 'basic') {
+      setFilterUnlockedOnly(true);
+    } else {
+      setFilterUnlockedOnly(false);
+    }
 
     const handleTierChange = (e: any) => {
       if (e.detail?.tier) {
-        setCurrentTier(e.detail.tier);
+        const nextTier = e.detail.tier;
+        setCurrentTier(nextTier);
+        if (nextTier === 'basic') {
+          setFilterUnlockedOnly(true);
+        }
       }
     };
 

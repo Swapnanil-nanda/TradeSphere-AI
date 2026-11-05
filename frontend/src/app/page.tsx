@@ -328,7 +328,7 @@ export default function HomePage() {
             </div>
             <h4 className="text-base font-bold text-white">20-Depth Level 2 DOM Ladder</h4>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Inspect resting liquidity with 20 levels of continuous bids and asks. Direct limit execution from the ladder with transient sub-millisecond updates.
+              Inspect resting liquidity with 20 levels of continuous bids and asks. Direct limit execution from the ladder with transient ~10ms streaming updates without whole-page React re-render lag.
             </p>
             <Link href="/features#level2-dom" className="text-[11px] text-amber-400 font-semibold flex items-center gap-1 hover:underline">
               <span>Explore DOM Microstructure</span> &rarr;
@@ -341,7 +341,7 @@ export default function HomePage() {
             </div>
             <h4 className="text-base font-bold text-white">Black-Scholes Options Greeks</h4>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Real-time Delta, Gamma, Theta, Vega, and IV calculated via Newton-Raphson across strikes from 0-DTE to 30D expiries for Indian derivatives.
+              Closed-form European Black-Scholes Delta, Gamma, Theta, Vega, and IV calculated via Newton-Raphson across simulated strike chains with model disclosures.
             </p>
             <Link href="/features#options-greeks" className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1 hover:underline">
               <span>View Greeks Engine</span> &rarr;

@@ -114,9 +114,9 @@ export async function GET(request: Request) {
         dayLow,
         prevClose,
         timestamp: Date.now(),
-        dataSource: 'Live Exchange Feed (NSE/BSE/NASDAQ)',
-        dataStatus: 'LIVE',
-        isLive: true,
+        dataSource: 'External Market Feed (Delayed)',
+        dataStatus: 'DELAYED',
+        isLive: false,
         isSimulated: false,
         marketState: 'ACTIVE_FEED'
       };
@@ -147,10 +147,10 @@ export async function GET(request: Request) {
         dayLow: Number((base * 0.99).toFixed(2)),
         prevClose: Number((base - 12.50).toFixed(2)),
         timestamp: Date.now(),
-        dataSource: 'Live Exchange Feed (NSE/BSE/NASDAQ)',
-        dataStatus: 'LIVE',
-        isLive: true,
-        isSimulated: false
+        dataSource: '24/7 Geometric Brownian Motion (GBM) Simulator',
+        dataStatus: 'SIMULATED',
+        isLive: false,
+        isSimulated: true
       };
     }
   });

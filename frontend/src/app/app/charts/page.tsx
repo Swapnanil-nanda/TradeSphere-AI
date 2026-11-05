@@ -167,12 +167,8 @@ function ChartsContent() {
                 </div>
               </div>
 
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
-                metadata?.dataType === 'LIVE'
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-              }`}>
-                {metadata?.dataType === 'LIVE' ? 'LIVE DATA (NSE/US)' : 'SIMULATED'}
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
+                SIMULATED (24/7 GBM)
               </span>
             </div>
           )}

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 3000",
     "test": "tsx --test src/**/*.test.ts",
+    "test:order-flow": "node ../test_order_flow.js",
     "vite:dev": "vite",
     "vite:build": "vite build"
   },

@@ -346,6 +346,37 @@ function GreeksContent() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
+
+          {/* Institutional Model Disclosures & Limitations Notice */}
+          <div className="p-4 bg-[#0D131A] rounded-xl border border-[#25313D] space-y-2 font-sans text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-[#25313D] text-[11px] font-mono">
+              <span className="font-bold text-white flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-[#2979FF]" />
+                <span>Model Specifications &amp; Educational Disclosures</span>
+              </span>
+              <span className="text-[#8B99A8]">Black-Scholes-Merton (1973)</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px] font-mono text-[#8B99A8]">
+              <div>
+                <span className="text-white block font-sans font-semibold">Exercise Style:</span>
+                <span>European (Exercise at Expiry Only)</span>
+              </div>
+              <div>
+                <span className="text-white block font-sans font-semibold">Data Provenance:</span>
+                <span className="text-[#2979FF]">SIMULATED (24/7 GBM Engine)</span>
+              </div>
+              <div>
+                <span className="text-white block font-sans font-semibold">IV Engine:</span>
+                <span>Newton-Raphson Inversion</span>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-[#8B99A8] leading-relaxed pt-1 border-t border-[#25313D]/60">
+              <strong className="text-white">Model Limitation Notice: </strong>
+              The classical Black-Scholes formula assumes constant continuous volatility, lognormal returns, and zero early exercise. Listed Indian equity options (NSE) and US equity options may experience early exercise premiums, volatility smile skewness, discrete dividend drops, and liquidity spread widenings that diverge from theoretical closed-form pricing.
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -62,14 +62,14 @@ export default function FeaturesPage() {
         '20 levels of continuous depth with proportional volume bars.',
         'Live spread and aggregate volume calculation.',
         'Interactive quick-order trigger from order book ladder prices.',
-        'Sub-millisecond transient DOM updates without whole-page React lag.'
+        'High-frequency transient DOM updates (~10ms streaming ticks) without whole-page React lag.'
       ]
     },
     {
       id: 'options-greeks',
       icon: BarChart2,
       title: 'Black-Scholes Options Greeks & Volatility Surface',
-      tagline: 'Institutional options analytics for Indian derivatives.',
+      tagline: 'Educational options analytics with closed-form European Black-Scholes Greeks and model disclosures.',
       description: 'Real-time computation of theoretical option prices and all primary first-order and second-order Greeks using the Black-Scholes-Merton model across calls and puts.',
       points: [
         'Delta (Δ), Gamma (Γ), Theta (Θ), and Vega (ν) calculated across all strikes.',

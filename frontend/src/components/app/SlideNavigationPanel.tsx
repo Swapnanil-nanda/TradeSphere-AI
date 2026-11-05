@@ -263,7 +263,7 @@ export default function SlideNavigationPanel({ isOpen, onClose }: SlideNavigatio
               type="text"
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              placeholder="Search all 33 sites (e.g. greeks, screener, sip)..."
+              placeholder={`Search all ${totalToolCount} workspace tools (e.g. greeks, screener, sip)...`}
               className="w-full bg-transparent text-xs text-white placeholder-[#808a9d] focus:outline-none font-sans"
             />
             {filterQuery && (

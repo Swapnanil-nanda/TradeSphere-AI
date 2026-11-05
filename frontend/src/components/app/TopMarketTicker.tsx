@@ -82,14 +82,20 @@ export default function TopMarketTicker() {
 
   return (
     <div className="h-7 bg-[#000000] border-b border-[#141414] px-3 flex items-center overflow-hidden text-[11px] font-mono select-none">
-      {/* Live Feed Status Tag */}
-      <div className="flex items-center gap-1.5 pr-2.5 mr-2 border-r border-[#1a1a1a] text-[#808a9d] shrink-0 font-sans">
+      {/* Market Data Provenance Tag (Clear Provenance) */}
+      <div
+        className="flex items-center gap-1.5 pr-2.5 mr-2 border-r border-[#1a1a1a] text-[#808a9d] shrink-0 font-sans"
+        title="Market feed generated 24/7 by Geometric Brownian Motion (GBM) with volatility clustering"
+      >
         <span className="relative flex h-2 w-2">
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isLiveConnected ? 'bg-[#00c805]' : 'bg-[#2979ff]'} opacity-75`}></span>
-          <span className={`relative inline-flex rounded-full h-2 w-2 ${isLiveConnected ? 'bg-[#00c805]' : 'bg-[#2979ff]'}`}></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2979ff] opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#2979ff]"></span>
         </span>
-        <span className="font-semibold text-white tracking-wider text-[10px]">
-          {isLiveConnected ? 'LIVE FEED' : 'SIMULATED'}
+        <span className="font-bold text-[#2979ff] tracking-wider text-[10px] font-mono">
+          SIMULATED (GBM)
+        </span>
+        <span className="text-[9px] text-[#808a9d] font-mono hidden sm:inline">
+          • 24/7 FEED
         </span>
       </div>
 

@@ -24,11 +24,13 @@
 - **3.0% Daily Drawdown Circuit Breaker**: Real-time MTM monitoring that automatically locks all opening orders if daily losses exceed 3.0% of day-start equity.
 - **Deterministic Cash Ledger & Reconciliation**: Immutable financial event records with zero-variance balance audits.
 
-### 2. 🌐 24/7 Dual-Market Simulation (Dedicated Node.js Engine)
-- **10 Core Dual-Market Instruments**:
+### 2. 🌐 24/7 Dual-Market Simulation & Instrument Scope
+- **Market Data Provenance & Integrity**: All quotes and ticks are strictly labeled `SIMULATED (GBM)` or `HISTORICAL`. The platform does not use "LIVE" as a synonym for frequently refreshed simulation.
+- **10 Core Real-Time Simulated Equities & Indices (24/7 GBM Engine + 20-Depth DOM)**:
   - **NSE (India)**: `RELIANCE`, `NIFTY50`, `TCS`, `INFY`, `HDFCBANK`, `TATAMOTORS`
   - **NASDAQ (US)**: `AAPL`, `TSLA`, `NVDA`, `MSFT`
-- **Geometric Brownian Motion (GBM) Tick Feed**: Continuous drift and stochastic volatility engine broadcasting realistic market ticks every 120ms via `/ws/ticks`.
+- **500+ Extended Stock Screener Directory**: Static asset catalog and historical datasets covering Indian (NSE/BSE) and US (NASDAQ/NYSE) equities for multi-factor screening and technical analysis.
+- **Geometric Brownian Motion (GBM) Tick Feed**: Continuous drift and stochastic volatility engine broadcasting market ticks every ~120ms with transient canvas updates without whole-page React re-renders.
 - **Level 2 DOM Order Book**: Real-time 20-depth Bid/Ask ladder with dynamic volume profiling.
 - **Multi-Timeframe Aggregation**: 1-minute, 5-minute, 15-minute, and Daily candles enriched with real-time **EMA-20**, **VWAP**, and dynamic **Support/Resistance** levels.
 - **Quantitative Engine**: Black-Scholes Options Greeks ($\Delta, \Gamma, \Theta, \nu, \text{IV}$ via Newton-Raphson), vectorized strategy backtesting, and AI risk coach.
@@ -102,7 +104,7 @@ This concurrently boots:
 
 ## 🧪 Comprehensive Automated Test Suites
 
-The platform includes four distinct test suites covering all architectural layers:
+The platform includes five distinct test suites covering all architectural layers:
 
 ### 1. Spring Boot Authoritative Test Suite (23 Tests)
 Verifies JWT authentication, multi-tenant isolation, 1% risk gatekeeper, cash ledger reconciliation, position sizing, rate limiting, and production security profiles:
@@ -112,15 +114,22 @@ mvn clean test
 ```
 *Output: 23 passed, 0 failed.*
 
-### 2. Frontend Test Suite (17 Tests)
-Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), synthetic provider metadata labels, and API client position sizing invariants:
+### 2. Frontend Unit & Invariant Test Suite (32 Tests)
+Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), synthetic provider metadata labels, options Greeks analytical bounds, watchlists, trader academy curriculum, and API client position sizing invariants:
 ```bash
 cd frontend
 npm test
 ```
-*Output: 17 passed, 0 failed.*
+*Output: 32 passed, 0 failed (100% pass rate).*
 
-### 3. Node.js Market Feed Test Suite (4 Tests)
+### 3. Authenticated Order Flow & Risk Gatekeeper Integration Test
+Validates the full order lifecycle (`NEW` → `ACCEPTED` → `FILLED` → `CLOSED`), Rule A pre-trade risk gatekeeper rejection on 1.0% cap breach, and cash balance reconciliation:
+```bash
+node test_order_flow.js
+```
+*Output: All paper trading OMS & risk invariants verified successfully.*
+
+### 4. Node.js Market Feed Test Suite (4 Tests)
 Verifies GBM price simulation, 20-level Level 2 DOM ladder, Black-Scholes Options Greeks, and auto-sizer logic:
 ```bash
 cd backend
@@ -128,7 +137,7 @@ npm test
 ```
 *Output: 4 passed, 0 failed.*
 
-### 4. Quantitative Research Microservice Test Suite (34 Tests)
+### 5. Quantitative Research Microservice Test Suite (34 Tests)
 Verifies the 7 specialist agents, selective query routing, independent evidence verification, Markowitz MPT, one-sided VaR/CVaR, path-based Monte Carlo drawdowns, step-up SIP plans, goal scenarios, and PDF report generation:
 ```bash
 cd quant-engine
