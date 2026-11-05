@@ -242,6 +242,7 @@ export interface UserProfile {
 import { appConfig } from './config';
 import { paperEngine } from './paper-engine';
 import { runSimulation, BacktestCandle } from './backtest-engine';
+import { solveMPT } from './mpt-solver';
 
 const BACKEND_BASE = appConfig.apiUrl;
 const MARKET_BASE = appConfig.marketApiUrl || BACKEND_BASE;
@@ -1377,32 +1378,10 @@ class TradeSphereApiClient {
         };
       }
     } catch (e) {
-      console.warn('[ApiClient] Portfolio optimization service fallback:', e);
+      console.warn('[ApiClient] Portfolio optimization service fallback, using in-browser MPT solver:', e);
     }
 
-    return {
-      tickers,
-      maxSharpe: {
-        expectedReturn: 0.168,
-        volatility: 0.142,
-        sharpeRatio: 0.725,
-        weights: tickers.map((t) => ({ ticker: t, weight: Math.round((1 / tickers.length) * 1000) / 1000 }))
-      },
-      minVariance: {
-        expectedReturn: 0.124,
-        volatility: 0.098,
-        sharpeRatio: 0.602,
-        weights: tickers.map((t) => ({ ticker: t, weight: Math.round((1 / tickers.length) * 1000) / 1000 }))
-      },
-      frontierPoints: [
-        { volatility: 0.098, expectedReturn: 0.124 },
-        { volatility: 0.112, expectedReturn: 0.141 },
-        { volatility: 0.128, expectedReturn: 0.155 },
-        { volatility: 0.142, expectedReturn: 0.168 },
-        { volatility: 0.165, expectedReturn: 0.182 },
-        { volatility: 0.190, expectedReturn: 0.198 }
-      ]
-    };
+    return solveMPT(tickers, riskFreeRate);
   }
 
   async runBacktest(params: {
