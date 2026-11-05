@@ -7,8 +7,7 @@ const CACHE_TTL_MS = 2500; // 2.5-second cache to ensure dynamic real-time tick 
 
 // Symbol mapping: internal symbol -> external Yahoo Finance symbol
 const SYMBOL_MAP: Record<string, { yahoo: string; name: string; market: 'IN' | 'US'; exchange: string; currency: string }> = {
-  // Indian Benchmark Indices
-  'NIFTY50': { yahoo: '^NSEI', name: 'Nifty 50 Index', market: 'IN', exchange: 'NSE', currency: 'INR' },
+  // Indian Benchmark Indices (Deduplicated canonical NIFTY 50)
   'NIFTY 50': { yahoo: '^NSEI', name: 'Nifty 50 Index', market: 'IN', exchange: 'NSE', currency: 'INR' },
   'SENSEX': { yahoo: '^BSESN', name: 'BSE Sensex Benchmark', market: 'IN', exchange: 'BSE', currency: 'INR' },
   'BANKNIFTY': { yahoo: '^NSEBANK', name: 'Nifty Bank Index', market: 'IN', exchange: 'NSE', currency: 'INR' },
@@ -39,13 +38,14 @@ const SYMBOL_MAP: Record<string, { yahoo: string; name: string; market: 'IN' | '
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const requestedSymbol = searchParams.get('symbol');
+  const rawSymbol = searchParams.get('symbol');
+  const requestedSymbol = rawSymbol?.toUpperCase() === 'NIFTY50' ? 'NIFTY 50' : rawSymbol?.toUpperCase();
 
   // Check cache
   const now = Date.now();
   if (cachedQuotes.length > 0 && now - lastFetchTime < CACHE_TTL_MS) {
     if (requestedSymbol) {
-      const found = cachedQuotes.find(q => q.symbol === requestedSymbol.toUpperCase());
+      const found = cachedQuotes.find(q => q.symbol === requestedSymbol);
       if (found) return NextResponse.json(found);
     } else {
       return NextResponse.json(cachedQuotes);
@@ -53,8 +53,8 @@ export async function GET(request: Request) {
   }
 
   // Fetch real market quotes from Yahoo Finance Chart API
-  const symbolsToFetch = requestedSymbol && SYMBOL_MAP[requestedSymbol.toUpperCase()]
-    ? [requestedSymbol.toUpperCase()]
+  const symbolsToFetch = requestedSymbol && SYMBOL_MAP[requestedSymbol]
+    ? [requestedSymbol]
     : Object.keys(SYMBOL_MAP);
 
   const fetchPromises = symbolsToFetch.map(async (key) => {

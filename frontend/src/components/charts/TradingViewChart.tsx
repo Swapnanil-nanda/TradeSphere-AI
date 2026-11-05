@@ -28,6 +28,7 @@ import {
   Info,
   Maximize2
 } from 'lucide-react';
+import { useMarketStore } from '../../lib/market-store';
 
 export interface TradingViewChartProps {
   symbol: string;
@@ -94,6 +95,15 @@ export default function TradingViewChart({
   } | null>(null);
 
   const timeframes = ['1m', '5m', '15m', '1h', '1D'];
+
+  // Centralized store selector for live tick synchronization (zero independent component timers)
+  const storeQuote = useMarketStore(state => state.quotes[symbol]);
+  const storeLtp = storeQuote?.ltp;
+
+  // Reset active OHLC legend state inside useEffect whenever symbol or timeframe changes
+  useEffect(() => {
+    setLegendInfo(null);
+  }, [symbol, timeframe]);
 
   // Initialize and clean up chart
   useEffect(() => {
@@ -399,15 +409,15 @@ export default function TradingViewChart({
             </span>
           </div>
 
-          {latestCandle && (
+          {(storeLtp !== undefined || latestCandle) && (
             <div className="flex items-baseline gap-2 font-mono">
               <span className="text-sm font-bold text-slate-900 dark:text-white">
-                {currencySymbol}{(latestCandle.close ?? 0).toFixed(2)}
+                {currencySymbol}{(storeLtp ?? latestCandle?.close ?? 0).toFixed(2)}
               </span>
-              <span className={`text-[11px] font-semibold flex items-center ${(latestCandle.close ?? 0) >= (latestCandle.open ?? 0) ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {(latestCandle.close ?? 0) >= (latestCandle.open ?? 0) ? '+' : ''}
-                {((latestCandle.close ?? 0) - (latestCandle.open ?? 0)).toFixed(2)} (
-                {latestCandle.open ? ((((latestCandle.close ?? 0) - latestCandle.open) / latestCandle.open) * 100).toFixed(2) : '0.00'}%)
+              <span className={`text-[11px] font-semibold flex items-center ${(storeQuote?.change ?? ((latestCandle?.close ?? 0) - (latestCandle?.open ?? 0))) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {(storeQuote?.change ?? ((latestCandle?.close ?? 0) - (latestCandle?.open ?? 0))) >= 0 ? '+' : ''}
+                {(storeQuote?.change ?? ((latestCandle?.close ?? 0) - (latestCandle?.open ?? 0))).toFixed(2)} (
+                {(storeQuote?.changePct ?? (latestCandle?.open ? ((((latestCandle.close ?? 0) - latestCandle.open) / latestCandle.open) * 100) : 0)).toFixed(2)}%)
               </span>
             </div>
           )}

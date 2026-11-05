@@ -393,7 +393,7 @@ class TradeSphereApiClient {
     { symbol: 'AAPL', name: 'Apple Inc.', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 234.5, bid: 234.48, ask: 234.52, change: 3.2, changePct: 1.38, volume: 54100000, dayHigh: 236.2, dayLow: 231.0, timestamp: Date.now(), isSimulated: true },
     { symbol: 'TSLA', name: 'Tesla Inc.', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 219.8, bid: 219.7, ask: 219.9, change: -3.8, changePct: -1.70, volume: 68200000, dayHigh: 226.5, dayLow: 215.2, timestamp: Date.now(), isSimulated: true },
     { symbol: 'NVDA', name: 'NVIDIA Corporation', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 142.6, bid: 142.58, ask: 142.62, change: 4.2, changePct: 3.03, volume: 92300000, dayHigh: 144.5, dayLow: 138.2, timestamp: Date.now(), isSimulated: true },
-    { symbol: 'MSFT', name: 'Microsoft Corporation', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 431.2, bid: 431.15, ask: 431.25, change: 2.8, changePct: 0.65, volume: 22100000, dayHigh: 434.0, dayLow: 427.5, timestamp: Date.now(), isSimulated: true }
+    { symbol: 'MSFT', name: 'Microsoft Corporation', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 536.0, bid: 535.95, ask: 536.05, change: 4.8, changePct: 0.90, volume: 22100000, dayHigh: 540.0, dayLow: 532.5, timestamp: Date.now(), isSimulated: true }
   ];
 
   async getTickers(): Promise<Ticker[]> {

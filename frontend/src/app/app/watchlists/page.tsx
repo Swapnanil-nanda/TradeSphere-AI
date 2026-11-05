@@ -14,6 +14,7 @@ import {
   WatchlistBackendData,
   WatchlistAlert
 } from '../../../lib/api-client';
+import { useMarketStore } from '../../../lib/market-store';
 import {
   Plus,
   Search,
@@ -102,21 +103,13 @@ export default function WatchlistsPage() {
     loadData();
   }, []);
 
-  // Periodic Tick Refresh (safe, error-suppressed)
+  // Listen to synchronized ticks from useMarketStore (zero independent component timers)
+  const storeLastUpdated = useMarketStore((state) => state.lastUpdated);
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const fresh = await apiClient.getTickers();
-        if (Array.isArray(fresh) && fresh.length > 0) {
-          setAllTickers(fresh);
-          setLastUpdated(new Date().toLocaleTimeString());
-        }
-      } catch {
-        // Silently preserve state
-      }
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+    if (storeLastUpdated) {
+      setLastUpdated(new Date(storeLastUpdated).toLocaleTimeString());
+    }
+  }, [storeLastUpdated]);
 
   // Active Watchlist
   const activeWatchlist = useMemo(() => {

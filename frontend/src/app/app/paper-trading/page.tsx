@@ -16,6 +16,7 @@ import {
   CashLedgerEntry,
   ReconciliationReport
 } from '../../../lib/api-client';
+import { useMarketStore } from '../../../lib/market-store';
 import {
   ShieldAlert,
   Settings2,
@@ -222,6 +223,9 @@ function PaperTradingContent() {
     }
   }, [activeTab]);
 
+  const quotes = useMarketStore(state => state.quotes);
+  const storeQuote = quotes[symbol] || quotes[symbol === 'NIFTY50' ? 'NIFTY 50' : symbol];
+
   const currentTicker: Ticker = (tickers.find(t => t.symbol === symbol) || tickers[0] || {
     symbol,
     name: `${symbol} Equity`,
@@ -235,12 +239,12 @@ function PaperTradingContent() {
     currency: 'INR'
   }) as Ticker;
 
-  const currentLtp = Number(currentTicker.ltp ?? 2985.4);
+  const currentLtp = Number(storeQuote?.ltp ?? currentTicker.ltp ?? 2985.4);
   const currentBid = Number(currentTicker.bid ?? currentLtp - 0.05);
   const currentAsk = Number(currentTicker.ask ?? currentLtp + 0.05);
-  const currentChangePct = Number(currentTicker.changePct ?? 0);
+  const currentChangePct = Number(storeQuote?.changePct ?? currentTicker.changePct ?? 0);
   const isUp = currentChangePct >= 0;
-  const currencySymbol = currentTicker.currency === 'USD' ? '$' : '₹';
+  const currencySymbol = (storeQuote?.currency ?? currentTicker.currency) === 'USD' ? '$' : '₹';
 
   // Realistic 20-level simulated Depth of Market
   const domDepth = Array.from({ length: 8 }).map((_, i) => {
@@ -349,11 +353,15 @@ function PaperTradingContent() {
                   }}
                   className="bg-[#080808] border border-[#1a1a1a] text-white font-bold text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-[#2979FF] font-mono"
                 >
-                  {tickers.map(t => (
-                    <option key={t.symbol} value={t.symbol}>
-                      {t.symbol} — {t.currency === 'USD' ? '$' : '₹'}{Number(t.ltp ?? 0).toFixed(2)}
-                    </option>
-                  ))}
+                  {tickers.map(t => {
+                    const q = quotes[t.symbol];
+                    const itemLtp = q?.ltp ?? t.ltp ?? 0;
+                    return (
+                      <option key={t.symbol} value={t.symbol}>
+                        {t.symbol} — {t.currency === 'USD' ? '$' : '₹'}{Number(itemLtp).toFixed(2)}
+                      </option>
+                    );
+                  })}
                 </select>
 
                 <div className={`text-xs font-mono font-bold tabular-nums ${isUp ? 'text-[#00c805]' : 'text-[#ff333a]'}`}>

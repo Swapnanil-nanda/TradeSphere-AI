@@ -107,7 +107,32 @@ export async function GET(request: Request) {
 
   // Fallback synthetic candles if external feed is unreachable
   const now = Math.floor(Date.now() / 1000);
-  const base = rawSymbol.includes('NIFTY') ? 24350 : rawSymbol.includes('TCS') ? 4125 : 2985;
+  const BASE_PRICES: Record<string, number> = {
+    'MSFT': 536.00,
+    'AAPL': 234.50,
+    'NVDA': 142.60,
+    'TSLA': 219.80,
+    'GOOGL': 181.40,
+    'AMZN': 188.70,
+    'SPY': 598.00,
+    'QQQ': 518.00,
+    'NIFTY 50': 24350.00,
+    'NIFTY50': 24350.00,
+    'SENSEX': 79500.00,
+    'BANKNIFTY': 52200.00,
+    'RELIANCE': 1312.70,
+    'TCS': 4125.00,
+    'INFY': 1892.50,
+    'HDFCBANK': 1748.20,
+    'ICICIBANK': 1230.50,
+    'SBIN': 825.40,
+    'TATAMOTORS': 985.00,
+    'BHARTIARTL': 1640.80,
+    'ITC': 478.20,
+    'WIPRO': 545.00,
+    'LICI': 980.00
+  };
+  const base = BASE_PRICES[rawSymbol] || 1000;
   const fallbackCandles = [];
   let price = base;
 

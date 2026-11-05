@@ -7,6 +7,7 @@ import ErrorState from '../../../components/app/ErrorState';
 import { ChartSkeleton } from '../../../components/app/LoadingSkeleton';
 import { syntheticMarketData } from '../../../lib/market-data/synthetic-provider';
 import { StockDetails, CandleWithIndicators, TechnicalIndicatorsSeries, Instrument, MetadataLabel } from '../../../lib/market-data/types';
+import { useMarketStore } from '../../../lib/market-store';
 import {
   Search,
   TrendingUp,
@@ -47,11 +48,16 @@ function ChartsContent() {
     }
   }, [searchParams, symbol]);
 
+  const storeQuote = useMarketStore(state => state.quotes[symbol]);
+  const storeLtp = storeQuote?.ltp;
+
   // Load Chart & Stock Data
   const loadChartData = async (targetSymbol: string, targetTf: string) => {
     try {
       setLoading(true);
       setError(null);
+      setCandles([]);
+      setIndicators(null);
 
       const [details, candleRes] = await Promise.all([
         syntheticMarketData.getStockDetails(targetSymbol),
@@ -149,17 +155,17 @@ function ChartsContent() {
             )}
           </div>
 
-          {/* Current Stock Quote Badge */}
+          {/* Current Stock Quote Badge (Synchronized from useMarketStore) */}
           {stockDetails && (
             <div className="flex items-center gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-black text-white font-mono">
-                    {currencySymbol}{Number(stockDetails.ltp ?? 0).toFixed(2)}
+                    {currencySymbol}{Number(storeLtp ?? stockDetails.ltp ?? 0).toFixed(2)}
                   </span>
-                  <span className={`text-xs font-bold font-mono flex items-center gap-0.5 ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                    {isUp ? '+' : ''}{Number(stockDetails.change ?? 0).toFixed(2)} ({isUp ? '+' : ''}{Number(stockDetails.changePct ?? 0).toFixed(2)}%)
+                  <span className={`text-xs font-bold font-mono flex items-center gap-0.5 ${(storeQuote?.change ?? stockDetails.change ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {(storeQuote?.change ?? stockDetails.change ?? 0) >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                    {(storeQuote?.change ?? stockDetails.change ?? 0) >= 0 ? '+' : ''}{Number(storeQuote?.change ?? stockDetails.change ?? 0).toFixed(2)} ({(storeQuote?.change ?? stockDetails.change ?? 0) >= 0 ? '+' : ''}{Number(storeQuote?.changePct ?? stockDetails.changePct ?? 0).toFixed(2)}%)
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-400 font-medium truncate max-w-[220px]">

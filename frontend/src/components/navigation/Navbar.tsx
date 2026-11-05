@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowRight, Menu, X, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Menu, X, ShieldCheck, Github } from 'lucide-react';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -76,6 +76,16 @@ export default function Navbar() {
 
           {/* Action CTAs */}
           <div className="hidden md:flex items-center gap-2">
+            <a
+              href="https://github.com/Swapnanil-nanda/TradeSphere-AI"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[#8B99A8] hover:text-[#E7EDF3] hover:bg-[#111922] transition-colors font-mono text-[11px]"
+              title="View Source Repository on GitHub"
+            >
+              <Github className="w-3.5 h-3.5 text-[#E7EDF3]" />
+              <span>GitHub</span>
+            </a>
             <Link
               href="/login"
               className="px-2.5 py-1 rounded text-[#8B99A8] hover:text-[#E7EDF3] font-medium hover:bg-[#111922] transition-colors"
@@ -118,6 +128,15 @@ export default function Navbar() {
             </Link>
           ))}
           <div className="pt-2 border-t border-[#25313D] flex flex-col gap-2">
+            <a
+              href="https://github.com/Swapnanil-nanda/TradeSphere-AI"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-2 rounded bg-[#111922] border border-[#25313D] text-[#E7EDF3] font-mono text-xs"
+            >
+              <Github className="w-3.5 h-3.5" />
+              <span>GitHub Repository</span>
+            </a>
             <Link
               href="/app/paper-trading"
               onClick={() => setMobileMenuOpen(false)}

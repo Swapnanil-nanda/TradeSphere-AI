@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Github } from 'lucide-react';
 
 export default function Footer() {
   const pathname = usePathname();
@@ -27,11 +27,22 @@ export default function Footer() {
               </span>
             </Link>
             <p className="text-[#8B99A8] text-xs leading-relaxed max-w-sm">
-              An India-first, zero-fee financial research and paper-trading workstation built with institutional risk guardrails, 24/7 realistic market simulation, and 7-agent quantitative research federation.
+              An India-first, zero-fee financial research and paper-trading workstation built with institutional risk guardrails, 24/7 realistic market simulation, and 8-agent quantitative research federation.
             </p>
-            <div className="flex items-center gap-2 pt-2 text-[11px] text-[#8B99A8] font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#35C69A]" />
-              <span>100% Free &amp; Self-Hosted Open Architecture</span>
+            <div className="flex flex-wrap items-center gap-3 pt-2 text-[11px] font-mono">
+              <div className="flex items-center gap-1.5 text-[#35C69A]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#35C69A]" />
+                <span>100% Free &amp; Self-Hosted</span>
+              </div>
+              <a
+                href="https://github.com/Swapnanil-nanda/TradeSphere-AI"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[#8B99A8] hover:text-[#E7EDF3] transition-colors underline"
+              >
+                <Github className="w-3.5 h-3.5" />
+                <span>GitHub Repo</span>
+              </a>
             </div>
           </div>
 
@@ -42,7 +53,7 @@ export default function Footer() {
               <li><Link href="/app/paper-trading" className="text-[#2979FF] font-semibold hover:underline">Trading Terminal</Link></li>
               <li><Link href="/app/dashboard" className="hover:text-[#E7EDF3] transition-colors">Overview Dashboard</Link></li>
               <li><Link href="/app/screener" className="hover:text-[#E7EDF3] transition-colors">Stock Screener</Link></li>
-              <li><Link href="/app/quant/multi-agent" className="hover:text-[#E7EDF3] transition-colors">7-Agent Command Center</Link></li>
+              <li><Link href="/app/quant/multi-agent" className="hover:text-[#E7EDF3] transition-colors">8-Agent Command Center</Link></li>
               <li><Link href="/app/wealth/optimizer" className="hover:text-[#E7EDF3] transition-colors">MPT Optimizer</Link></li>
             </ul>
           </div>
@@ -82,7 +93,15 @@ export default function Footer() {
 
           <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#8B99A8] pt-2">
             <div>
-              &copy; {new Date().getFullYear()} TradeSphere AI. Open-source under MIT License.
+              &copy; {new Date().getFullYear()} TradeSphere AI. Open-source under{' '}
+              <a
+                href="https://github.com/Swapnanil-nanda/TradeSphere-AI"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-white"
+              >
+                MIT License (GitHub)
+              </a>.
             </div>
             <div className="flex items-center gap-3 mt-2 sm:mt-0 font-mono text-[10px]">
               <span>v2.0.0-PROD</span>

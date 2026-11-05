@@ -40,7 +40,7 @@ export class SyntheticMarketDataProvider implements MarketDataProvider {
     { symbol: 'ITC', name: 'ITC Limited', exchange: 'NSE', market: 'IN', currency: 'INR', sector: 'FMCG', industry: 'Diversified Consumer Goods', lotSize: 1, tickSize: 0.05, basePrice: 478.20 },
     // US Equities (NASDAQ/NYSE)
     { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD', sector: 'Consumer Technology', industry: 'Consumer Electronics & Cloud', lotSize: 1, tickSize: 0.01, basePrice: 234.50 },
-    { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NASDAQ', market: 'US', currency: 'USD', sector: 'Cloud & Enterprise', industry: 'Enterprise Software & Azure AI', lotSize: 1, tickSize: 0.01, basePrice: 431.20 },
+    { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NASDAQ', market: 'US', currency: 'USD', sector: 'Cloud & Enterprise', industry: 'Enterprise Software & Azure AI', lotSize: 1, tickSize: 0.01, basePrice: 536.00 },
     { symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NASDAQ', market: 'US', currency: 'USD', sector: 'Semiconductors', industry: 'Accelerated Compute & GPU', lotSize: 1, tickSize: 0.01, basePrice: 142.60 },
     { symbol: 'TSLA', name: 'Tesla Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD', sector: 'Automotive & Clean Energy', industry: 'Autonomous Vehicles & Battery', lotSize: 1, tickSize: 0.01, basePrice: 219.80 },
     { symbol: 'GOOGL', name: 'Alphabet Inc.', exchange: 'NASDAQ', market: 'US', currency: 'USD', sector: 'Internet & Cloud', industry: 'Search, Advertising & Gemini', lotSize: 1, tickSize: 0.01, basePrice: 181.40 },

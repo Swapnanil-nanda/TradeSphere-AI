@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Ticker } from '../../lib/api-client';
+import { useMarketStore } from '../../lib/market-store';
 
 export type SortField = 'symbol' | 'ltp' | 'changePct' | 'volume';
 export type SortDirection = 'asc' | 'desc';
@@ -73,6 +74,7 @@ export default function WatchlistTable({
   sortDirection,
   onSort
 }: WatchlistTableProps) {
+  const quotes = useMarketStore(state => state.quotes);
   if (!tickers || tickers.length === 0) {
     return (
       <div className="p-8 text-center text-[#808a9d] text-xs bg-[#050505] border border-[#141414] rounded-lg font-mono">
@@ -138,12 +140,13 @@ export default function WatchlistTable({
           <tbody className="divide-y divide-[#141414]">
             {tickers.map((t, idx) => {
               if (!t) return null;
-              const ltpVal = Number(t.ltp ?? 0);
-              const changePctVal = Number(t.changePct ?? 0);
-              const changeVal = Number(t.change ?? 0);
-              const volumeVal = Number(t.volume ?? 0);
-              const dayLowVal = Number(t.dayLow ?? ltpVal);
-              const dayHighVal = Number(t.dayHigh ?? ltpVal);
+              const storeQuote = quotes[t.symbol];
+              const ltpVal = Number(storeQuote?.ltp ?? t.ltp ?? 0);
+              const changePctVal = Number(storeQuote?.changePct ?? t.changePct ?? 0);
+              const changeVal = Number(storeQuote?.change ?? t.change ?? 0);
+              const volumeVal = Number(storeQuote?.volume ?? t.volume ?? 0);
+              const dayLowVal = Number(storeQuote?.dayLow ?? t.dayLow ?? ltpVal);
+              const dayHighVal = Number(storeQuote?.dayHigh ?? t.dayHigh ?? ltpVal);
 
               const isUp = changePctVal >= 0;
               const currency = t.currency === 'USD' ? '$' : '₹';
