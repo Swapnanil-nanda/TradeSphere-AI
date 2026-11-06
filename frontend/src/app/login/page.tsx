@@ -4,8 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Zap,
-  User, Sliders, CheckCircle2, ChevronRight, Sparkles, BookOpen
+  Lock, Mail, ArrowRight, AlertCircle, Zap, ShieldCheck, ChevronRight
 } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
@@ -33,173 +32,139 @@ export default function LoginPage() {
   };
 
   const handleGuestLaunch = () => {
-    // Isolated guest session allotted to basic tier
     apiClient.switchUserContext('guest.trader@tradesphere.ai', 'Guest Trader');
     router.push('/app/paper-trading');
   };
 
   return (
-    <div className="min-h-[90vh] flex items-center justify-center px-4 py-8 select-none bg-[#000000] text-[#F0F3F6]">
-      <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+    <div className="min-h-[88vh] flex items-center justify-center px-4 py-12 select-none bg-[#000000] text-[#F0F3F6] relative overflow-hidden">
+      {/* Subtle ambient workstation background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-gradient-to-tr from-blue-600/10 via-indigo-500/5 to-emerald-500/5 blur-[120px] pointer-events-none rounded-full" />
+
+      <div className="max-w-[420px] w-full relative z-10 space-y-6">
         
-        {/* Left Column: The 3 Canonical Workstation Sections */}
-        <div className="lg:col-span-6 bg-[#090D12] border border-[#25313D] rounded-2xl p-6 sm:p-7 flex flex-col justify-between space-y-5 shadow-xl">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#2979FF] flex items-center justify-center font-black text-white text-base shadow-md shadow-blue-500/20">
-                Ω
-              </div>
-              <div>
-                <h1 className="text-xl font-black text-white tracking-tight">TradeSphere AI</h1>
-                <p className="text-[11px] text-[#8B99A8] font-mono">100% Free Self-Hosted Workstation</p>
-              </div>
-            </div>
+        {/* Terminal Header & Brand Pill */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0D1522] border border-[#1F2E45] text-[#2979FF] text-[11px] font-mono font-semibold tracking-wide shadow-inner">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#35C69A] animate-pulse" />
+            <span>TradeSphere AI Terminal</span>
+          </div>
 
-            <p className="text-xs text-[#8B99A8] leading-relaxed">
-              Every user receives an isolated multi-tenant account with dedicated transactional cash tracking and three canonical architecture sections:
-            </p>
-
-            {/* The 3 Canonical Sections */}
-            <div className="space-y-3 font-sans text-xs">
-              {/* Section 1 */}
-              <div className="p-3 bg-[#0D131A] rounded-xl border border-[#25313D] space-y-1">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-white flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-[#2979FF]" />
-                    <span>Section 1: User Profile &amp; Virtual Capital</span>
-                  </span>
-                  <span className="text-[#35C69A] font-mono font-bold">₹10,00,000 Equity</span>
-                </div>
-                <p className="text-[11px] text-[#8B99A8] leading-relaxed">
-                  Dedicated user login with independent paper trading ledger, zero real money risk, and persistent transaction history.
-                </p>
-              </div>
-
-              {/* Section 2 */}
-              <div className="p-3 bg-[#0D131A] rounded-xl border border-[#25313D] space-y-1">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-white flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-[#D8AB5E]" />
-                    <span>Section 2: Complexity Tier &amp; Access</span>
-                  </span>
-                  <span className="text-[#2979FF] font-mono font-bold">Tier 1: Basic Allotted</span>
-                </div>
-                <p className="text-[11px] text-[#8B99A8] leading-relaxed">
-                  Post-login onboarding asks your trading experience and assigns Tier 1 Basic Trader. Unlock Active Trader &amp; Pro Quant progressively.
-                </p>
-              </div>
-
-              {/* Section 3 */}
-              <div className="p-3 bg-[#0D131A] rounded-xl border border-[#25313D] space-y-1">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-white flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#35C69A]" />
-                    <span>Section 3: Pre-Trade Risk Parameters</span>
-                  </span>
-                  <span className="text-[#35C69A] font-mono font-bold">Rule A: 1.0% Cap</span>
-                </div>
-                <p className="text-[11px] text-[#8B99A8] leading-relaxed">
-                  Mandatory hard Stop-Loss validation, 3.0% daily session drawdown circuit breaker, and zero-sizing on risk breach.
-                </p>
-              </div>
+          <div className="flex justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#2979FF] to-[#1249B3] flex items-center justify-center font-black text-white text-xl shadow-lg shadow-blue-500/25 border border-white/10">
+              Ω
             </div>
           </div>
 
-          {/* Quick Instant Launch Button */}
-          <div className="pt-2 border-t border-[#25313D]">
-            <button
-              onClick={handleGuestLaunch}
-              className="w-full py-2.5 rounded-xl bg-[#2979FF]/15 hover:bg-[#2979FF]/25 border border-[#2979FF]/40 text-[#2979FF] hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-2"
-            >
-              <Zap className="w-4 h-4 text-[#2979FF]" />
-              <span>Launch Workstation Directly as Guest</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+          <div>
+            <h1 className="text-2xl font-black text-white tracking-tight">Welcome Back</h1>
+            <p className="text-xs text-[#808a9d] mt-1">
+              Sign in to access your portfolio, watchlists, and quant research
+            </p>
           </div>
         </div>
 
-        {/* Right Column: User Sign In / Registration Access */}
-        <div className="lg:col-span-6 bg-[#050505] border border-[#141414] rounded-2xl p-6 sm:p-7 shadow-2xl flex flex-col justify-between space-y-5">
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-xl font-black text-white font-sans tracking-tight">Sign In to Your Account</h2>
-              <p className="text-xs text-[#808a9d] mt-0.5">Enter your email to load your isolated profile and trading ledger</p>
+        {/* Main Sleek Auth Card */}
+        <div className="bg-[#06090E]/90 border border-[#182333] rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-xl space-y-5">
+          
+          {error && (
+            <div className="bg-[#ff333a]/10 border border-[#ff333a]/30 p-3 rounded-xl flex items-center gap-2.5 text-xs text-[#ff333a] animate-in fade-in duration-200">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span className="leading-relaxed">{error}</span>
             </div>
+          )}
 
-            {error && (
-              <div className="bg-[#ff333a]/10 border border-[#ff333a]/30 p-3 rounded-lg flex items-center gap-2 text-xs text-[#ff333a]">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Google Official One-Click Sign In */}
-            <div className="w-full">
+          {/* Official Google One-Click Sign In */}
+          <div className="space-y-2">
+            <div className="w-full flex justify-center">
               <GoogleSignInButton
                 text="continue_with"
                 onError={(err) => setError(err)}
                 onSuccess={() => router.push('/app/paper-trading')}
               />
             </div>
-
-            <div className="flex items-center gap-3 my-2">
-              <div className="flex-1 border-t border-[#1a1a1a]"></div>
-              <span className="text-[10px] text-[#808a9d] uppercase font-bold tracking-wider">or sign in with email</span>
-              <div className="flex-1 border-t border-[#1a1a1a]"></div>
-            </div>
-
-            <form onSubmit={handleLogin} className="space-y-4 text-xs font-sans">
-              <div>
-                <label className="block text-[#808a9d] font-bold mb-1">Email Address:</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3 top-3 text-[#808a9d]" />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@domain.com"
-                    className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg pl-9 pr-3 py-2.5 text-white focus:outline-none focus:border-[#2979FF] font-mono text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[#808a9d] font-bold mb-1">Password:</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3 top-3 text-[#808a9d]" />
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg pl-9 pr-3 py-2.5 text-white focus:outline-none focus:border-[#2979FF] font-mono text-xs"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 rounded-lg bg-[#2979FF] hover:bg-[#1E65DF] text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-500/20"
-              >
-                <span>{loading ? 'Authenticating...' : 'Sign In & Enter Workstation'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-
-            <div className="p-3 bg-[#0D131A] rounded-xl border border-[#25313D] text-[11px] text-[#8B99A8] leading-relaxed">
-              <strong className="text-white block mb-0.5">💡 Post-Login Experience:</strong>
-              After entering, you will answer 3 quick questions about your trading background and be alloted to <strong>Tier 1 — Basic Trader</strong> with guided tools and safe risk limits.
-            </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-[#141414] text-xs text-[#808a9d]">
-            <Link href="/" className="hover:text-white transition-colors">
-              &larr; Back to Home
-            </Link>
+          {/* Subtle Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-[#16202E]" />
+            <span className="text-[10px] text-[#637286] uppercase font-mono font-bold tracking-widest">
+              or email
+            </span>
+            <div className="flex-1 border-t border-[#16202E]" />
+          </div>
+
+          {/* Email / Password Form */}
+          <form onSubmit={handleLogin} className="space-y-4 text-xs font-sans">
+            <div className="space-y-1">
+              <label className="block text-[#8B99A8] font-semibold text-[11px]">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-[#637286]" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@domain.com"
+                  className="w-full bg-[#080D15] border border-[#1B2738] rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-[#505D70] focus:outline-none focus:border-[#2979FF] focus:ring-1 focus:ring-[#2979FF] font-mono text-xs transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="block text-[#8B99A8] font-semibold text-[11px]">
+                  Password
+                </label>
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3 top-3 text-[#637286]" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full bg-[#080D15] border border-[#1B2738] rounded-xl pl-9 pr-3 py-2.5 text-white placeholder-[#505D70] focus:outline-none focus:border-[#2979FF] focus:ring-1 focus:ring-[#2979FF] font-mono text-xs transition-all"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl bg-[#2979FF] hover:bg-[#1E65DF] text-white font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 active:scale-[0.99] disabled:opacity-60"
+            >
+              <span>{loading ? 'Authenticating...' : 'Sign In to Terminal'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          {/* Instant Guest Demo Launch */}
+          <div className="pt-2 border-t border-[#16202E]">
+            <button
+              type="button"
+              onClick={handleGuestLaunch}
+              className="w-full py-2 rounded-xl bg-transparent hover:bg-[#0D1522] border border-[#1B2738] hover:border-[#2979FF]/40 text-[#8B99A8] hover:text-[#F0F3F6] font-semibold text-xs transition-all flex items-center justify-center gap-2"
+            >
+              <Zap className="w-3.5 h-3.5 text-[#2979FF]" />
+              <span>Launch Workstation Directly as Guest</span>
+            </button>
+          </div>
+
+        </div>
+
+        {/* Card Footer Links */}
+        <div className="flex items-center justify-between text-xs text-[#808a9d] px-1">
+          <Link href="/" className="hover:text-white transition-colors">
+            &larr; Back to Home
+          </Link>
+          <div className="flex items-center gap-1">
+            <span>New to TradeSphere?</span>
             <Link href="/register" className="text-[#2979FF] hover:underline font-bold">
-              Create New Account &rarr;
+              Sign up
             </Link>
           </div>
         </div>
