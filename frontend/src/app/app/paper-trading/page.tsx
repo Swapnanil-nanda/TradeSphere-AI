@@ -369,7 +369,7 @@ function PaperTradingContent() {
                 </div>
 
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 font-bold hidden sm:inline-block">
-                  SIMULATED (GBM)
+                  SIMULATED • GBM Market Feed
                 </span>
               </div>
 

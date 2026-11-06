@@ -44,7 +44,7 @@ async function runTests() {
   // 1. Health Check
   console.log('1. Checking GET /api/health...');
   const health = await request('GET', '/api/health');
-  if (health.status !== 200 || health.data.status !== 'healthy') {
+  if (health.status !== 200 || (health.data.status !== 'healthy' && health.data.status !== 'UP')) {
     throw new Error(`Health check failed: ${JSON.stringify(health)}`);
   }
   console.log('   ✓ Health OK:', health.data);
@@ -69,72 +69,34 @@ async function runTests() {
   const sampleCandle = candles.data[candles.data.length - 1];
   console.log(`   ✓ Received ${candles.data.length} candles. Latest close: ₹${sampleCandle.close}, EMA20: ₹${sampleCandle.ema20}, VWAP: ₹${sampleCandle.vwap}`);
 
-  // 4. Pre-Trade Risk Gatekeeper - Violating Order (>1% equity risk)
-  console.log('4. Testing Pre-Trade Risk Gatekeeper: Order Exceeding 1% Risk...');
-  const violatingOrder = await request('POST', '/api/orders', {
-    symbol: 'RELIANCE',
-    side: 'BUY',
-    quantity: 500, // 500 * (2850 - 2800) = 25,000 risk > 10,000 (1% of 1,000,000)
-    orderType: 'MARKET',
-    stopLoss: 2800.0,
-    takeProfit: 3000.0
-  });
-  if (violatingOrder.status === 400 && violatingOrder.data.error.includes('1.0%')) {
-    console.log(`   ✓ BLOCKED as expected by Risk Gatekeeper: "${violatingOrder.data.error}"`);
+  // 4. Level 2 DOM Ladder (20-depth book)
+  console.log('4. Checking GET /api/dom?symbol=RELIANCE...');
+  const dom = await request('GET', '/api/dom?symbol=RELIANCE');
+  if (dom.status !== 200 || !Array.isArray(dom.data.bids) || !Array.isArray(dom.data.asks)) {
+    throw new Error(`DOM check failed: ${JSON.stringify(dom)}`);
+  }
+  console.log(`   ✓ Level 2 DOM Ladder verified: ${dom.data.bids.length} bids, ${dom.data.asks.length} asks. Spread: ₹${(dom.data.asks[0]?.price - dom.data.bids[0]?.price).toFixed(2)}`);
+
+  // 5. Architectural Invariant: Deprecated Node Order Endpoints return HTTP 410
+  console.log('5. Verifying Architectural Invariant: Deprecated Node OMS returns HTTP 410...');
+  const deprecatedOrder = await request('POST', '/api/orders', { symbol: 'RELIANCE', side: 'BUY' });
+  if (deprecatedOrder.status === 410 && deprecatedOrder.data.code === 'MIGRATED_TO_SPRING_BOOT') {
+    console.log(`   ✓ Node order endpoint correctly rejected with HTTP 410 MIGRATED_TO_SPRING_BOOT`);
   } else {
-    throw new Error(`Risk Gatekeeper failed to block excessive risk order: ${JSON.stringify(violatingOrder)}`);
+    throw new Error(`Architectural invariant violated: Node order endpoint did not return 410: ${JSON.stringify(deprecatedOrder)}`);
   }
 
-  // 5. Pre-Trade Risk Gatekeeper - Missing Stop-Loss Invariant
-  console.log('5. Testing Pre-Trade Risk Gatekeeper: Mandatory Stop-Loss Enforcement...');
-  const noSlOrder = await request('POST', '/api/orders', {
-    symbol: 'RELIANCE',
-    side: 'BUY',
-    quantity: 10,
-    orderType: 'MARKET'
-  });
-  if (noSlOrder.status === 400 && noSlOrder.data.error.toLowerCase().includes('stop-loss')) {
-    console.log(`   ✓ BLOCKED as expected by Risk Gatekeeper: "${noSlOrder.data.error}"`);
+  // 6. Architectural Invariant: Deprecated Node Portfolio returns HTTP 410
+  console.log('6. Verifying Architectural Invariant: Deprecated Node Portfolio returns HTTP 410...');
+  const deprecatedPort = await request('GET', '/api/portfolio');
+  if (deprecatedPort.status === 410 && deprecatedPort.data.code === 'MIGRATED_TO_SPRING_BOOT') {
+    console.log(`   ✓ Node portfolio endpoint correctly rejected with HTTP 410 MIGRATED_TO_SPRING_BOOT`);
   } else {
-    throw new Error(`Risk Gatekeeper failed to block missing stop loss: ${JSON.stringify(noSlOrder)}`);
+    throw new Error(`Architectural invariant violated: Node portfolio endpoint did not return 410: ${JSON.stringify(deprecatedPort)}`);
   }
 
-  // 6. Pre-Trade Risk Gatekeeper - Compliant Order Execution
-  console.log('6. Testing Compliant Order Execution with 1% auto-sizing...');
-  const currentTicker = tickers.data.find(t => t.symbol === 'RELIANCE');
-  const ltp = currentTicker.ltp;
-  const compliantOrder = await request('POST', '/api/orders', {
-    symbol: 'RELIANCE',
-    side: 'BUY',
-    quantity: 20, // 20 * (ltp - (ltp - 30)) = 600 risk <= 10,000
-    orderType: 'MARKET',
-    stopLoss: Math.round((ltp - 30) * 10) / 10,
-    takeProfit: Math.round((ltp + 60) * 10) / 10
-  });
-  if (compliantOrder.status !== 200 || compliantOrder.data.status !== 'FILLED') {
-    throw new Error(`Compliant order failed: ${JSON.stringify(compliantOrder)}`);
-  }
-  console.log(`   ✓ Executed successfully: ID ${compliantOrder.data.orderId}, Fill Price: ₹${compliantOrder.data.executionPrice}`);
-
-  // 7. Portfolio Blotter Verification
-  console.log('7. Checking GET /api/portfolio...');
-  const portfolio = await request('GET', '/api/portfolio');
-  if (portfolio.status !== 200 || portfolio.data.positions.length === 0) {
-    throw new Error(`Portfolio check failed: ${JSON.stringify(portfolio)}`);
-  }
-  const pos = portfolio.data.positions[0];
-  console.log(`   ✓ Verified open position: ${pos.symbol} ${pos.side} ${pos.quantity} shares @ ₹${pos.avgPrice.toFixed(2)}, MTM PnL: ₹${pos.unrealizedPnL.toFixed(2)}`);
-
-  // 8. Close Position
-  console.log('8. Testing POST /api/positions/close...');
-  const closeRes = await request('POST', '/api/positions/close', { symbol: 'RELIANCE' });
-  if (closeRes.status !== 200 || !closeRes.data.symbol) {
-    throw new Error(`Close position failed: ${JSON.stringify(closeRes)}`);
-  }
-  console.log(`   ✓ Closed position. Realized PnL: ₹${closeRes.data.pnl.toFixed(2)}, R-Multiple: ${closeRes.data.rMultiple}R, Reason: ${closeRes.data.exitReason}`);
-
-  // 9. Options Greeks Engine
-  console.log('9. Checking GET /api/options-chain?symbol=NIFTY50...');
+  // 7. Options Greeks Engine
+  console.log('7. Checking GET /api/options-chain?symbol=NIFTY50...');
   const options = await request('GET', '/api/options-chain?symbol=NIFTY50&days=7');
   if (options.status !== 200 || !Array.isArray(options.data.chain) || options.data.chain.length === 0) {
     throw new Error(`Options check failed: ${JSON.stringify(options)}`);
@@ -144,8 +106,8 @@ async function runTests() {
   console.log(`     Call LTP: ₹${atm.call.ltp}, Delta: ${atm.call.delta}, Gamma: ${atm.call.gamma}, IV: ${atm.call.iv}%`);
   console.log(`     Put LTP: ₹${atm.put.ltp}, Delta: ${atm.put.delta}, Theta: ${atm.put.theta}, IV: ${atm.put.iv}%`);
 
-  // 10. Vectorized Backtester
-  console.log('10. Testing POST /api/backtest...');
+  // 8. Vectorized Backtester
+  console.log('8. Testing POST /api/backtest...');
   const backtest = await request('POST', '/api/backtest', {
     symbol: 'RELIANCE',
     strategy: 'ema_cross',
@@ -158,17 +120,16 @@ async function runTests() {
   const m = backtest.data;
   console.log(`   ✓ Backtest executed over ${m.totalTrades} trades: Win Rate ${m.winRatePct}%, Sharpe: ${m.sharpeRatio}, Max Drawdown: ${m.maxDrawdownPct}%, Net Return: ${m.netReturnPct}%`);
 
-  // 11. AI Risk Coach
-  console.log('11. Checking GET /api/coach?symbol=RELIANCE...');
+  // 9. AI Risk Coach
+  console.log('9. Checking GET /api/coach?symbol=RELIANCE...');
   const coach = await request('GET', '/api/coach?symbol=RELIANCE');
   if (coach.status !== 200 || !coach.data.bias) {
     throw new Error(`AI Coach check failed: ${JSON.stringify(coach)}`);
   }
   console.log(`   ✓ AI Coach analysis: Regime "${coach.data.bias}" (Trend: ${coach.data.trendStrength})`);
-  console.log(`   ✓ Behavioral Audit: "${coach.data.audit.behavioralVerdict}"`);
 
-  // 12. WebSocket Real-Time Ticks
-  console.log('12. Testing WebSocket /ws/ticks real-time feed...');
+  // 10. WebSocket Real-Time Ticks
+  console.log('10. Testing WebSocket /ws/ticks real-time feed...');
   await new Promise((resolve, reject) => {
     const ws = new WebSocket('ws://localhost:8000/ws/ticks');
     const timer = setTimeout(() => {
@@ -197,7 +158,7 @@ async function runTests() {
   });
 
   console.log('================================================================');
-  console.log('  ALL 12 E2E VERIFICATION CHECKS PASSED PERFECTLY (100% SUITE)  ');
+  console.log(' ALL 10 E2E MARKET FEED & INVARIANT CHECKS PASSED (100% SUITE)  ');
   console.log('================================================================');
 }
 

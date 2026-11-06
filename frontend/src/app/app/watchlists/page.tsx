@@ -33,16 +33,48 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+const DEFAULT_WATCHLIST_INSTRUMENTS: Ticker[] = [
+  { symbol: 'NIFTY 50', name: 'NIFTY 50 Index', market: 'IN', exchange: 'NSE', currency: 'INR', ltp: 24350.25, bid: 24349.50, ask: 24351.00, change: 142.50, changePct: 0.59, volume: 45000000, dayHigh: 24420.00, dayLow: 24210.00, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'SENSEX', name: 'BSE SENSEX Index', market: 'IN', exchange: 'BSE', currency: 'INR', ltp: 80105.80, bid: 80100.00, ask: 80110.00, change: 395.20, changePct: 0.50, volume: 22000000, dayHigh: 80350.00, dayLow: 79800.00, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', market: 'IN', exchange: 'NSE', currency: 'INR', ltp: 2985.40, bid: 2985.00, ask: 2985.80, change: 24.80, changePct: 0.84, volume: 1824900, dayHigh: 3010.00, dayLow: 2940.00, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'TCS', name: 'Tata Consultancy Services', market: 'IN', exchange: 'NSE', currency: 'INR', ltp: 4125.60, bid: 4125.00, ask: 4126.20, change: 48.20, changePct: 1.18, volume: 920400, dayHigh: 4160.00, dayLow: 4090.00, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank Limited', market: 'IN', exchange: 'NSE', currency: 'INR', ltp: 1682.30, bid: 1682.00, ask: 1682.60, change: -12.40, changePct: -0.73, volume: 3410200, dayHigh: 1705.00, dayLow: 1675.00, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'NVDA', name: 'NVIDIA Corporation', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 138.25, bid: 138.20, ask: 138.30, change: 4.60, changePct: 3.44, volume: 45200000, dayHigh: 140.50, dayLow: 135.80, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'MSFT', name: 'Microsoft Corporation', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 445.80, bid: 445.60, ask: 446.00, change: 5.30, changePct: 1.20, volume: 18400000, dayHigh: 448.20, dayLow: 442.10, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'AAPL', name: 'Apple Inc.', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 231.40, bid: 231.30, ask: 231.50, change: 1.80, changePct: 0.78, volume: 32100000, dayHigh: 233.00, dayLow: 229.50, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'TSLA', name: 'Tesla Inc.', market: 'US', exchange: 'NASDAQ', currency: 'USD', ltp: 252.60, bid: 252.40, ask: 252.80, change: -6.20, changePct: -2.39, volume: 28900000, dayHigh: 261.00, dayLow: 249.20, timestamp: Date.now(), isSimulated: true }
+];
+
+const DEFAULT_WATCHLIST_DATA: WatchlistBackendData[] = [
+  {
+    id: 'wl_default',
+    name: 'Primary Workstation Watchlist',
+    instruments: [
+      { id: 1, symbol: 'NIFTY 50', name: 'NIFTY 50 Index', market: 'IN', exchange: 'NSE', currency: 'INR', basePrice: 24350.25 },
+      { id: 2, symbol: 'SENSEX', name: 'BSE SENSEX Index', market: 'IN', exchange: 'BSE', currency: 'INR', basePrice: 80105.80 },
+      { id: 3, symbol: 'RELIANCE', name: 'Reliance Industries Ltd', market: 'IN', exchange: 'NSE', currency: 'INR', basePrice: 2985.40 },
+      { id: 4, symbol: 'TCS', name: 'Tata Consultancy Services', market: 'IN', exchange: 'NSE', currency: 'INR', basePrice: 4125.60 },
+      { id: 5, symbol: 'HDFCBANK', name: 'HDFC Bank Limited', market: 'IN', exchange: 'NSE', currency: 'INR', basePrice: 1682.30 },
+      { id: 6, symbol: 'NVDA', name: 'NVIDIA Corporation', market: 'US', exchange: 'NASDAQ', currency: 'USD', basePrice: 138.25 },
+      { id: 7, symbol: 'MSFT', name: 'Microsoft Corporation', market: 'US', exchange: 'NASDAQ', currency: 'USD', basePrice: 445.80 },
+      { id: 8, symbol: 'AAPL', name: 'Apple Inc.', market: 'US', exchange: 'NASDAQ', currency: 'USD', basePrice: 231.40 },
+      { id: 9, symbol: 'TSLA', name: 'Tesla Inc.', market: 'US', exchange: 'NASDAQ', currency: 'USD', basePrice: 252.60 }
+    ],
+    symbols: ['NIFTY 50', 'SENSEX', 'RELIANCE', 'TCS', 'HDFCBANK', 'NVDA', 'MSFT', 'AAPL', 'TSLA'],
+    createdAt: new Date().toISOString()
+  }
+];
+
 export default function WatchlistsPage() {
-  // State
-  const [allTickers, setAllTickers] = useState<Ticker[]>([]);
-  const [watchlists, setWatchlists] = useState<WatchlistBackendData[]>([]);
+  // State — pre-hydrated with 9 default instruments to guarantee zero stuck skeletons
+  const [allTickers, setAllTickers] = useState<Ticker[]>(DEFAULT_WATCHLIST_INSTRUMENTS);
+  const [watchlists, setWatchlists] = useState<WatchlistBackendData[]>(DEFAULT_WATCHLIST_DATA);
   const [activeWatchlistId, setActiveWatchlistId] = useState<string | number>('wl_default');
   const [activeSymbol, setActiveSymbol] = useState<string>('RELIANCE');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLiveFeed, setIsLiveFeed] = useState<boolean>(true);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<string>(new Date().toLocaleTimeString());
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,10 +99,14 @@ export default function WatchlistsPage() {
   // CSV Import file input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load Watchlists & Alerts
+  // Load Watchlists & Alerts (with 300ms instant hydration fallback)
   const loadData = async () => {
+    // If backend fetch does not resolve within 300ms, immediately render hydrated defaults
+    const hydrationTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 300);
+
     try {
-      setLoading(true);
       setError(null);
       const [tickers, wls, userAlerts] = await Promise.all([
         apiClient.getTickers(),
@@ -95,6 +131,7 @@ export default function WatchlistsPage() {
       console.warn('[WatchlistsPage] Service sync warning:', err);
       // Fallback safely to prevent crashing
     } finally {
+      clearTimeout(hydrationTimeout);
       setLoading(false);
     }
   };

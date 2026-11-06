@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck, Award, CheckCircle2, Sliders, ArrowRight,
-  User, Wallet, Sparkles, BookOpen, Terminal, Layers, Activity, Lock
+  User, Wallet, Sparkles, BookOpen, Terminal, Layers, Activity, Lock, X
 } from 'lucide-react';
 import { apiClient, UserProfile } from '../../lib/api-client';
 
@@ -27,10 +27,16 @@ export default function OnboardingModal({ forceOpen = false, onClose }: Onboardi
 
   useEffect(() => {
     const user = apiClient.getUserProfile();
-    setUserName(user.name || 'New Trader');
-    if (forceOpen || !user.onboardingCompleted) {
+    setUserName(user.name || 'Trader');
+    if (forceOpen) {
       setIsOpen(true);
     }
+    const handleOpen = () => {
+      setStep(1);
+      setIsOpen(true);
+    };
+    window.addEventListener('tradesphere_open_onboarding', handleOpen);
+    return () => window.removeEventListener('tradesphere_open_onboarding', handleOpen);
   }, [forceOpen]);
 
   const handleNextToAssignment = () => {
@@ -70,7 +76,19 @@ export default function OnboardingModal({ forceOpen = false, onClose }: Onboardi
             </span>
             <span className="font-bold text-white font-sans">Trader Onboarding &amp; Tier Allocation</span>
           </div>
-          <span className="text-[#8B99A8]">Step {step} of 2</span>
+          <div className="flex items-center gap-3">
+            <span className="text-[#8B99A8]">Step {step} of 2</span>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                if (onClose) onClose();
+              }}
+              className="p-1 rounded text-[#8B99A8] hover:text-white hover:bg-[#151F29] transition-colors"
+              title="Close Onboarding"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {step === 1 ? (

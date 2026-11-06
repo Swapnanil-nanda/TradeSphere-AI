@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Menu, ShieldCheck, Activity, PanelLeft } from 'lucide-react';
+import { Search, Menu, ShieldCheck, Activity, PanelLeft, Sparkles } from 'lucide-react';
 import GlobalCommandPalette from './GlobalCommandPalette';
 import WorkspaceSelector from './WorkspaceSelector';
 import UserMenu from './UserMenu';
@@ -105,6 +105,16 @@ export default function AppHeader({ onToggleMobileMenu, onOpenSlideNav }: AppHea
 
           {/* Workspace Preset Selector */}
           <WorkspaceSelector />
+
+          {/* Optional Guided Tour / Tier Setup Button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('tradesphere_open_onboarding'))}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#080808] hover:bg-[#151F29] border border-[#1a1a1a] hover:border-[#2979FF]/50 text-[#808a9d] hover:text-[#f0f3f6] text-xs font-semibold transition-all"
+            title="Configure Trading Experience Tier & Guided Tour"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#2979FF]" />
+            <span className="hidden sm:inline">Tour / Tier Setup</span>
+          </button>
 
           {/* User Menu */}
           <UserMenu />

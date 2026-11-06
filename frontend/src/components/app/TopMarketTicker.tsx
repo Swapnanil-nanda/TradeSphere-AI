@@ -49,7 +49,7 @@ export default function TopMarketTicker() {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-[#2979ff]"></span>
         </span>
         <span className="font-bold text-[#2979ff] tracking-wider text-[10px] font-mono">
-          SIMULATED (GBM)
+          SIMULATED • GBM Market Feed
         </span>
         <span className="text-[9px] text-[#808a9d] font-mono hidden sm:inline">
           • 24/7 FEED

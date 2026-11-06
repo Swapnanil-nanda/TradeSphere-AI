@@ -65,7 +65,7 @@ flowchart TB
 
 ## 2. Real-Time Data Pipeline
 1. **Tick Generator / Ingestion:**
-   - When no external broker API keys are set in `.env`, the **Geometric Brownian Motion (GBM) Engine** generates sub-millisecond price movements with realistic volatility, momentum drift, and random-walk fluctuations.
+   - When no external broker API keys are set in `.env`, the **Geometric Brownian Motion (GBM) Engine** generates high-frequency 120ms price ticks with realistic volatility, momentum drift, and random-walk fluctuations.
    - Concurrently generates 20 levels of simulated bid and ask liquidity (Level 2 DOM) with realistic spread dynamics.
    - When configured, pluggable connectors connect to Indian broker WebSockets (FYERS, Upstox, Dhan, Angel One) or US Alpaca.
 2. **WebSocket Broadcast:**

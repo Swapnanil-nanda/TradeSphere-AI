@@ -171,7 +171,7 @@ export class SyntheticMarketDataProvider implements MarketDataProvider {
     };
   }
 
-  async getCandles(symbol: string, timeframe: string = '5m', count: number = 100): Promise<{
+  async getCandles(symbol: string, timeframe: string = '5m', count: number = 120): Promise<{
     candles: CandleWithIndicators[];
     indicators: TechnicalIndicatorsSeries;
     metadata: MetadataLabel;

@@ -170,10 +170,12 @@ async function testFullOrderCycle() {
     const finalPosRes = await getJson(`${SPRING_BOOT_BASE}/api/positions`, token);
     const finalPos = (finalPosRes.data || []).find(p => p.symbol === 'RELIANCE' && p.quantity > 0);
     assert.ok(!finalPos, 'Position must be completely closed in ledger');
-    console.log('   ✓ Position Liquidated: Balance and PnL reconciled with zero discrepancies.');
+    console.log('\n===================================================================');
+    console.log('✅ ALL AUTHORITATIVE SPRING BOOT OMS & RISK INVARIANTS VERIFIED (100%)');
+    console.log('===================================================================');
   } else {
-    // Standalone Validation Mode (runs in frontend / headless test environment)
-    console.log('1. Simulating Order Execution via Authoritative Mathematical Invariants...');
+    // Standalone Mathematical Validation Mode (runs when testing offline / client formula)
+    console.log('1. Validating Client-Side Rule A Risk Formula & Mathematical Invariants...');
     
     const startingCapital = 1000000.00;
     const entryPrice = 2985.40;
@@ -202,11 +204,12 @@ async function testFullOrderCycle() {
 
     assert.ok(remainingCash > 0 && remainingCash < startingCapital, 'Cash ledger deduction must be exact');
     console.log(`   ✓ Cash Ledger Accounting: Starting ₹${startingCapital.toLocaleString()} -> Debited ₹${(orderCost + fee).toFixed(2)} -> Remaining ₹${remainingCash.toFixed(2)}`);
-  }
 
-  console.log('\n===================================================================');
-  console.log('✅ ALL PAPER TRADING OMS & RISK INVARIANTS VERIFIED SUCCESSFULLY!');
-  console.log('===================================================================');
+    console.log('\n===================================================================');
+    console.log('ℹ CLIENT-SIDE RULE A MATHEMATICAL INVARIANTS VERIFIED SUCCESSFULLY');
+    console.log('  (Note: Run with Spring Boot on port 8080 for live OMS verification)');
+    console.log('===================================================================');
+  }
 }
 
 testFullOrderCycle().catch(err => {

@@ -340,21 +340,21 @@ class TradeSphereApiClient {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (res.ok && data.token) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.token) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('tradesphere_token', data.token);
         }
         this.switchUserContext(data.email, data.fullName);
         return data;
       }
-    } catch (e) {
-      console.warn('Backend Google OAuth unavailable, activating simulated Google session:', e);
+      if (res && res.status >= 400) {
+        throw new Error(data?.message || `Google sign-in rejected (${res.status})`);
+      }
+    } catch (e: any) {
+      if (e.message && e.message.includes('rejected')) throw e;
+      throw new Error('Authentication service unavailable. Please check that Spring Boot is running on port 8080.');
     }
-    if (typeof window !== 'undefined') {
-      this.switchUserContext(payload.email, payload.fullName);
-    }
-    return { token: 'mock-jwt-token', user: { email: payload.email, name: payload.fullName } };
   }
 
   switchUserContext(email: string, name?: string): UserProfile {
@@ -374,14 +374,14 @@ class TradeSphereApiClient {
           id: `usr_${Date.now()}`,
           name: name || cleanEmail.split('@')[0],
           email: cleanEmail,
-          tier: 'basic',
+          tier: 'pro',
           startingCapital: 1000000,
           riskCapPct: 1.0,
           circuitBreakerPct: 3.0,
-          tradingExperience: 'beginner',
-          tradingGoal: 'safety',
+          tradingExperience: 'advanced',
+          tradingGoal: 'quant',
           riskPreference: 'strict',
-          onboardingCompleted: false
+          onboardingCompleted: true
         };
       }
     } else {
@@ -389,14 +389,14 @@ class TradeSphereApiClient {
         id: `usr_${Date.now()}`,
         name: name || cleanEmail.split('@')[0],
         email: cleanEmail,
-        tier: 'basic',
+        tier: 'pro',
         startingCapital: 1000000,
         riskCapPct: 1.0,
         circuitBreakerPct: 3.0,
-        tradingExperience: 'beginner',
-        tradingGoal: 'safety',
+        tradingExperience: 'advanced',
+        tradingGoal: 'quant',
         riskPreference: 'strict',
-        onboardingCompleted: false
+        onboardingCompleted: true
       };
       localStorage.setItem(key, JSON.stringify(profile));
     }
@@ -406,56 +406,56 @@ class TradeSphereApiClient {
   }
 
   async login(credentials: { email: string; password: string }): Promise<any> {
+    let res: Response;
     try {
-      const res = await fetch(`${BACKEND_BASE}/api/auth/login`, {
+      res = await fetch(`${BACKEND_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
       });
-      const data = await res.json();
-      if (res.ok) {
-        if (typeof window !== 'undefined' && data.token) {
-          localStorage.setItem('tradesphere_token', data.token);
-        }
-        this.switchUserContext(credentials.email, data.user?.name || data.fullName);
-        return data;
-      }
-    } catch (e) {
-      // In offline / standalone mode, fallback cleanly to local storage context
+    } catch (e: any) {
+      throw new Error('Authentication service unavailable. Please verify the Spring Boot backend is running on port 8080.');
     }
-    if (typeof window !== 'undefined') {
-      this.switchUserContext(credentials.email);
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.token) {
+      throw new Error(data?.message || data?.error || `Authentication failed (${res.status}): Invalid email or password.`);
     }
-    return { token: 'mock-jwt-token', user: { email: credentials.email, name: credentials.email.split('@')[0] } };
+
+    if (typeof window !== 'undefined' && data.token) {
+      localStorage.setItem('tradesphere_token', data.token);
+    }
+    this.switchUserContext(credentials.email, data.user?.name || data.fullName);
+    return data;
   }
 
   async register(userData: { name: string; email: string; password: string; tier?: string }): Promise<any> {
+    let res: Response;
     try {
-      const res = await fetch(`${BACKEND_BASE}/api/auth/register`, {
+      res = await fetch(`${BACKEND_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: userData.name,
           email: userData.email,
           password: userData.password,
-          tier: (userData.tier || 'basic').toUpperCase()
+          tier: (userData.tier || 'pro').toUpperCase()
         })
       });
-      const data = await res.json();
-      if (res.ok) {
-        if (typeof window !== 'undefined' && data.token) {
-          localStorage.setItem('tradesphere_token', data.token);
-        }
-        this.switchUserContext(userData.email, userData.name);
-        return data;
-      }
-    } catch (e) {
-      // Offline / standalone registration fallback
+    } catch (e: any) {
+      throw new Error('Registration service unavailable. Please verify the Spring Boot backend is running on port 8080.');
     }
-    if (typeof window !== 'undefined') {
-      this.switchUserContext(userData.email, userData.name);
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.token) {
+      throw new Error(data?.message || data?.error || `Registration failed (${res.status}): Unable to create account.`);
     }
-    return { token: 'mock-jwt-token', user: { email: userData.email, name: userData.name } };
+
+    if (typeof window !== 'undefined' && data.token) {
+      localStorage.setItem('tradesphere_token', data.token);
+    }
+    this.switchUserContext(userData.email, userData.name);
+    return data;
   }
 
   async checkBackendHealth(): Promise<{ status: string; connected: boolean; details?: any }> {
@@ -549,21 +549,52 @@ class TradeSphereApiClient {
       console.warn('[ApiClient] Backend unreachable, generating simulated candles for', symbol);
     }
 
-    // Generate deterministic demo candle fixture
+    // Guaranteed 120-bar realistic historical + live ticking OHLCV candle generator
+    const sym = symbol.toUpperCase().trim();
+    const basePrices: Record<string, number> = {
+      'NIFTY 50': 24350.25,
+      'NIFTY50': 24350.25,
+      'SENSEX': 80105.80,
+      'BANKNIFTY': 51240.80,
+      'RELIANCE': 2985.40,
+      'TCS': 4125.60,
+      'HDFCBANK': 1682.30,
+      'INFY': 1850.50,
+      'TATAMOTORS': 980.20,
+      'NVDA': 138.25,
+      'MSFT': 445.80,
+      'AAPL': 231.40,
+      'TSLA': 252.60,
+      'GOOGL': 176.40,
+      'AMZN': 186.50,
+      'SPY': 582.40,
+      'QQQ': 494.10
+    };
+    const basePrice = basePrices[sym] || (sym.includes('NIFTY') ? 24350 : 1000.0);
+    const tfSeconds =
+      timeframe === '1m' ? 60 :
+      timeframe === '5m' ? 300 :
+      timeframe === '15m' ? 900 :
+      timeframe === '1h' ? 3600 : 86400;
+
     const nowSec = Math.floor(Date.now() / 1000);
-    const basePrice = symbol.includes('NIFTY') ? 24350 : symbol.includes('TCS') ? 4100 : 2950;
+    const endSec = Math.floor(nowSec / tfSeconds) * tfSeconds;
     const candles: Candle[] = [];
     let price = basePrice;
+    const hash = sym.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
 
-    for (let i = 60; i >= 0; i--) {
-      const time = nowSec - (i * 300);
-      const delta = (Math.sin(i * 0.4) + Math.cos(i * 0.2)) * (basePrice * 0.003);
-      const open = Math.round((price + delta) * 100) / 100;
-      const high = Math.round((open + Math.random() * (basePrice * 0.004)) * 100) / 100;
-      const low = Math.round((open - Math.random() * (basePrice * 0.004)) * 100) / 100;
-      const close = Math.round(((open + high + low) / 3) * 100) / 100;
-      const volume = Math.floor(Math.random() * 20000) + 5000;
+    for (let i = 119; i >= 0; i--) {
+      const time = endSec - (i * tfSeconds);
+      const wave = Math.sin((time / 3600) + hash) * 0.003;
+      const noise = (Math.sin(time * 0.013) + Math.cos(time * 0.029)) * 0.002;
+      const open = Math.round(price * 100) / 100;
+      const close = Math.round((open * (1 + wave + noise)) * 100) / 100;
+      const spread = Math.abs(close - open);
+      const high = Math.round((Math.max(open, close) + spread * 0.5 + basePrice * 0.0008) * 100) / 100;
+      const low = Math.round((Math.min(open, close) - spread * 0.5 - basePrice * 0.0008) * 100) / 100;
+      const volume = Math.floor(10000 + Math.abs(Math.sin(time * 0.02)) * 50000);
       price = close;
+
       candles.push({
         time,
         open,
@@ -574,7 +605,8 @@ class TradeSphereApiClient {
         ema20: Math.round(open * 0.998 * 100) / 100,
         vwap: Math.round(open * 0.999 * 100) / 100,
         support: Math.round(low * 0.995 * 10) / 10,
-        resistance: Math.round(high * 1.005 * 10) / 10
+        resistance: Math.round(high * 1.005 * 10) / 10,
+        rsi: Math.min(85, Math.max(20, Math.round(50 + (close - open) / (basePrice * 0.01) * 10)))
       });
     }
     return candles;
@@ -625,22 +657,29 @@ class TradeSphereApiClient {
     takeProfit?: number;
     clientOrderId?: string;
   }): Promise<any> {
-    if (BACKEND_BASE) {
+    const isAuth = this.isAuthenticated();
+
+    // In authenticated mode, transactional operations must fail closed.
+    if (isAuth) {
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/orders`, {
+        res = await fetch(`${BACKEND_BASE}/api/orders`, {
           method: 'POST',
           headers: this.getAuthHeaders(),
           body: JSON.stringify(orderData)
         });
-        if (res.ok) {
-          return await res.json();
-        }
       } catch (err) {
-        console.warn('[ApiClient] Backend order submission failed, executing via local Paper Engine');
+        throw new Error('Authoritative Spring Boot OMS is currently unreachable. Order submission aborted to preserve ledger integrity.');
       }
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || `Order rejected by risk gatekeeper (${res.status})`);
+      }
+      return data;
     }
 
-    // Execute via local Paper Engine at live market price
+    // Only in explicit unauthenticated guest demo mode:
     let ltp = 1000;
     try {
       const tickers = await this.getTickers();
@@ -652,17 +691,25 @@ class TradeSphereApiClient {
   }
 
   async closePosition(symbol: string, quantity?: number): Promise<any> {
-    if (BACKEND_BASE) {
+    const isAuth = this.isAuthenticated();
+
+    if (isAuth) {
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/positions/close`, {
+        res = await fetch(`${BACKEND_BASE}/api/positions/close`, {
           method: 'POST',
           headers: this.getAuthHeaders(),
           body: JSON.stringify({ symbol, quantity })
         });
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot service unreachable. Position close aborted.');
+      }
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || `Position close rejected (${res.status})`);
+      }
+      return data;
     }
 
     let ltp = 0;
@@ -707,16 +754,24 @@ class TradeSphereApiClient {
   }
 
   async cancelOrder(orderId: string | number): Promise<any> {
-    if (BACKEND_BASE) {
+    const isAuth = this.isAuthenticated();
+
+    if (isAuth) {
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/orders/${orderId}`, {
+        res = await fetch(`${BACKEND_BASE}/api/orders/${orderId}`, {
           method: 'DELETE',
           headers: this.getAuthHeaders()
         });
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot service unreachable. Order cancel aborted.');
+      }
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || `Order cancel rejected (${res.status})`);
+      }
+      return data;
     }
 
     return paperEngine.cancelOrder(orderId);
@@ -770,14 +825,24 @@ class TradeSphereApiClient {
   }
 
   async resetAccount(): Promise<any> {
-    if (BACKEND_BASE) {
+    const isAuth = this.isAuthenticated();
+
+    if (isAuth) {
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/portfolio/reset`, {
+        res = await fetch(`${BACKEND_BASE}/api/portfolio/reset`, {
           method: 'POST',
           headers: this.getAuthHeaders()
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot service unreachable. Portfolio reset aborted.');
+      }
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || `Portfolio reset rejected (${res.status})`);
+      }
+      return data;
     }
 
     return paperEngine.resetAccount();
@@ -1298,8 +1363,8 @@ class TradeSphereApiClient {
     return liveTickers.map(t => {
       const meta = sectorMap[t.symbol] || {
         sector: t.market === 'US' ? 'Technology' : 'Diversified',
-        peRatio: 24.0,
-        marketCapCr: 500000
+        peRatio: null,
+        marketCapCr: null
       };
 
       const changePct = Number(t.changePct ?? 0);
@@ -1330,7 +1395,7 @@ class TradeSphereApiClient {
         rsi14,
         trend,
         setup,
-        provenance: 'SIMULATED',
+        provenance: 'ILLUSTRATIVE SCREENER DATA (SIMULATED)',
         lastUpdated: new Date().toISOString()
       };
     });
@@ -1858,33 +1923,33 @@ class TradeSphereApiClient {
         try {
           const user = JSON.parse(stored);
           return {
-            id: user.id || 'usr_demo',
-            name: user.name || (user.email ? user.email.split('@')[0] : 'Demo Trader'),
-            email: user.email || 'demo.trader@tradesphere.ai',
-            tier: user.tier || 'basic',
+            id: user.id || 'usr_guest',
+            name: user.name || (user.email ? user.email.split('@')[0] : 'Guest Trader'),
+            email: user.email || 'guest.trader@tradesphere.ai',
+            tier: user.tier || 'pro',
             startingCapital: user.startingCapital || 1000000,
             riskCapPct: user.riskCapPct !== undefined ? user.riskCapPct : 1.0,
             circuitBreakerPct: user.circuitBreakerPct !== undefined ? user.circuitBreakerPct : 3.0,
-            tradingExperience: user.tradingExperience || 'beginner',
-            tradingGoal: user.tradingGoal || 'safety',
+            tradingExperience: user.tradingExperience || 'advanced',
+            tradingGoal: user.tradingGoal || 'quant',
             riskPreference: user.riskPreference || 'strict',
-            onboardingCompleted: user.onboardingCompleted ?? false
+            onboardingCompleted: user.onboardingCompleted ?? true
           };
         } catch (e) {}
       }
     }
     return {
-      id: 'usr_demo',
-      name: 'Demo Trader',
-      email: 'demo.trader@tradesphere.ai',
-      tier: 'basic',
+      id: 'usr_guest',
+      name: 'Guest Trader',
+      email: 'guest.trader@tradesphere.ai',
+      tier: 'pro',
       startingCapital: 1000000,
       riskCapPct: 1.0,
       circuitBreakerPct: 3.0,
-      tradingExperience: 'beginner',
-      tradingGoal: 'safety',
+      tradingExperience: 'advanced',
+      tradingGoal: 'quant',
       riskPreference: 'strict',
-      onboardingCompleted: false
+      onboardingCompleted: true
     };
   }
 
