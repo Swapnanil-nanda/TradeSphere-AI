@@ -434,6 +434,7 @@ class TradeSphereApiClient {
     }
     localStorage.setItem('tradesphere_user', JSON.stringify(profile));
     window.dispatchEvent(new CustomEvent('tradesphere_tier_change', { detail: profile }));
+    window.dispatchEvent(new CustomEvent('tradesphere_auth_change', { detail: profile }));
     return profile;
   }
 

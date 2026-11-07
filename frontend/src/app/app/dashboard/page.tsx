@@ -9,6 +9,7 @@ import OrderForm from '../../../components/app/OrderForm';
 import ErrorState from '../../../components/app/ErrorState';
 import { CardSkeleton, TableSkeleton } from '../../../components/app/LoadingSkeleton';
 import { apiClient, Ticker, Candle, PortfolioData } from '../../../lib/api-client';
+import { generateFallback120Candles } from '../../../components/charts/TradingViewChart';
 import { ShieldCheck, Sparkles, RefreshCw, BarChart2, ArrowRight, Terminal } from 'lucide-react';
 import Link from 'next/link';
 
@@ -43,7 +44,9 @@ const DEFAULT_PORTFOLIO: PortfolioData = {
 export default function DashboardPage() {
   const [tickers, setTickers] = useState<Ticker[]>(DEFAULT_DASHBOARD_TICKERS);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('RELIANCE');
-  const [candles, setCandles] = useState<Candle[]>([]);
+  const [candles, setCandles] = useState<Candle[]>(() => {
+    return generateFallback120Candles('RELIANCE', '5m') as any as Candle[];
+  });
   const [timeframe, setTimeframe] = useState<string>('5m');
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(DEFAULT_PORTFOLIO);
   const [coachAdvice, setCoachAdvice] = useState<any>(null);
@@ -121,12 +124,14 @@ export default function DashboardPage() {
 
   const handleSelectSymbol = async (sym: string) => {
     setSelectedSymbol(sym);
+    // Instant fallback candles to avoid graph flicker
+    setCandles(generateFallback120Candles(sym, timeframe) as any as Candle[]);
     try {
       const [c, coach] = await Promise.all([
         apiClient.getCandles(sym, timeframe),
         apiClient.getCoachFeedback(sym)
       ]);
-      setCandles(c);
+      if (Array.isArray(c) && c.length > 0) setCandles(c);
       setCoachAdvice(coach);
     } catch (e) {
       console.error(e);

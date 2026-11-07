@@ -45,7 +45,7 @@ export interface TradingViewChartProps {
   height?: number;
 }
 
-function generateFallback120Candles(symbol: string, timeframe: string = '5m'): CandleWithIndicators[] {
+export function generateFallback120Candles(symbol: string, timeframe: string = '5m'): CandleWithIndicators[] {
   const sym = (symbol || 'RELIANCE').toUpperCase().trim();
   const basePrices: Record<string, number> = {
     'NIFTY 50': 24350.25,
@@ -170,13 +170,17 @@ export default function TradingViewChart({
 
   // Initialize and clean up chart
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    const container = chartContainerRef.current;
+    if (!container) return;
 
-    const isDark = document.documentElement.classList.contains('dark');
+    const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true;
+
+    // Determine reliable initial container width (never 0)
+    const initialWidth = container.clientWidth || container.parentElement?.clientWidth || (typeof window !== 'undefined' ? Math.max(320, window.innerWidth - 420) : 800);
 
     // Create chart
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
+    const chart = createChart(container, {
+      width: Math.max(300, Math.floor(initialWidth)),
       height: height,
       layout: {
         background: { type: ColorType.Solid, color: isDark ? '#070b14' : '#ffffff' },
@@ -301,10 +305,13 @@ export default function TradingViewChart({
     const resizeObserver = new ResizeObserver((entries) => {
       if (!entries || entries.length === 0 || !chartRef.current) return;
       const { width, height: h } = entries[0].contentRect;
-      chartRef.current.applyOptions({
-        width: Math.max(300, width),
-        height: Math.max(250, h || height)
-      });
+      if (width > 50) {
+        chartRef.current.applyOptions({
+          width: Math.max(300, Math.floor(width)),
+          height: Math.max(250, Math.floor(h || height))
+        });
+        chartRef.current.timeScale().fitContent();
+      }
     });
 
     resizeObserver.observe(chartContainerRef.current);
@@ -452,14 +459,36 @@ export default function TradingViewChart({
         }
       }
 
-      // Scroll to end of data
-      if (chartRef.current) {
-        chartRef.current.timeScale().fitContent();
-      }
+      // Scroll to end of data once layout calculations finalize
+      requestAnimationFrame(() => {
+        if (chartRef.current) {
+          chartRef.current.timeScale().fitContent();
+        }
+      });
     } catch (chartErr) {
       console.warn('[TradingViewChart] Lightweight Charts data sync caught gracefully:', chartErr);
     }
   }, [candles, indicators, showSMA, showEMA, showBB, showVWAP, showSupertrend, showRSI]);
+
+  // Live tick updates to the last bar without re-generating or wiping the dataset
+  useEffect(() => {
+    if (!candlestickSeriesRef.current || !storeLtp) return;
+    try {
+      const effCandles = (Array.isArray(candles) && candles.length > 0)
+        ? candles
+        : generateFallback120Candles(symbol, timeframe);
+      const last = effCandles[effCandles.length - 1];
+      if (last) {
+        candlestickSeriesRef.current.update({
+          time: last.time as UTCTimestamp,
+          open: last.open,
+          high: Math.max(last.high, storeLtp),
+          low: Math.min(last.low, storeLtp),
+          close: storeLtp
+        });
+      }
+    } catch {}
+  }, [storeLtp, symbol, timeframe]);
 
   const currencySymbol = stockDetails?.currency === 'USD' ? '$' : '₹';
   const latestCandle = candles && candles.length > 0 ? candles[candles.length - 1] : null;

@@ -29,6 +29,33 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
+import { generateFallback120Candles } from '../../../components/charts/TradingViewChart';
+import { paperEngine } from '../../../lib/paper-engine';
+
+const DEFAULT_TICKERS: Ticker[] = [
+  { symbol: 'RELIANCE', name: 'Reliance Industries', ltp: 2985.4, bid: 2985.0, ask: 2985.5, change: 24.8, changePct: 0.84, market: 'IN', exchange: 'NSE', currency: 'INR' },
+  { symbol: 'TCS', name: 'Tata Consultancy Services', ltp: 4125.6, bid: 4125.0, ask: 4126.0, change: -12.4, changePct: -0.30, market: 'IN', exchange: 'NSE', currency: 'INR' },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', ltp: 1682.3, bid: 1682.0, ask: 1682.5, change: 8.5, changePct: 0.51, market: 'IN', exchange: 'NSE', currency: 'INR' },
+  { symbol: 'NIFTY 50', name: 'Nifty 50 Index', ltp: 24350.25, bid: 24349.0, ask: 24351.0, change: 85.4, changePct: 0.35, market: 'IN', exchange: 'NSE', currency: 'INR' },
+  { symbol: 'SENSEX', name: 'BSE Sensex 30', ltp: 80105.80, bid: 80100.0, ask: 80110.0, change: 240.2, changePct: 0.30, market: 'IN', exchange: 'BSE', currency: 'INR' },
+  { symbol: 'NVDA', name: 'NVIDIA Corp', ltp: 138.25, bid: 138.20, ask: 138.30, change: 4.10, changePct: 3.06, market: 'US', exchange: 'NASDAQ', currency: 'USD' },
+  { symbol: 'MSFT', name: 'Microsoft Corp', ltp: 445.80, bid: 445.70, ask: 445.90, change: 2.30, changePct: 0.52, market: 'US', exchange: 'NASDAQ', currency: 'USD' },
+  { symbol: 'AAPL', name: 'Apple Inc', ltp: 231.40, bid: 231.35, ask: 231.45, change: -1.20, changePct: -0.51, market: 'US', exchange: 'NASDAQ', currency: 'USD' },
+  { symbol: 'TSLA', name: 'Tesla Inc', ltp: 252.60, bid: 252.50, ask: 252.70, change: 8.40, changePct: 3.44, market: 'US', exchange: 'NASDAQ', currency: 'USD' }
+];
+
+const getInitialPortfolio = (): PortfolioData => {
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem('tradesphere_cached_portfolio');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.account) return parsed;
+      }
+    } catch {}
+  }
+  return paperEngine.getPortfolio(DEFAULT_TICKERS);
+};
 
 function PaperTradingContent() {
   const searchParams = useSearchParams();
@@ -36,11 +63,18 @@ function PaperTradingContent() {
   const initialSymbol = searchParams.get('symbol') || 'RELIANCE';
 
   const [symbol, setSymbol] = useState(initialSymbol);
-  const [tickers, setTickers] = useState<Ticker[]>([]);
-  const [candles, setCandles] = useState<Candle[]>([]);
-  const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
+  const [tickers, setTickers] = useState<Ticker[]>(() => {
+    if (typeof window !== 'undefined') {
+      const storeTickers = useMarketStore.getState().tickers;
+      if (Array.isArray(storeTickers) && storeTickers.length > 0) return storeTickers;
+    }
+    return DEFAULT_TICKERS;
+  });
+  const [candles, setCandles] = useState<Candle[]>(() => {
+    return generateFallback120Candles(initialSymbol, '5m') as any as Candle[];
+  });
+  const [portfolio, setPortfolio] = useState<PortfolioData | null>(getInitialPortfolio);
   const [timeframe, setTimeframe] = useState('5m');
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'positions' | 'orders' | 'trades' | 'ledger' | 'dom'>('positions');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -67,33 +101,43 @@ function PaperTradingContent() {
     }
   }, [searchParams, symbol]);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [allTickers, portData, candleData] = await Promise.all([
-        apiClient.getTickers(),
-        apiClient.getPortfolio(),
-        apiClient.getCandles(symbol, timeframe)
-      ]);
-      if (Array.isArray(allTickers) && allTickers.length > 0) {
-        setTickers(allTickers);
-      }
-      if (portData) {
-        setPortfolio(portData);
-      }
-      if (Array.isArray(candleData)) {
-        setCandles(candleData);
-      }
-    } catch (err: any) {
-      console.warn('[PaperTrading] Service connection error:', err);
-      // Suppress hard crash - keep previous valid state
-    } finally {
-      setLoading(false);
-    }
+  const loadData = () => {
+    // 1. Fetch live candles in background without blocking rendering
+    apiClient.getCandles(symbol, timeframe)
+      .then((candleData) => {
+        if (Array.isArray(candleData) && candleData.length > 0) {
+          setCandles(candleData);
+        }
+      })
+      .catch((err) => console.warn('[PaperTrading] Candle sync notice:', err?.message || err));
+
+    // 2. Fetch authoritative portfolio in background
+    apiClient.getPortfolio()
+      .then((portData) => {
+        if (portData && portData.account) {
+          setPortfolio(portData);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('tradesphere_cached_portfolio', JSON.stringify(portData));
+            } catch {}
+          }
+        }
+      })
+      .catch((err) => console.warn('[PaperTrading] Portfolio sync notice:', err?.message || err));
+
+    // 3. Fetch tickers in background
+    apiClient.getTickers()
+      .then((allTickers) => {
+        if (Array.isArray(allTickers) && allTickers.length > 0) {
+          setTickers(allTickers);
+        }
+      })
+      .catch((err) => console.warn('[PaperTrading] Tickers sync notice:', err?.message || err));
   };
 
   useEffect(() => {
+    // Instantly provide fallback 120 candles on symbol/timeframe switch to prevent any blank chart interval
+    setCandles(generateFallback120Candles(symbol, timeframe) as any as Candle[]);
     loadData();
   }, [symbol, timeframe]);
 

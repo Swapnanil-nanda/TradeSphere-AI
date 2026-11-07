@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '../../lib/api-client';
 
 declare global {
@@ -22,10 +23,14 @@ export default function GoogleSignInButton({
   text = 'continue_with',
   width
 }: GoogleSignInButtonProps) {
+  const router = useRouter();
   const buttonDivRef = useRef<HTMLDivElement>(null);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '778627959208-vmrupku7mo6mvgnkeikf1cmnl14ou7ge.apps.googleusercontent.com';
 
   useEffect(() => {
+    // Pre-warm terminal route so transition on login is instantaneous
+    router.prefetch('/app/paper-trading');
+
     let checkInterval: any;
 
     const initializeGIS = () => {
@@ -61,7 +66,7 @@ export default function GoogleSignInButton({
                   if (onSuccess) {
                     onSuccess();
                   } else {
-                    window.location.href = '/app/paper-trading';
+                    router.push('/app/paper-trading');
                   }
                 }
               } catch (err: any) {
@@ -96,13 +101,13 @@ export default function GoogleSignInButton({
           initializeGIS();
           clearInterval(checkInterval);
         }
-      }, 200);
+      }, 30);
     }
 
     return () => {
       if (checkInterval) clearInterval(checkInterval);
     };
-  }, [clientId, onSuccess, onError, text, width]);
+  }, [clientId, onSuccess, onError, text, width, router]);
 
   return (
     <div className="w-full flex justify-center py-1">

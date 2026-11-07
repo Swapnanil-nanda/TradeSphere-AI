@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import PriceChart from '../../../components/app/PriceChart';
+import { generateFallback120Candles } from '../../../components/charts/TradingViewChart';
 import ErrorState from '../../../components/app/ErrorState';
 import { ChartSkeleton } from '../../../components/app/LoadingSkeleton';
 import { syntheticMarketData } from '../../../lib/market-data/synthetic-provider';
@@ -33,12 +34,14 @@ function ChartsContent() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const [stockDetails, setStockDetails] = useState<StockDetails | null>(null);
-  const [candles, setCandles] = useState<CandleWithIndicators[]>([]);
+  const [candles, setCandles] = useState<CandleWithIndicators[]>(() => {
+    return generateFallback120Candles(initialSymbol, '5m');
+  });
   const [indicators, setIndicators] = useState<TechnicalIndicatorsSeries | null>(null);
   const [metadata, setMetadata] = useState<MetadataLabel | null>(null);
 
   const [timeframe, setTimeframe] = useState('5m');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,10 +57,9 @@ function ChartsContent() {
   // Load Chart & Stock Data
   const loadChartData = async (targetSymbol: string, targetTf: string) => {
     try {
-      setLoading(true);
       setError(null);
-      setCandles([]);
-      setIndicators(null);
+      // Immediately pre-populate 120 fallback candles for target instrument so graph never blanks
+      setCandles(generateFallback120Candles(targetSymbol, targetTf));
 
       const [details, candleRes] = await Promise.all([
         syntheticMarketData.getStockDetails(targetSymbol),
@@ -71,8 +73,6 @@ function ChartsContent() {
     } catch (err: any) {
       console.error(err);
       setError(`Failed to load technical chart data for ${targetSymbol}. Please try again.`);
-    } finally {
-      setLoading(false);
     }
   };
 

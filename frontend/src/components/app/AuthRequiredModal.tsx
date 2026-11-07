@@ -102,7 +102,6 @@ export default function AuthRequiredModal() {
               text="continue_with"
               onSuccess={() => {
                 setIsOpen(false);
-                window.location.reload();
               }}
             />
           </div>

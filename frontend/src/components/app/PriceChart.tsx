@@ -1,21 +1,10 @@
 'use client';
 
 import React from 'react';
-import dynamic from 'next/dynamic';
 import { Candle, Ticker } from '../../lib/api-client';
 import { CandleWithIndicators, TechnicalIndicatorsSeries, MetadataLabel, StockDetails } from '../../lib/market-data/types';
 import { computeAllIndicators } from '../../lib/indicators/technical-indicators';
-
-// Dynamic import with SSR disabled for TradingView Lightweight Charts canvas
-const TradingViewChart = dynamic(() => import('../charts/TradingViewChart'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[520px] bg-[#070b14] border border-[#1b253b] rounded-2xl flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
-      <p className="text-sm font-semibold text-slate-300">Loading TradingView Canvas...</p>
-    </div>
-  )
-});
+import TradingViewChart, { generateFallback120Candles } from '../charts/TradingViewChart';
 
 interface PriceChartProps {
   symbol: string;
@@ -42,8 +31,13 @@ export default function PriceChart({
   onRetry,
   height = 540
 }: PriceChartProps) {
-  // Map API client candles to CandleWithIndicators
-  const ohlcvCandles = candles.map((c) => ({
+  // Ensure guaranteed 120-bar candle set on frame 0
+  const effectiveCandles: Candle[] = (Array.isArray(candles) && candles.length > 0)
+    ? candles
+    : (generateFallback120Candles(symbol, timeframe) as any as Candle[]);
+
+  // Map candles to OHLCV for technical indicators
+  const ohlcvCandles = effectiveCandles.map((c) => ({
     time: c.time,
     open: c.open,
     high: c.high,
@@ -55,7 +49,7 @@ export default function PriceChart({
   // Compute all 8 indicators
   const indicators: TechnicalIndicatorsSeries = computeAllIndicators(ohlcvCandles);
 
-  const candleWithIndicators: CandleWithIndicators[] = candles.map((c) => ({
+  const candleWithIndicators: CandleWithIndicators[] = effectiveCandles.map((c) => ({
     ...c,
     support: c.support,
     resistance: c.resistance
@@ -72,7 +66,7 @@ export default function PriceChart({
     tickSize: 0.05,
     basePrice: ticker?.ltp || 1000,
     ltp: ticker?.ltp || 1000,
-    open: candles.length > 0 ? candles[0].open : 1000,
+    open: effectiveCandles.length > 0 ? effectiveCandles[0].open : 1000,
     high: ticker?.dayHigh || 1020,
     low: ticker?.dayLow || 980,
     close: ticker?.ltp || 1000,
