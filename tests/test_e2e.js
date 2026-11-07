@@ -3,7 +3,14 @@
  */
 
 const http = require('http');
-const { WebSocket } = require('./backend/node_modules/ws');
+let WebSocket;
+try {
+  WebSocket = require('../backend/node_modules/ws').WebSocket;
+} catch {
+  try {
+    WebSocket = require('ws').WebSocket || require('ws');
+  } catch {}
+}
 
 const API_BASE = 'http://localhost:8000';
 

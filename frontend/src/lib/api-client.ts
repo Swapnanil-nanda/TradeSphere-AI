@@ -48,6 +48,10 @@ export interface Position {
   unrealizedPnL: number;
   unrealizedPnLPct: number;
   openedAt: number;
+  currency?: 'INR' | 'USD';
+  productType?: 'CNC' | 'MIS';
+  marketValueInr?: number;
+  unrealizedPnLInr?: number;
 }
 
 export interface Order {
@@ -62,6 +66,8 @@ export interface Order {
   stopLoss?: number;
   takeProfit?: number;
   timestamp: number;
+  currency?: 'INR' | 'USD';
+  productType?: 'CNC' | 'MIS';
 }
 
 export interface Trade {
@@ -73,10 +79,29 @@ export interface Trade {
   entryPrice: number;
   exitPrice?: number;
   realizedPnL?: number;
+  realizedPnLInr?: number;
   rMultiple?: number;
   exitReason?: string;
   action: 'ENTRY' | 'EXIT';
   timestamp: number;
+  currency?: 'INR' | 'USD';
+  productType?: 'CNC' | 'MIS';
+}
+
+export const USD_TO_INR_RATE = 84.0;
+
+export function getInstrumentCurrency(symbol: string): 'INR' | 'USD' {
+  const usSymbols = ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'AMZN', 'SPY', 'QQQ'];
+  return usSymbols.includes(symbol?.toUpperCase()) ? 'USD' : 'INR';
+}
+
+export function formatMoney(amount: number, currency: 'INR' | 'USD' = 'INR'): string {
+  const safeAmount = typeof amount === 'number' && Number.isFinite(amount) ? amount : 0;
+  return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 2
+  }).format(safeAmount);
 }
 
 export interface PortfolioAccount {
@@ -321,6 +346,13 @@ class TradeSphereApiClient {
       return false;
     }
     return false;
+  }
+
+  isGuestDemoMode(): boolean {
+    if (this.isAuthenticated()) return false;
+    if (typeof window === 'undefined') return true;
+    const token = localStorage.getItem('tradesphere_token');
+    return !token || token === 'mock-jwt-token' || localStorage.getItem('tradesphere_guest_demo') === 'true';
   }
 
   logout(): void {
@@ -613,29 +645,65 @@ class TradeSphereApiClient {
   }
 
   async getPortfolio(): Promise<PortfolioData> {
-    if (BACKEND_BASE) {
+    if (this.isGuestDemoMode()) {
+      let freshTickers: Ticker[] = [];
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/portfolio`, {
-          headers: this.getAuthHeaders(),
-          cache: 'no-store'
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.account) return data;
-        }
-      } catch (e) {
-        console.warn('[ApiClient] Backend unreachable, serving local Paper Trading Engine');
+        freshTickers = await this.getTickers();
+      } catch {
+        freshTickers = this.fallbackTickers;
       }
+      return paperEngine.getPortfolio(freshTickers);
     }
 
-    // Always fallback smoothly to the local Paper Engine using current tickers
-    let freshTickers: Ticker[] = [];
-    try {
-      freshTickers = await this.getTickers();
-    } catch {
-      freshTickers = this.fallbackTickers;
+    if (!this.isAuthenticated()) {
+      throw new Error('Please sign in to access your portfolio.');
     }
-    return paperEngine.getPortfolio(freshTickers);
+
+    if (!BACKEND_BASE) {
+      throw new Error('Portfolio service is not configured.');
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(`${BACKEND_BASE}/api/portfolio`, {
+        headers: this.getAuthHeaders(),
+        cache: 'no-store'
+      });
+    } catch (e: any) {
+      throw new Error('Authoritative Spring Boot portfolio service is currently unreachable.');
+    }
+
+    if (!res.ok) {
+      throw new Error(`Portfolio service unavailable (${res.status})`);
+    }
+
+    const data = await res.json();
+    if (!data?.account) {
+      throw new Error('Invalid portfolio response structure received from authoritative backend.');
+    }
+
+    return data;
+  }
+
+  async getEquityHistory(period: string = '1M'): Promise<{
+    currency: string;
+    initialEquity: number;
+    currentEquity: number;
+    points: { timestamp: number; dateStr: string; equity: number; benchmark: number }[];
+    dataStatus: string;
+    benchmark: string;
+  }> {
+    try {
+      const res = await fetch(`/api/portfolio/equity-history?period=${encodeURIComponent(period)}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.points)) {
+          return data;
+        }
+      }
+    } catch {}
+
+    return paperEngine.getEquityHistory(period);
   }
 
   async getAccount(): Promise<PortfolioAccount> {

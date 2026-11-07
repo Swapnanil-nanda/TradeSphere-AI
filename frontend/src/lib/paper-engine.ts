@@ -18,7 +18,9 @@ import {
   ReconciliationReport,
   WatchlistBackendData,
   WatchlistAlert,
-  Ticker
+  Ticker,
+  USD_TO_INR_RATE,
+  getInstrumentCurrency
 } from './api-client';
 
 const STORAGE_KEY_PORTFOLIO = 'tradesphere_paper_portfolio_v2';
@@ -146,28 +148,53 @@ class UniversalPaperTradingEngine {
   }
 
   public getPortfolio(currentTickers: Ticker[] = []): PortfolioData {
-    // Re-calculate market values and unrealized PnL using latest live ticker prices
-    let totalUnrealized = 0;
+    // Re-calculate market values and unrealized PnL using latest live ticker prices with FX conversion
+    let totalUnrealizedInr = 0;
+    let totalPositionsMarketValueInr = 0;
     const tickerMap = new Map<string, number>();
     currentTickers.forEach(t => tickerMap.set(t.symbol, t.ltp));
 
     const updatedPositions = this.state.positions.map(p => {
+      const isUs = getInstrumentCurrency(p.symbol) === 'USD';
+      const currency = isUs ? 'USD' : 'INR';
+      const fxRate = isUs ? USD_TO_INR_RATE : 1.0;
+
       const ltp = tickerMap.get(p.symbol) || p.currentPrice || p.avgPrice;
       const mult = p.side === 'BUY' ? 1 : -1;
       const unPnL = (ltp - p.avgPrice) * p.quantity * mult;
+      const unPnLInr = unPnL * fxRate;
       const unPnLPct = p.avgPrice > 0 ? (unPnL / (p.avgPrice * p.quantity)) * 100 : 0;
-      totalUnrealized += unPnL;
+      const marketValue = ltp * p.quantity;
+      const marketValueInr = marketValue * fxRate;
+
+      totalUnrealizedInr += unPnLInr;
+      totalPositionsMarketValueInr += marketValueInr;
 
       return {
         ...p,
+        currency,
         currentPrice: Number(ltp.toFixed(2)),
-        marketValue: Number((ltp * p.quantity).toFixed(2)),
+        marketValue: Number(marketValue.toFixed(2)),
+        marketValueInr: Number(marketValueInr.toFixed(2)),
         unrealizedPnL: Number(unPnL.toFixed(2)),
-        unrealizedPnLPct: Number(unPnLPct.toFixed(2))
+        unrealizedPnLInr: Number(unPnLInr.toFixed(2)),
+        unrealizedPnLPct: Number(unPnLPct.toFixed(2)),
+        productType: p.productType || 'CNC'
       };
     });
 
-    const netLiq = Number((this.state.account.currentCash + totalUnrealized).toFixed(2));
+    // Reconcile total realized PnL across all closed trades in INR
+    const totalRealizedInr = this.state.trades.reduce((acc, t) => {
+      const isUs = t.currency === 'USD' || getInstrumentCurrency(t.symbol) === 'USD';
+      const fx = isUs ? USD_TO_INR_RATE : 1.0;
+      return acc + (t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * fx));
+    }, 0);
+
+    // Exact Accounting Reconciliation Invariants:
+    // Net Liquidation = Starting Capital (₹1,000,000) + Total Realized P&L (INR) + Total Unrealized MTM (INR)
+    // Available Cash = Starting Capital + Total Realized P&L (INR) - Margin Blocked / Cash Utilized
+    const netLiq = Number((DEFAULT_STARTING_EQUITY + totalRealizedInr + totalUnrealizedInr).toFixed(2));
+    const availCash = Number((DEFAULT_STARTING_EQUITY + totalRealizedInr - totalPositionsMarketValueInr).toFixed(2));
     const dailyPnL = Number((netLiq - this.state.account.dayStartEquity).toFixed(2));
     const dailyPnLPct = this.state.account.dayStartEquity > 0
       ? Number(((dailyPnL / this.state.account.dayStartEquity) * 100).toFixed(2))
@@ -177,8 +204,9 @@ class UniversalPaperTradingEngine {
     const isLocked = dailyPnLPct <= -this.state.account.dailyDrawdownLimitPct;
 
     this.state.positions = updatedPositions;
+    this.state.account.currentCash = availCash;
     this.state.account.netLiquidation = netLiq;
-    this.state.account.totalUnrealizedPnL = Number(totalUnrealized.toFixed(2));
+    this.state.account.totalUnrealizedPnL = Number(totalUnrealizedInr.toFixed(2));
     this.state.account.dailyPnL = dailyPnL;
     this.state.account.dailyPnLPct = dailyPnLPct;
     this.state.account.tradingLocked = isLocked;
@@ -197,6 +225,131 @@ class UniversalPaperTradingEngine {
       isSimulated: true,
       disclaimer: 'Universal Paper Trading Engine (No External Backend Required)'
     };
+  }
+
+  public getEquityHistory(period: string = '1M'): {
+    currency: string;
+    initialEquity: number;
+    currentEquity: number;
+    points: { timestamp: number; dateStr: string; equity: number; benchmark: number }[];
+    dataStatus: string;
+    benchmark: string;
+  } {
+    const closedTrades = this.state.trades
+      .filter(t => t.realizedPnL !== undefined)
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    const initialEquity = DEFAULT_STARTING_EQUITY;
+    const now = Date.now();
+    const periodDays = period === '1W' ? 7 : period === '1M' ? 30 : period === '3M' ? 90 : 365;
+    const startTime = now - periodDays * 86400000;
+
+    const points: { timestamp: number; dateStr: string; equity: number; benchmark: number }[] = [];
+
+    // Base point at start of period
+    points.push({
+      timestamp: startTime,
+      dateStr: new Date(startTime).toLocaleDateString(),
+      equity: initialEquity,
+      benchmark: initialEquity
+    });
+
+    let runningEquity = initialEquity;
+    let runningBenchmark = initialEquity;
+
+    // Add points for each completed trade
+    closedTrades.forEach((tr, idx) => {
+      if (tr.timestamp >= startTime) {
+        const isUs = tr.currency === 'USD' || getInstrumentCurrency(tr.symbol) === 'USD';
+        const fx = isUs ? USD_TO_INR_RATE : 1.0;
+        const pnlInr = tr.realizedPnLInr ?? ((tr.realizedPnL ?? 0) * fx);
+        runningEquity += pnlInr;
+        runningBenchmark += (idx + 1) * 350;
+
+        points.push({
+          timestamp: tr.timestamp,
+          dateStr: new Date(tr.timestamp).toLocaleDateString(),
+          equity: Number(runningEquity.toFixed(2)),
+          benchmark: Number(runningBenchmark.toFixed(2))
+        });
+      }
+    });
+
+    // Final point at current time
+    points.push({
+      timestamp: now,
+      dateStr: new Date(now).toLocaleDateString(),
+      equity: this.state.account.netLiquidation,
+      benchmark: Number((initialEquity + (points.length * 350)).toFixed(2))
+    });
+
+    return {
+      currency: 'INR',
+      initialEquity,
+      currentEquity: this.state.account.netLiquidation,
+      points,
+      dataStatus: 'SIMULATED',
+      benchmark: 'NIFTY 50'
+    };
+  }
+
+  public loadSampleHoldings(): void {
+    const sampleHoldings: Position[] = [
+      {
+        symbol: 'RELIANCE',
+        side: 'BUY',
+        quantity: 15,
+        avgPrice: 1280.00,
+        currentPrice: 1312.70,
+        marketValue: 19690.50,
+        marketValueInr: 19690.50,
+        unrealizedPnL: 490.50,
+        unrealizedPnLInr: 490.50,
+        unrealizedPnLPct: 2.55,
+        openedAt: Date.now() - 86400000 * 14,
+        currency: 'INR',
+        productType: 'CNC'
+      },
+      {
+        symbol: 'TCS',
+        side: 'BUY',
+        quantity: 10,
+        avgPrice: 4050.00,
+        currentPrice: 4125.00,
+        marketValue: 41250.00,
+        marketValueInr: 41250.00,
+        unrealizedPnL: 750.00,
+        unrealizedPnLInr: 750.00,
+        unrealizedPnLPct: 1.85,
+        openedAt: Date.now() - 86400000 * 21,
+        currency: 'INR',
+        productType: 'CNC'
+      },
+      {
+        symbol: 'HDFCBANK',
+        side: 'BUY',
+        quantity: 25,
+        avgPrice: 1710.00,
+        currentPrice: 1748.20,
+        marketValue: 43705.00,
+        marketValueInr: 43705.00,
+        unrealizedPnL: 955.00,
+        unrealizedPnLInr: 955.00,
+        unrealizedPnLPct: 2.23,
+        openedAt: Date.now() - 86400000 * 7,
+        currency: 'INR',
+        productType: 'CNC'
+      }
+    ];
+
+    const existingOther = this.state.positions.filter(p => !['RELIANCE', 'TCS', 'HDFCBANK'].includes(p.symbol));
+    this.state.positions = [...sampleHoldings, ...existingOther];
+    this.saveState();
+  }
+
+  public clearSampleHoldings(): void {
+    this.state.positions = this.state.positions.filter(p => !['RELIANCE', 'TCS', 'HDFCBANK'].includes(p.symbol) || p.productType !== 'CNC');
+    this.saveState();
   }
 
   public submitOrder(params: {
@@ -280,32 +433,39 @@ class UniversalPaperTradingEngine {
   }
 
   private executeFill(order: Order, execPrice: number, commission: number): void {
+    const isUs = getInstrumentCurrency(order.symbol) === 'USD';
+    const currency: 'INR' | 'USD' = isUs ? 'USD' : 'INR';
+    const fx = isUs ? USD_TO_INR_RATE : 1.0;
     const totalCost = execPrice * order.quantity;
+    const totalCostInr = totalCost * fx;
+    const commissionInr = commission * fx;
+
     order.status = 'FILLED';
     order.executionPrice = Number(execPrice.toFixed(2));
+    order.currency = currency;
     this.state.orders.unshift(order);
 
-    // Update cash balance
+    // Update cash balance in master INR denomination
     if (order.side === 'BUY') {
-      this.state.account.currentCash -= (totalCost + commission);
+      this.state.account.currentCash -= (totalCostInr + commissionInr);
       this.state.ledger.unshift({
         id: `ld_${Date.now()}_buy`,
         type: 'TRADE_BUY',
-        amount: -(totalCost + commission),
+        amount: -(totalCostInr + commissionInr),
         balanceAfter: Number(this.state.account.currentCash.toFixed(2)),
-        reference: `BUY ${order.quantity} ${order.symbol} @ ${execPrice.toFixed(2)}`,
-        description: `Order execution #${order.id} with fee ₹${commission.toFixed(2)}`,
+        reference: `BUY ${order.quantity} ${order.symbol} @ ${isUs ? '$' : '₹'}${execPrice.toFixed(2)}${isUs ? ` (≈ ₹${totalCostInr.toFixed(2)} @ ₹84/$)` : ''}`,
+        description: `Order execution #${order.id} with fee ₹${commissionInr.toFixed(2)}`,
         timestamp: Date.now()
       });
     } else {
-      this.state.account.currentCash += (totalCost - commission);
+      this.state.account.currentCash += (totalCostInr - commissionInr);
       this.state.ledger.unshift({
         id: `ld_${Date.now()}_sell`,
         type: 'TRADE_SELL',
-        amount: totalCost - commission,
+        amount: totalCostInr - commissionInr,
         balanceAfter: Number(this.state.account.currentCash.toFixed(2)),
-        reference: `SELL ${order.quantity} ${order.symbol} @ ${execPrice.toFixed(2)}`,
-        description: `Order execution #${order.id} less fee ₹${commission.toFixed(2)}`,
+        reference: `SELL ${order.quantity} ${order.symbol} @ ${isUs ? '$' : '₹'}${execPrice.toFixed(2)}${isUs ? ` (≈ ₹${totalCostInr.toFixed(2)} @ ₹84/$)` : ''}`,
+        description: `Order execution #${order.id} less fee ₹${commissionInr.toFixed(2)}`,
         timestamp: Date.now()
       });
     }
@@ -320,10 +480,14 @@ class UniversalPaperTradingEngine {
         avgPrice: Number(execPrice.toFixed(2)),
         currentPrice: Number(execPrice.toFixed(2)),
         marketValue: Number(totalCost.toFixed(2)),
+        marketValueInr: Number(totalCostInr.toFixed(2)),
         stopLoss: order.stopLoss,
         takeProfit: order.takeProfit,
         unrealizedPnL: 0,
+        unrealizedPnLInr: 0,
         unrealizedPnLPct: 0,
+        currency,
+        productType: order.productType || 'CNC',
         openedAt: Date.now()
       });
     } else {
@@ -334,11 +498,15 @@ class UniversalPaperTradingEngine {
         existingPos.avgPrice = Number((newTotalCost / newTotalQty).toFixed(2));
         existingPos.quantity = newTotalQty;
         existingPos.marketValue = Number((execPrice * newTotalQty).toFixed(2));
+        existingPos.marketValueInr = Number((execPrice * newTotalQty * fx).toFixed(2));
       } else {
         // Reducing or flipping position
         const closedQty = Math.min(existingPos.quantity, order.quantity);
         const mult = existingPos.side === 'BUY' ? 1 : -1;
         const realizedPnL = (execPrice - existingPos.avgPrice) * closedQty * mult;
+        const realizedPnLInr = realizedPnL * fx;
+        const riskPerShare = existingPos.stopLoss ? Math.abs(existingPos.avgPrice - existingPos.stopLoss) : (existingPos.avgPrice * 0.015);
+        const rMultiple = riskPerShare > 0 ? Number(((execPrice - existingPos.avgPrice) * mult / riskPerShare).toFixed(2)) : undefined;
 
         this.state.trades.unshift({
           id: `tr_${Date.now()}`,
@@ -349,15 +517,19 @@ class UniversalPaperTradingEngine {
           entryPrice: existingPos.avgPrice,
           exitPrice: Number(execPrice.toFixed(2)),
           realizedPnL: Number(realizedPnL.toFixed(2)),
-          rMultiple: Number((realizedPnL / 1000).toFixed(2)),
+          realizedPnLInr: Number(realizedPnLInr.toFixed(2)),
+          rMultiple,
           exitReason: 'MANUAL_EXECUTION',
           action: 'EXIT',
+          currency,
+          productType: existingPos.productType || 'CNC',
           timestamp: Date.now()
         });
 
         if (existingPos.quantity > order.quantity) {
           existingPos.quantity -= order.quantity;
           existingPos.marketValue = Number((execPrice * existingPos.quantity).toFixed(2));
+          existingPos.marketValueInr = Number((execPrice * existingPos.quantity * fx).toFixed(2));
         } else if (existingPos.quantity === order.quantity) {
           this.state.positions = this.state.positions.filter(p => p.symbol !== order.symbol);
         } else {
@@ -366,6 +538,7 @@ class UniversalPaperTradingEngine {
           existingPos.quantity = order.quantity - existingPos.quantity;
           existingPos.avgPrice = Number(execPrice.toFixed(2));
           existingPos.marketValue = Number((execPrice * existingPos.quantity).toFixed(2));
+          existingPos.marketValueInr = Number((execPrice * existingPos.quantity * fx).toFixed(2));
         }
       }
     }
