@@ -732,26 +732,7 @@ class TradeSphereApiClient {
     // Check if Finvasia Shoonya Live Broker execution mode is selected
     const execMode = typeof window !== 'undefined' ? localStorage.getItem('tradesphere_execution_mode') : 'paper';
     if (execMode === 'shoonya') {
-      const res = await fetch('/api/broker/shoonya', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'order',
-          symbol: orderData.symbol,
-          side: orderData.side,
-          orderType: orderData.orderType,
-          productType: orderData.productType || 'CNC',
-          quantity: orderData.quantity,
-          price: orderData.limitPrice,
-          stopLoss: orderData.stopLoss,
-          takeProfit: orderData.takeProfit
-        })
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(data?.message || data?.error || 'Shoonya order rejected.');
-      }
-      return data;
+      throw new Error('Finvasia Shoonya live broker order routing is temporarily disabled pending per-user authorization, credential encryption, and multi-tenant session isolation. Please switch to Paper Trading mode.');
     }
 
     // In authenticated mode, transactional operations must fail closed.
@@ -898,43 +879,64 @@ class TradeSphereApiClient {
     slippageRate?: number;
     feeRate?: number;
   }): Promise<any> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative backend service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/accounts/configure`, {
+        res = await fetch(`${BACKEND_BASE}/api/accounts/configure`, {
           method: 'POST',
           headers: this.getAuthHeaders(),
           body: JSON.stringify(config)
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot account service is currently unreachable. Configuration update aborted.');
+      }
+      if (!res.ok) {
+        throw new Error(`Configuration update failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.configureAccount(config);
   }
 
   async reconcileAccount(): Promise<ReconciliationReport> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative backend service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/accounts/reconcile`, {
+        res = await fetch(`${BACKEND_BASE}/api/accounts/reconcile`, {
           headers: this.getAuthHeaders(),
           cache: 'no-store'
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot reconciliation service is currently unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Reconciliation service unavailable (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.reconcileAccount();
   }
 
   async getCashLedger(): Promise<CashLedgerEntry[]> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative backend service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/ledger`, {
+        res = await fetch(`${BACKEND_BASE}/api/ledger`, {
           headers: this.getAuthHeaders(),
           cache: 'no-store'
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot ledger service is currently unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Cash ledger service unavailable (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.getLedger();
@@ -964,170 +966,241 @@ class TradeSphereApiClient {
     return paperEngine.resetAccount();
   }
 
-  // --- WATCHLIST & ALERT REST APIS (Rule B & Part 5 Compliant) ---
+  // --- WATCHLIST & ALERT REST APIS (Rule B & Fail-Closed Invariants) ---
   async getWatchlists(): Promise<WatchlistBackendData[]> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
           headers: this.getAuthHeaders(),
           cache: 'no-store'
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            return data;
-          }
-        }
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service is currently unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Watchlist service unavailable (${res.status})`);
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
     }
 
     return paperEngine.getWatchlists();
   }
 
   async createWatchlist(name: string): Promise<WatchlistBackendData> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists`, {
           method: 'POST',
           headers: this.getAuthHeaders(),
           body: JSON.stringify({ name })
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Create watchlist failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.createWatchlist(name);
   }
 
   async renameWatchlist(id: string | number, name: string): Promise<WatchlistBackendData> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
           method: 'PATCH',
           headers: this.getAuthHeaders(),
           body: JSON.stringify({ name })
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Rename watchlist failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.renameWatchlist(id, name);
   }
 
   async duplicateWatchlist(id: string | number, targetName?: string): Promise<WatchlistBackendData> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
         const query = targetName ? `?targetName=${encodeURIComponent(targetName)}` : '';
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/duplicate${query}`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/duplicate${query}`, {
           method: 'POST',
           headers: this.getAuthHeaders()
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Duplicate watchlist failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.duplicateWatchlist(id, targetName);
   }
 
   async deleteWatchlist(id: string | number): Promise<void> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}`, {
           method: 'DELETE',
           headers: this.getAuthHeaders()
         });
-        if (res.ok || res.status === 204) return;
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service unreachable.');
+      }
+      if (!res.ok && res.status !== 204) {
+        throw new Error(`Delete watchlist failed (${res.status})`);
+      }
+      return;
     }
 
     paperEngine.deleteWatchlist(id);
   }
 
   async addWatchlistItem(id: string | number, symbol: string): Promise<WatchlistBackendData> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items`, {
           method: 'POST',
           headers: this.getAuthHeaders(),
           body: JSON.stringify({ symbol })
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Add watchlist item failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.addWatchlistItem(id, symbol);
   }
 
   async removeWatchlistItem(id: string | number, symbolOrId: string | number): Promise<WatchlistBackendData> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/${symbolOrId}`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/${symbolOrId}`, {
           method: 'DELETE',
           headers: this.getAuthHeaders()
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Remove watchlist item failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.removeWatchlistItem(id, symbolOrId);
   }
 
   async reorderWatchlistItems(id: string | number, symbols: string[]): Promise<WatchlistBackendData> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/reorder`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/${id}/items/reorder`, {
           method: 'PATCH',
           headers: this.getAuthHeaders(),
           body: JSON.stringify({ symbols })
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot watchlist service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Reorder watchlist items failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.reorderWatchlistItems(id, symbols);
   }
 
   async getWatchlistAlerts(): Promise<WatchlistAlert[]> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist alert service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
           headers: this.getAuthHeaders(),
           cache: 'no-store'
         });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) return data;
-        }
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot alert service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Alert service unavailable (${res.status})`);
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
     }
 
     return paperEngine.getAlerts();
   }
 
   async createWatchlistAlert(payload: { symbol: string; alertType: string; targetValue: number; notes?: string }): Promise<WatchlistAlert> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist alert service is not configured.');
+      let res: Response;
       try {
-        const res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts`, {
           method: 'POST',
           headers: this.getAuthHeaders(),
           body: JSON.stringify(payload)
         });
-        if (res.ok) return await res.json();
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot alert service unreachable.');
+      }
+      if (!res.ok) {
+        throw new Error(`Create alert failed (${res.status})`);
+      }
+      return await res.json();
     }
 
     return paperEngine.createAlert(payload);
   }
 
   async deleteWatchlistAlert(id: string | number): Promise<void> {
-    if (BACKEND_BASE) {
+    if (this.isAuthenticated()) {
+      if (!BACKEND_BASE) throw new Error('Authoritative watchlist alert service is not configured.');
+      let res: Response;
       try {
-        await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts/${id}`, {
+        res = await fetch(`${BACKEND_BASE}/api/v1/watchlists/alerts/${id}`, {
           method: 'DELETE',
           headers: this.getAuthHeaders()
         });
-        return;
-      } catch {}
+      } catch (err) {
+        throw new Error('Authoritative Spring Boot alert service unreachable.');
+      }
+      if (!res.ok && res.status !== 204) {
+        throw new Error(`Delete alert failed (${res.status})`);
+      }
+      return;
     }
 
     paperEngine.deleteAlert(id);
@@ -1171,70 +1244,6 @@ class TradeSphereApiClient {
     } catch (e) {}
     // Offline / Standalone analytical Black-Scholes Greeks generator
     return generateOptionsChainEngine(symbol, undefined, days);
-  }
-
-  async runBacktest(body: any): Promise<any> {
-    if (MARKET_BASE) {
-      try {
-        const res = await fetch(`${MARKET_BASE}/api/backtest`, {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(body)
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.totalTrades > 0) return data;
-        }
-      } catch (e) {}
-    }
-
-    const sym = (body.symbol || 'RELIANCE').toUpperCase().trim();
-    let tickers: Ticker[] = [];
-    try {
-      tickers = await this.getTickers();
-    } catch {
-      tickers = this.fallbackTickers;
-    }
-    const current = tickers.find(t => t.symbol === sym) || tickers[0];
-    const ltp = Number(current?.ltp ?? 1000);
-    const startCapital = Number(body.initialCapital || 1000000);
-
-    // Realistic vectorized equity curve generation based on symbol & strategy
-    const symHash = sym.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const totalTrades = Math.floor(28 + (symHash % 25));
-    const winRateNum = Number((54 + (symHash % 16) + Math.random() * 2).toFixed(1));
-    const netReturnNum = Number((12.5 + (symHash % 18) + Math.random() * 3).toFixed(2));
-    const maxDdNum = Number((3.8 + (symHash % 5) + Math.random()).toFixed(2));
-    const sharpe = Number((1.55 + (symHash % 8) / 10).toFixed(2));
-
-    const curvePoints: number[] = [startCapital];
-    let equity = startCapital;
-    for (let i = 1; i <= 50; i++) {
-      const stepDrift = (netReturnNum / 100) / 50;
-      const noise = (Math.sin(i * 0.4 + symHash) + Math.cos(i * 0.2)) * 0.004;
-      equity = Math.round(equity * (1 + stepDrift + noise));
-      curvePoints.push(equity);
-    }
-
-    return {
-      symbol: sym,
-      strategy: body.strategy || 'ema_cross',
-      totalTrades,
-      winRate: `${winRateNum}%`,
-      netReturnPct: `+${netReturnNum}%`,
-      maxDrawdownPct: `-${maxDdNum}%`,
-      sharpeRatio: sharpe,
-      profitFactor: Number((1.8 + (symHash % 6) / 10).toFixed(2)),
-      equityCurve: curvePoints,
-      trades: Array.from({ length: Math.min(8, totalTrades) }).map((_, i) => ({
-        id: `bt_${i + 1}`,
-        side: i % 2 === 0 ? 'BUY' : 'SELL',
-        entryPrice: Number((ltp * (0.95 + i * 0.01)).toFixed(2)),
-        exitPrice: Number((ltp * (0.97 + i * 0.012)).toFixed(2)),
-        pnl: Math.round(startCapital * (0.008 + i * 0.002)),
-        rMultiple: `+${(1.4 + (i % 3) * 0.4).toFixed(1)}R`
-      }))
-    };
   }
 
   async getRiskMetrics(symbol: string): Promise<any> {
@@ -1915,13 +1924,13 @@ class TradeSphereApiClient {
         const raw = await res.json();
         return {
           ...raw,
-          totalTrades: raw.total_trades ?? raw.totalTrades ?? 14,
-          winRatePct: raw.win_rate_pct ?? raw.winRatePct ?? 64.3,
-          totalReturnPct: raw.cumulative_return_pct ?? raw.totalReturnPct ?? 18.4,
-          maxDrawdownPct: raw.max_drawdown_pct ?? raw.maxDrawdownPct ?? 4.8,
-          sharpeRatio: raw.sharpe_ratio ?? raw.sharpeRatio ?? 1.72,
-          sortinoRatio: raw.sortino_ratio ?? raw.sortinoRatio ?? 2.14,
-          profitFactor: raw.profit_factor ?? raw.profitFactor ?? 2.15,
+          totalTrades: raw.total_trades ?? raw.totalTrades ?? 0,
+          winRatePct: raw.win_rate_pct ?? raw.winRatePct ?? 0,
+          totalReturnPct: raw.cumulative_return_pct ?? raw.totalReturnPct ?? 0,
+          maxDrawdownPct: raw.max_drawdown_pct ?? raw.maxDrawdownPct ?? 0,
+          sharpeRatio: raw.sharpe_ratio ?? raw.sharpeRatio ?? 0,
+          sortinoRatio: raw.sortino_ratio ?? raw.sortinoRatio ?? 0,
+          profitFactor: raw.profit_factor ?? raw.profitFactor ?? 0,
           equityCurve: raw.equity_curve ?? raw.equityCurve ?? []
         };
       }
@@ -1931,19 +1940,19 @@ class TradeSphereApiClient {
 
     // High-fidelity quantitative simulation using the real candle history of the symbol
     let candles: BacktestCandle[] = [];
-    try {
-      const rawCandles = await this.getCandles(params.symbol, '1d', params.bars || 250);
-      if (Array.isArray(rawCandles) && rawCandles.length > 30) {
-        candles = rawCandles.map((c: any) => ({
-          timestamp: typeof c.time === 'number' ? new Date(c.time * 1000).toISOString() : String(c.time || c.timestamp),
-          open: Number(c.open),
-          high: Number(c.high),
-          low: Number(c.low),
-          close: Number(c.close),
-          volume: Number(c.volume || 100000)
-        }));
-      }
-    } catch {}
+    const rawCandles = await this.getCandles(params.symbol, '1d', params.bars || 250);
+    if (Array.isArray(rawCandles) && rawCandles.length >= 30) {
+      candles = rawCandles.map((c: any) => ({
+        timestamp: typeof c.time === 'number' ? new Date(c.time * 1000).toISOString() : String(c.time || c.timestamp),
+        open: Number(c.open),
+        high: Number(c.high),
+        low: Number(c.low),
+        close: Number(c.close),
+        volume: Number(c.volume || 100000)
+      }));
+    } else {
+      throw new Error(`Insufficient historical candle data for backtesting ${params.symbol}. Minimum 30 historical bars required.`);
+    }
 
     const result = runSimulation({
       symbol: params.symbol,

@@ -25,7 +25,7 @@ The **sole authoritative system of record** for:
 ### Market Feed & Quant Engine: Node.js Microstructure Engine (`backend/`, Port 8000)
 Dedicated high-throughput simulation and market streaming:
 - **24/7 Zero-Key Market Simulator:** Geometric Brownian Motion (GBM) with volatility clustering and ATR price movement.
-- **Level 2 Microstructure:** 20-depth Level 2 Depth of Market (DOM) order book ladder with realistic liquidity distribution.
+- **Microstructure Engine:** Simulated 20-level Depth of Market (DOM) order book ladder with realistic liquidity distribution.
 - **WebSocket Feed:** High-frequency binary/JSON tick stream (`/ws/ticks`) for zero-lag chart and ladder updates.
 - **Quantitative Research Services:** Black-Scholes options pricing and Greeks ($\Delta, \Gamma, \Theta, \nu, \text{IV}$ via Newton-Raphson), vectorized strategy backtesting engine, and deterministic AI risk coach.
 - *Notice:* Node.js order and account endpoints are deprecated and return HTTP 410 (`MIGRATED_TO_SPRING_BOOT`).
@@ -51,12 +51,12 @@ Dedicated autonomous multi-agent quantitative analytics and investment research 
 
 ### Rule B: Market Data & Execution Decoupling
 - **Zero UI Lag:** High-frequency WebSocket ticks stream directly into transient state stores (e.g. Zustand transient listeners or Canvas drawing loops) without triggering re-renders of the entire React component hierarchy.
-- **24/7 Zero-Key Fallback:** The system includes a realistic Geometric Brownian Motion (GBM) + ATR tick and 20-depth DOM simulator that runs automatically if exchange feeds are offline or no API credentials are provided.
+- **24/7 Zero-Key Fallback:** The system includes a realistic Geometric Brownian Motion (GBM) + ATR tick and simulated 20-level DOM that runs automatically if exchange feeds are offline or no API credentials are provided.
 - **Data Integrity:** Synthetic development data must always be clearly distinguished and labeled `SIMULATED` from live exchange data.
 
 ### Rule C: Progressive Complexity UI Boundaries
 - Components must cleanly adapt according to the selected mode (`basic`, `active`, `pro`).
-- Complex widgets (20-depth DOM, Options Chain Greeks, Backtester) are hidden by default in Basic Mode to prevent cognitive overload for novice traders.
+- Complex widgets (Simulated 20-level DOM, Options Chain Greeks, Backtester) are hidden by default in Basic Mode to prevent cognitive overload for novice traders.
 
 ### Rule D: Financial Calculation Exactness
 - All price calculations, PnL, position sizing, margin, and Black-Scholes Greeks must use IEEE double-precision mathematics or fixed-decimal equivalents (`BigDecimal` in Spring Boot) with zero rounding errors.
@@ -96,7 +96,7 @@ TR AI/
 │   └── pom.xml                # Maven project definition
 ├── backend/                   # Node.js Market Feed & Microstructure Engine
 │   ├── src/
-│   │   ├── market_data/       # 24/7 GBM tick simulator & Level 2 DOM generator
+│   │   ├── market_data/       # 24/7 GBM tick simulator & 20-level DOM generator
 │   │   ├── quant/             # Black-Scholes Greeks, backtesting engine
 │   │   └── coach/             # Deterministic AI Risk Coach
 │   ├── test/                  # Node.js market feed test suite

@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Market Data", description = "24/7 Geometric Brownian Motion simulated ticks, candles, and Level 2 DOM")
+@Tag(name = "Market Data", description = "24/7 Geometric Brownian Motion simulated ticks, candles, and Simulated 20-level DOM")
 public class MarketDataController {
 
     private final MarketDataService marketDataService;
@@ -46,7 +46,7 @@ public class MarketDataController {
     }
 
     @GetMapping({"/market-data/dom/{symbol}", "/dom/{symbol}"})
-    @Operation(summary = "Get 20-level Level 2 Depth of Market (DOM) order book ladder")
+    @Operation(summary = "Get simulated 20-level Depth of Market (DOM) order book ladder")
     public ResponseEntity<DomDepthDto> getDomLadder(
             @PathVariable String symbol,
             @RequestParam(name = "depth", defaultValue = "10") int depth) {

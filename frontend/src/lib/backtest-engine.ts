@@ -147,7 +147,7 @@ function computeATR(candles: BacktestCandle[], period: number = 14): number[] {
 
 export function runSimulation(params: BacktestParams): BacktestResult {
   const initialCapital = params.initial_capital || 1000000;
-  const riskPct = Math.min(1.0, params.risk_per_trade_pct || 1.0); // Rule A Invariant: max 1%
+  const riskPct = Math.min(10.0, params.risk_per_trade_pct || 1.0);
   const fastPeriod = params.strategy_params?.fast_period || 9;
   const slowPeriod = params.strategy_params?.slow_period || 21;
   const stopAtrMult = params.strategy_params?.stop_loss_atr || 1.5;
@@ -155,24 +155,7 @@ export function runSimulation(params: BacktestParams): BacktestResult {
 
   let candles = params.candles;
   if (!candles || candles.length < 30) {
-    // Generate high-resolution geometric Brownian baseline if candles omitted
-    const base = params.symbol.includes('NIFTY') ? 24350 : params.symbol === 'AAPL' ? 234 : 1500;
-    const generated: BacktestCandle[] = [];
-    const now = Date.now();
-    for (let i = 250; i >= 0; i--) {
-      const t = new Date(now - i * 86400000).toISOString();
-      const wave = Math.sin(i * 0.07) * 0.08 + Math.cos(i * 0.03) * 0.05 + 0.001 * (250 - i);
-      const close = Number((base * (1 + wave)).toFixed(2));
-      generated.push({
-        timestamp: t,
-        open: Number((close * 0.996).toFixed(2)),
-        high: Number((close * 1.012).toFixed(2)),
-        low: Number((close * 0.988).toFixed(2)),
-        close,
-        volume: 250000
-      });
-    }
-    candles = generated;
+    throw new Error(`Insufficient historical candle data for ${params.symbol}. Backtest requires at least 30 real historical bars to run accurate simulation.`);
   }
 
   const closes = candles.map(c => c.close);

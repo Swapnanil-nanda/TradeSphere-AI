@@ -501,11 +501,18 @@ public class PaperTradingService {
                 : availableQty;
 
         TickerQuoteDto quote = marketDataService.getQuote(instrument.getSymbol());
-        BigDecimal exitPrice = quote.getBid();
-        BigDecimal proceeds = exitPrice.multiply(BigDecimal.valueOf(qtyToClose));
+        BigDecimal rawPrice = quote.getBid();
+        BigDecimal slippageRate = account.getSlippageRate() != null ? account.getSlippageRate() : BigDecimal.ZERO;
+        BigDecimal slippageAmount = rawPrice.multiply(slippageRate).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal exitPrice = rawPrice.subtract(slippageAmount).setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal grossProceeds = exitPrice.multiply(BigDecimal.valueOf(qtyToClose)).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal feeRate = account.getFeeRate() != null ? account.getFeeRate() : BigDecimal.ZERO;
+        BigDecimal feeAmount = grossProceeds.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal netProceeds = grossProceeds.subtract(feeAmount);
 
         BigDecimal costBasis = position.getEntryPrice().multiply(BigDecimal.valueOf(qtyToClose));
-        BigDecimal realizedPnl = proceeds.subtract(costBasis).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal realizedPnl = grossProceeds.subtract(costBasis).setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal rMultiple = BigDecimal.ZERO;
         if (position.getStopLossPrice() != null) {
@@ -516,7 +523,7 @@ public class PaperTradingService {
             }
         }
 
-        account.setCurrentCash(account.getCurrentCash().add(proceeds));
+        account.setCurrentCash(account.getCurrentCash().add(netProceeds));
         account.setDailyRealizedPnl(account.getDailyRealizedPnl().add(realizedPnl));
         account.setUpdatedAt(Instant.now());
         paperAccountRepository.save(account);
@@ -529,12 +536,24 @@ public class PaperTradingService {
         CashLedgerEntry ledger = new CashLedgerEntry(
                 account,
                 "TRADE_CREDIT",
-                proceeds,
-                account.getCurrentCash(),
+                grossProceeds,
+                account.getCurrentCash().add(feeAmount),
                 (isPartial ? "PARTIAL_CLOSE_" : "CLOSE_") + position.getId(),
                 entryDesc
         );
         ledgerRepository.save(ledger);
+
+        if (feeAmount.compareTo(BigDecimal.ZERO) > 0) {
+            CashLedgerEntry feeDebit = new CashLedgerEntry(
+                    account,
+                    "COMMISSION_FEE",
+                    feeAmount.negate(),
+                    account.getCurrentCash(),
+                    (isPartial ? "FEE_PARTIAL_CLOSE_" : "FEE_CLOSE_") + position.getId(),
+                    String.format("Simulated commission on closing position %s", instrument.getSymbol())
+            );
+            ledgerRepository.save(feeDebit);
+        }
 
         PaperTrade closeTrade = new PaperTrade();
         closeTrade.setAccount(account);
@@ -542,6 +561,7 @@ public class PaperTradingService {
         closeTrade.setSide("SELL");
         closeTrade.setQuantity(qtyToClose);
         closeTrade.setPrice(exitPrice);
+        closeTrade.setFeeAmount(feeAmount);
         closeTrade.setRealizedPnl(realizedPnl);
         closeTrade.setRMultiple(rMultiple);
         closeTrade.setExitReason(isPartial ? "PARTIAL_CLOSE" : "MANUAL_USER_CLOSE");
@@ -594,10 +614,18 @@ public class PaperTradingService {
 
             if (triggerStopLoss || triggerTakeProfit) {
                 String exitReason = triggerStopLoss ? "STOP_LOSS_TRIGGERED" : "TAKE_PROFIT_TRIGGERED";
-                BigDecimal exitPrice = currentBid;
-                BigDecimal proceeds = exitPrice.multiply(BigDecimal.valueOf(pos.getQuantity()));
+                BigDecimal rawPrice = currentBid;
+                BigDecimal slippageRate = account.getSlippageRate() != null ? account.getSlippageRate() : BigDecimal.ZERO;
+                BigDecimal slippageAmount = rawPrice.multiply(slippageRate).setScale(4, RoundingMode.HALF_UP);
+                BigDecimal exitPrice = rawPrice.subtract(slippageAmount).setScale(2, RoundingMode.HALF_UP);
+
+                BigDecimal grossProceeds = exitPrice.multiply(BigDecimal.valueOf(pos.getQuantity())).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal feeRate = account.getFeeRate() != null ? account.getFeeRate() : BigDecimal.ZERO;
+                BigDecimal feeAmount = grossProceeds.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal netProceeds = grossProceeds.subtract(feeAmount);
+
                 BigDecimal costBasis = pos.getEntryPrice().multiply(BigDecimal.valueOf(pos.getQuantity()));
-                BigDecimal realizedPnl = proceeds.subtract(costBasis).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal realizedPnl = grossProceeds.subtract(costBasis).setScale(2, RoundingMode.HALF_UP);
 
                 BigDecimal rMultiple = BigDecimal.ZERO;
                 if (pos.getStopLossPrice() != null) {
@@ -608,19 +636,31 @@ public class PaperTradingService {
                     }
                 }
 
-                account.setCurrentCash(account.getCurrentCash().add(proceeds));
+                account.setCurrentCash(account.getCurrentCash().add(netProceeds));
                 account.setDailyRealizedPnl(account.getDailyRealizedPnl().add(realizedPnl));
                 paperAccountRepository.save(account);
 
                 CashLedgerEntry ledger = new CashLedgerEntry(
                         account,
                         "TRADE_CREDIT",
-                        proceeds,
-                        account.getCurrentCash(),
+                        grossProceeds,
+                        account.getCurrentCash().add(feeAmount),
                         "OCO_" + pos.getId(),
                         String.format("OCO exit (%s) %d %s @ %s (PnL: %s)", exitReason, pos.getQuantity(), pos.getInstrument().getSymbol(), exitPrice, realizedPnl)
                 );
                 ledgerRepository.save(ledger);
+
+                if (feeAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    CashLedgerEntry feeDebit = new CashLedgerEntry(
+                            account,
+                            "COMMISSION_FEE",
+                            feeAmount.negate(),
+                            account.getCurrentCash(),
+                            "FEE_OCO_" + pos.getId(),
+                            String.format("Commission on OCO exit for %s", pos.getInstrument().getSymbol())
+                    );
+                    ledgerRepository.save(feeDebit);
+                }
 
                 PaperTrade ocoTrade = new PaperTrade();
                 ocoTrade.setAccount(account);
@@ -628,6 +668,7 @@ public class PaperTradingService {
                 ocoTrade.setSide("SELL");
                 ocoTrade.setQuantity(pos.getQuantity());
                 ocoTrade.setPrice(exitPrice);
+                ocoTrade.setFeeAmount(feeAmount);
                 ocoTrade.setRealizedPnl(realizedPnl);
                 ocoTrade.setRMultiple(rMultiple);
                 ocoTrade.setExitReason(exitReason);
@@ -638,7 +679,7 @@ public class PaperTradingService {
                 positionRepository.delete(pos);
 
                 auditEventService.logEvent(userId, "OCO_ORDER_TRIGGERED",
-                        String.format("OCO leg %s triggered on %s @ %s (PnL: %s)", exitReason, pos.getInstrument().getSymbol(), exitPrice, realizedPnl));
+                        String.format("OCO leg %s triggered on %s @ %s (PnL: %s, Fee: %s)", exitReason, pos.getInstrument().getSymbol(), exitPrice, realizedPnl, feeAmount));
             }
         }
         return executedExits;

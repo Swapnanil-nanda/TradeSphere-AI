@@ -8,7 +8,7 @@ import {
 
 export const metadata: Metadata = {
   title: 'Platform Features — TradeSphere AI',
-  description: 'Deep-dive into TradeSphere AI synchronous 1% risk gatekeeper, 3% daily circuit breaker, 24/7 GBM tick simulator, Level 2 DOM ladders, and Black-Scholes Greeks.'
+  description: 'Deep-dive into TradeSphere AI pre-trade risk gatekeeper, 3% daily circuit breaker, 24/7 GBM tick simulator, simulated 20-level order books, and Black-Scholes Greeks.'
 };
 
 export default function FeaturesPage() {
@@ -55,14 +55,14 @@ export default function FeaturesPage() {
     {
       id: 'level2-dom',
       icon: Layers,
-      title: '20-Depth Level 2 DOM Order Book Ladder',
+      title: 'Simulated 20-Level Order Book Ladder',
       tagline: 'Institutional market microstructure visualization.',
       description: 'Inspect order book depth with 20 levels of real-time bids and asks. See where liquidity rests, spot bid/ask imbalances, and place limit orders directly from the ladder.',
       points: [
         '20 levels of continuous depth with proportional volume bars.',
         'Live spread and aggregate volume calculation.',
         'Interactive quick-order trigger from order book ladder prices.',
-        'High-frequency transient DOM updates (~10ms streaming ticks) without whole-page React lag.'
+        'High-frequency transient DOM updates (~120ms streaming ticks) without whole-page React lag.'
       ]
     },
     {

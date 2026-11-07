@@ -817,7 +817,7 @@ function PaperTradingContent() {
                 </div>
               )}
 
-              {/* TAB 5: LEVEL 2 DOM BOOK */}
+              {/* TAB 5: SIMULATED 20-LEVEL DOM BOOK */}
               {activeTab === 'dom' && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-[11px] text-[#808a9d] pb-2 border-b border-[#141414]">

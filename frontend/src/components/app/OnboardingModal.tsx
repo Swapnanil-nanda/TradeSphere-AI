@@ -279,7 +279,7 @@ export default function OnboardingModal({ forceOpen = false, onClose }: Onboardi
                     <div className="p-2.5 rounded-lg bg-[#111922] border border-[#D8AB5E]/30 text-[#E7EDF3] space-y-1">
                       <div className="font-bold text-[#D8AB5E]">✓ All 33 Platform Features 100% Unlocked:</div>
                       <div className="text-[10px] text-[#8B99A8] leading-relaxed">
-                        • 20-Level Depth of Market (Level 2 DOM Ladder)<br />
+                        • Simulated 20-Level Depth of Market (DOM Ladder)<br />
                         • Black-Scholes Options Greeks &amp; Volatility Smile<br />
                         • Multi-Leg Options Strategy Payoff Modeler<br />
                         • 7 Specialist Autonomous Quant Agents &amp; Vectorized Backtester<br />

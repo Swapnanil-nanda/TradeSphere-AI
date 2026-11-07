@@ -24,7 +24,7 @@ export default function OrderBookDOM({ ticker, onQuickFill }) {
       {/* Header */}
       <div className="p-2 border-b border-[#25313D] bg-[#0D131A] flex items-center justify-between font-sans">
         <span className="font-bold text-[10px] text-[#E7EDF3] uppercase tracking-wider font-mono">
-          LEVEL 2 DOM (20-DEPTH)
+          SIMULATED 20-LEVEL DOM BOOK
         </span>
         <span className="text-[10px] text-[#8B99A8] font-mono">
           Spread: <b className="text-[#D8AB5E] num-tabular">{currencySymbol}{spread.toFixed(2)}</b>

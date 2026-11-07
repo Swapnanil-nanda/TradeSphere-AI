@@ -8,42 +8,45 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 
 > **Institutional Stock & Options Research Workstation and Simulated Execution Terminal**  
-> *100% Free, Zero-Subscription Platform with Synchronous 1% Risk Gatekeeper, 24/7 GBM Market Simulation, Level 2 DOM Ladder, and 8-Agent Quantitative Intelligence.*
+> *100% Free, Zero-Subscription Platform with Synchronous Pre-Trade Risk Gatekeeper, 24/7 GBM Market Simulation (~120ms tick cycle), Simulated 20-Level DOM Order Book, and 8-Agent Quantitative Intelligence.*
 
 ---
 
 ## 🌟 Executive Summary
 
-**TradeSphere AI** is a full-stack, local-first stock and options research and paper-trading terminal built to provide professional-grade trading technology with zero subscription barriers:
-1. **India & US Dual-Market Research**: Zero-cost (₹0 / $0) paper-trading architecture, strict pre-trade risk controls, behavioral trade journaling, and 1% risk position auto-sizing.
-2. **Adaptive Progressive Complexity**: Three distinct interface complexity modes—**Basic Mode** (guided, beginner-friendly), **Active Mode** (multi-timeframe technical trader), and **Pro Mode** (full quant workstation, DOM ladder, and Greeks)—with consistent risk enforcement across all modes.
-3. **Canonical Enterprise Dual-Tier Backend**: Authoritative Java 21 Spring Boot OMS backed by PostgreSQL transactions, paired with a dedicated high-throughput Node.js market simulation & WebSocket tick feed, and a Python FastAPI quantitative intelligence service.
+**TradeSphere AI** is an open-source, local-first stock and options research, analytics, and simulated execution terminal designed to provide professional trading tooling without subscription paywalls:
+1. **Dual-Market Research (India NSE/BSE & US NASDAQ/NYSE)**: Real-time paper trading, strict pre-trade risk controls, multi-currency USD/INR accounting, behavioral trade journaling, and risk-managed position sizing.
+2. **Adaptive Progressive Complexity**: Three purpose-built interface tiers:
+   - **Basic Mode (Guided)**: Clean minimalist charts, 20-EMA trend guide, automatic Support/Resistance zones, and plain-English AI coach guidance.
+   - **Active Mode (Active Trader)**: Multi-timeframe candlesticks, VWAP, Bollinger Bands, RSI(14), dual-market watchlists, Bracket OCO (One-Cancels-the-Other) orders, and automated trade journaling.
+   - **Pro Mode (Quant)**: Simulated 20-level Depth of Market (DOM) ladder, Black-Scholes Options Greeks ($\Delta, \Gamma, \Theta, \nu, \text{IV}$), Markowitz Efficient Frontier, Monte Carlo cones, and 8-Agent Quantitative Intelligence.
+3. **Canonical Enterprise Multi-Tier Backend**:
+   - **Authoritative OMS & Auth Service (Java 21 Spring Boot, Port 8080)**: PostgreSQL persistence with Flyway migrations, stateless JWT auth, multi-tenant isolation, cash ledger accounting, and pre-trade risk checks.
+   - **Market Microstructure & Simulation Engine (Node.js, Port 8000)**: 24/7 Geometric Brownian Motion (GBM) tick generator broadcasting ticks every ~120ms, simulated 20-level order book depth, and WebSocket streaming.
+   - **Quantitative Research Service (Python FastAPI, Port 8100)**: 8 specialist research agents, independent evidence verification, Markowitz MPT optimizer, one-sided VaR/CVaR, and ReportLab PDF reporting.
 
 ---
 
 ## ⚡ Core Invariants & Architecture Rules
 
-### 1. 🛡️ Synchronous Pre-Trade Risk Gatekeeper (Authoritative Spring Boot)
-- **1% Max Single-Trade Risk Invariant**: Orders risking more than 1.0% of total account equity are strictly rejected *before* execution.
-- **Strict Safe Sizing Rule**: When single-share risk exceeds the 1% risk threshold, position sizing returns 0 units and flags a risk breach (never rounds up to 1 unit).
-- **Mandatory Stop-Loss Rule**: In Basic and Active modes, every order strictly requires a defined stop-loss price; open-ended risk entries are blocked.
-- **3.0% Daily Drawdown Circuit Breaker**: Real-time MTM monitoring that automatically locks all opening orders if daily session losses exceed 3.0% of day-start equity.
-- **Fail-Closed Execution**: Transactional actions fail closed—an API rejection or network outage never silently converts into a local browser order.
-- **Deterministic Cash Ledger & Reconciliation**: Immutable financial event records with zero-variance balance audits.
+### 1. 🛡️ Synchronous Pre-Trade Risk Gatekeeper (Spring Boot Authoritative)
+- **Pre-Trade Risk Checks**: Evaluates order validity, margin requirements, account buying power, and risk thresholds *before* execution.
+- **Fail-Closed Architecture**: All authenticated operations (orders, portfolio valuation, cash ledger, watchlists, alerts, account configuration) fail closed on backend failure. If the authoritative Spring Boot backend is unreachable, operations throw explicit errors rather than silently falling back to browser-local state.
+- **Strict Safe Sizing Rule**: Auto-sizing computes mathematically safe quantities based on Stop-Loss distance; if risk exceeds allowable capital limits, it safely returns 0 units with a risk breach warning.
+- **3.0% Daily Drawdown Circuit Breaker**: Real-time Mark-to-Market (MTM) monitoring automatically locks new opening orders if session drawdown hits 3.0% of day-start equity.
+- **Consistent Fees & Slippage**: Commission fees and market slippage are deducted systematically across market orders, manual position square-offs, and automated OCO exits.
+- **Broker Live Routing Safeguard**: Direct live order routing to Finvasia Shoonya is explicitly disabled (HTTP 403) pending per-user authorization, encrypted credential storage, and multi-tenant session isolation. All executions run on the authoritative paper trading OMS.
 
-### 2. 🌐 24/7 Dual-Market Simulation & Market Data Integrity
-- **Consistent Provenance Labels**: All simulated data is strictly labeled `SIMULATED • GBM Market Feed` or `HISTORICAL`. The term "LIVE" is reserved strictly for authenticated, external exchange connections.
-- **Core Dual-Market Equities & Indices**:
+### 2. 🌐 Market Data & Microstructure Accuracy
+- **Simulated 20-Level Order Book**: Under exchange guidelines (e.g., NSE India), Level 1 denotes top bid/ask, Level 2 denotes 5-depth, and Level 3 denotes up to 20-depth. TradeSphere AI provides a **high-fidelity simulated 20-level order book ladder**, accurately labeled as simulated microstructure rather than a live exchange feed.
+- **Truthful Latency Characteristics**: Market ticks are generated via a Geometric Brownian Motion + ATR stochastic engine operating on a measured ~120ms simulation cycle, streaming transient updates directly to Canvas and DOM components without React whole-page re-renders.
+- **Data Provenance Labels**: All simulated data is explicitly marked `SIMULATED • GBM Market Feed`. The term `LIVE` is strictly reserved for authenticated external broker connections.
+- **Core Dual-Market Universe**:
   - **NSE (India)**: `NIFTY 50`, `SENSEX`, `RELIANCE`, `TCS`, `INFY`, `HDFCBANK`, `TATAMOTORS`
   - **NASDAQ / NYSE (US)**: `AAPL`, `TSLA`, `NVDA`, `MSFT`, `GOOGL`, `AMZN`, `SPY`, `QQQ`
-- **Geometric Brownian Motion (GBM) Tick Feed**: Continuous drift and stochastic volatility engine broadcasting market ticks every ~120ms with transient canvas updates without whole-page React re-renders.
-- **Level 2 DOM Order Book**: Real-time 20-depth Bid/Ask ladder with dynamic volume profiling.
-- **Guaranteed 120-Bar Candlestick Rendering**: Multi-timeframe historical + live ticking OHLCV candle generator (1m, 5m, 15m, 1h, 1D) with EMA-20, VWAP, support/resistance, and RSI(14).
 
-### 3. 🎯 Progressive Complexity Modes (No Paywalls)
-- **Basic Mode (Guided)**: Clean simplified chart, natural-language trend banner, automatic Support/Resistance zones, 1% Risk Auto-Sizer, and plain-English AI coach.
-- **Active Mode (Day Trader)**: Multi-timeframe candlesticks, VWAP, Bollinger Bands, RSI(14), dual-market watchlists, Bracket OCO (One-Cancels-the-Other) orders, and automated trade journaling.
-- **Pro Mode (Quant)**: 20-level Level 2 DOM ladder, real-time Black-Scholes Options Greeks chain ($\Delta, \Gamma, \Theta, \nu, \text{IV}$), Markowitz Efficient Frontier, Monte Carlo cones, and 8-Agent Quantitative Intelligence.
+### 3. 📊 Honest Quantitative Backtesting
+- **No Fabricated Backtest Metrics**: Strategies are backtested strictly against historical candle data ($\ge 30$ historical bars required). If candle data is missing or insufficient, the engine throws an explicit error rather than silently synthesizing sine waves or defaulting to fabricated metric values.
 
 ---
 
@@ -58,28 +61,28 @@ graph TD
   
   S <-->|"Flyway Migrations (v1-v10) / HikariCP"| N["PostgreSQL Database (:5432)"]
   
-  subgraph Spring Boot Authoritative Monolith (:8080)
-    S --> G1["Rule A Pre-Trade Risk Gatekeeper (1% Cap & Circuit Breaker)"]
+  subgraph Spring Boot Authoritative OMS (:8080)
+    S --> G1["Pre-Trade Risk Gatekeeper (Buying Power & 3% Circuit Breaker)"]
     S --> G2["Deterministic Order State Machine (Market / Limit / OCO)"]
     S --> G3["Double-Entry Cash Ledger (Zero-Variance Reconciliation)"]
     S --> G4["Stateless JWT Authentication, Google Sign-In & Multi-Tenant Isolation"]
-    S --> G5["Exact BigDecimal Financial Calculations"]
+    S --> G5["Exact BigDecimal Financial Calculations with Consistent Fees/Slippage"]
   end
 
   subgraph Node.js High-Frequency Market Simulator (:8000)
-    B --> C["24/7 GBM Tick Simulator (120ms cycle, /ws/ticks)"]
-    B --> D["20-Depth Level 2 DOM Ladder (/api/dom)"]
+    B --> C["24/7 GBM Tick Simulator (~120ms cycle, /ws/ticks)"]
+    B --> D["Simulated 20-Level DOM Ladder (/api/dom)"]
     B --> E["Black-Scholes Options Greeks Engine (/api/options-chain)"]
-    B --> F["Vectorized Strategy Backtester (/api/backtest)"]
-    B --> H["Contextual AI Coach & Tilt Auditor (/api/coach)"]
+    B --> F["Strategy Backtest Simulation Engine (/api/backtest)"]
+    B --> H["Contextual AI Risk Coach (/api/coach)"]
   end
 
   subgraph Python Quantitative Research Engine (:8100)
     Q --> M1["8 Specialist Agents (Market, News, Tech, Sim, Forecast, Risk, Strategy, Coordinator)"]
     Q --> M2["Independent Evidence Verification Component"]
-    Q --> M3["Markowitz MPT, Frontier & One-Sided VaR/CVaR"]
-    Q --> M4["Path-Based Monte Carlo with True Peak-to-Trough Drawdowns"]
-    Q --> M5["Wealth Planning (Step-up SIP, Scenarios, Mutual Funds)"]
+    Q --> M3["Markowitz MPT, Efficient Frontier & One-Sided VaR/CVaR"]
+    Q --> M4["Path-Based Monte Carlo with True Empirical Drawdowns"]
+    Q --> M5["Wealth Planning (Step-up SIP, Goal Scenarios, Mutual Funds)"]
     Q --> M6["ReportLab Institutional PDF Export Engine"]
   end
 ```
@@ -92,7 +95,7 @@ graph TD
 ```bash
 node start.js
 ```
-This concurrently starts all services on their designated ports:
+Concurrently starts all services on their designated ports:
 - **Frontend Terminal**: [http://localhost:3000](http://localhost:3000)
 - **Spring Boot OMS & Auth Server**: [http://localhost:8080](http://localhost:8080)
 - **Node.js Market Feed & WebSocket Server**: [http://localhost:8000](http://localhost:8000)
@@ -102,43 +105,39 @@ This concurrently starts all services on their designated ports:
 ```bash
 docker-compose up --build
 ```
-Builds and starts the complete multi-tier containerized stack including PostgreSQL 16, Spring Boot 3.4.x, Node.js Microstructure Engine, and Python Quantitative Service with health checks.
+Builds and boots the complete containerized stack: PostgreSQL 16, Spring Boot 3.4.x, Node.js Microstructure Engine, and Python Quantitative Service with integrated health checks.
 
 ---
 
-## 🧪 Comprehensive Automated Test Suites (93 Tests)
+## 🧪 Monorepo Test Suites (119 Automated Tests)
 
-The monorepo includes 93 automated tests across all architectural tiers:
+The monorepo contains 119 automated tests validating security, financial math, and risk enforcement across all layers:
 
-### 1. Spring Boot Authoritative Test Suite (23 Tests)
-Verifies JWT authentication, Google Sign-In, tenant isolation, Rule A 1% risk gatekeeper, cash ledger reconciliation, position sizing, rate limiting, and saved screener screens:
+### 1. Spring Boot Authoritative Test Suite (43 Tests)
+Verifies JWT authentication, Google Sign-In, tenant isolation, pre-trade risk gatekeeper, cash ledger reconciliation, fee and slippage accounting, rate limiting, and saved screens:
 ```bash
-cd backend-spring
-mvn clean test
+mvn clean test -f backend-spring/pom.xml
 ```
-*Output: 23 passed, 0 failed.*
+*Output: 43 passed, 0 failed.*
 
-### 2. Frontend Unit & Invariant Test Suite (32 Tests)
-Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), synthetic provider metadata labels, options Greeks analytical bounds, watchlists, trader academy curriculum, and API client position sizing invariants:
+### 2. Frontend Unit & Invariant Test Suite (38 Tests)
+Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), options Greeks analytical bounds, fail-closed API client operations, multi-currency USD/INR formatting, and trader academy curriculum:
 ```bash
-cd frontend
-npm test
+npm test --prefix frontend
 ```
-*Output: 32 passed, 0 failed.*
+*Output: 38 passed, 0 failed.*
 
 ### 3. Quantitative Research Microservice Test Suite (34 Tests)
-Verifies the specialist research agents, selective query routing, independent evidence verification, Markowitz MPT, one-sided VaR/CVaR, path-based Monte Carlo drawdowns, step-up SIP plans, goal scenarios, and PDF report generation:
+Verifies specialist research agents, selective query routing, independent evidence verification, Markowitz MPT, one-sided VaR/CVaR, path-based Monte Carlo drawdowns, step-up SIP plans, and PDF report generation:
 ```bash
-cd quant-engine
-pytest
+cd quant-engine && pytest
 ```
 *Output: 34 passed, 0 failed.*
 
 ### 4. Node.js Market Feed Test Suite (4 Tests)
-Verifies GBM price simulation, 20-level Level 2 DOM ladder, Black-Scholes Options Greeks, and auto-sizer logic:
+Verifies GBM price simulation, simulated 20-level DOM ladder, Black-Scholes Options Greeks, and auto-sizer logic:
 ```bash
-cd backend
-npm test
+npm test --prefix backend
 ```
 *Output: 4 passed, 0 failed.*
 
@@ -186,8 +185,8 @@ TR AI/
 ├── backend/                   # Node.js Market Feed & Microstructure Engine (:8000)
 │   ├── src/
 │   │   ├── server.js          # REST & WebSocket server
-│   │   ├── market_data/       # 24/7 GBM tick simulator & 20-depth DOM generator
-│   │   ├── quant/             # Black-Scholes Greeks & vectorized backtester
+│   │   ├── market_data/       # 24/7 GBM tick simulator & simulated 20-level DOM generator
+│   │   ├── quant/             # Black-Scholes Greeks & strategy backtester
 │   │   └── coach/             # Contextual AI risk coach
 │   ├── test/                  # Market feed test suite
 │   ├── package.json           # Node scripts and dependencies
@@ -214,4 +213,4 @@ TR AI/
 ---
 
 ## ⚖️ License
-Released under the standard [MIT License](./LICENSE). Free for educational, research, and trading use.
+Released under the standard [MIT License](./LICENSE). Free for educational, research, and algorithmic trading use.

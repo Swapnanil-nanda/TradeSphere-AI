@@ -1,7 +1,7 @@
 /**
  * TradeSphere AI — Options Greeks, Microstructure DOM & Risk Gatekeeper Engine
  * High-performance mathematical quantitative library for derivatives pricing,
- * Level 2 DOM queue simulation, multi-leg payoff geometry, and institutional pre-trade risk controls.
+ * Simulated 20-level DOM queue simulation, multi-leg payoff geometry, and institutional pre-trade risk controls.
  */
 
 export interface UniverseAsset {
@@ -383,7 +383,7 @@ export interface DOMSnapshot {
 }
 
 /**
- * Generate 20-level Level 2 Order Book DOM Ladder with Microstructure
+ * Generate Simulated 20-Level Order Book DOM Ladder with Microstructure
  */
 export function generate20LevelDOM(symbol: string, liveSpot?: number): DOMSnapshot {
   const meta = RISK_UNIVERSE_ASSETS[symbol] || RISK_UNIVERSE_ASSETS['RELIANCE'];

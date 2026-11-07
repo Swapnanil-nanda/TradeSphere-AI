@@ -84,7 +84,7 @@ function DepthContent() {
                   20-Level Depth of Market (DOM Ladder)
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#35C69A]/15 text-[#35C69A] border border-[#35C69A]/30 font-mono">
-                  LEVEL 2 QUEUE STREAM
+                  SIMULATED 20-LEVEL QUEUE STREAM
                 </span>
               </div>
               <p className="text-[#8B99A8] text-xs">

@@ -101,7 +101,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // 5. GET /api/dom?symbol=RELIANCE (20-Depth Level 2 Order Book DOM)
+  // 5. GET /api/dom?symbol=RELIANCE (Simulated 20-Level Order Book DOM)
   if (req.method === 'GET' && pathname === '/api/dom') {
     const symbol = query.symbol || 'RELIANCE';
     const ticker = simulator.getTicker(symbol);

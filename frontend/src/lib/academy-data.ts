@@ -209,7 +209,7 @@ export const PLATFORM_FEATURE_GUIDES: PlatformFeatureGuide[] = [
     name: '20-Level Depth of Market (DOM Ladder)',
     route: '/app/risk/depth',
     category: 'RISK',
-    badge: 'LEVEL 2 ORDER BOOK',
+    badge: '20-LEVEL ORDER BOOK',
     description: 'High-frequency microstructure visualization showing the real-time bid and ask queue geometry 20 levels deep.',
     whatItDoes: 'Displays pending limit buy and sell order queues, cumulative liquidity distribution, order book imbalance, micro-price VWAP, and institutional liquidity walls.',
     howToUse: [
@@ -224,7 +224,7 @@ export const PLATFORM_FEATURE_GUIDES: PlatformFeatureGuide[] = [
       { name: 'Imbalance %', formulaOrMeaning: '((Total Bid Qty - Total Ask Qty) / (Total Bid Qty + Total Ask Qty)) × 100' }
     ],
     troubleshootingTip: 'A large bid order wall at Level 5 doesn\'t guarantee price won\'t break lower; institutions can pull orders (spoofing/cancellation). Always use a hard stop loss.',
-    videoGuideTitle: 'Level 2 Market Depth & Order Flow Mechanics',
+    videoGuideTitle: '20-Level Market Depth & Order Flow Mechanics',
     videoGuideUrl: 'https://zerodha.com/varsity/chapter/depth-of-market-understanding-order-flow/'
   },
   {
@@ -835,7 +835,7 @@ export const PRACTICAL_EXERCISES: PracticalExercise[] = [
     difficulty: 'Intermediate',
     targetFeature: '20-Level Depth of Market',
     featureRoute: '/app/risk/depth?symbol=NVDA',
-    scenario: 'You open the Level 2 DOM ladder for NVDA at $142.50. You observe a massive 15,000-share bid cluster at $141.00 (Level 5) and only 2,500 shares scattered across asks between $142.50 and $144.00.',
+    scenario: 'You open the simulated 20-level DOM ladder for NVDA at $142.50. You observe a massive 15,000-share bid cluster at $141.00 (Level 5) and only 2,500 shares scattered across asks between $142.50 and $144.00.',
     task: 'Analyze the Order Book Imbalance, identify whether buyers or sellers have the structural edge, and establish a logical entry and stop loss.',
     hints: [
       'The $141.00 cluster acts as a potential liquidity support wall.',

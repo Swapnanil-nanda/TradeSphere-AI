@@ -201,73 +201,10 @@ export async function POST(request: Request) {
     }
 
     if (action === 'order') {
-      if (!serverShoonyaSession?.token) {
-        return NextResponse.json({
-          error: 'NOT_CONNECTED',
-          message: 'Shoonya broker session is offline. Connect in Settings or execute via paper trading.'
-        }, { status: 401 });
-      }
-
-      const { symbol, side, orderType, quantity, price, stopLoss, accountEquity } = body;
-      const canonical = symbol?.toUpperCase() === 'NIFTY50' ? 'NIFTY 50' : symbol?.toUpperCase();
-      const inst = SHOONYA_INSTRUMENTS[canonical];
-
-      if (!inst) {
-        return NextResponse.json({
-          error: 'UNSUPPORTED_SYMBOL',
-          message: `Symbol '${symbol}' is not available on Finvasia Shoonya.`
-        }, { status: 400 });
-      }
-
-      const entryPrice = price && price > 0 ? Number(price) : inst.basePrice;
-      const productType = body.productType || 'CNC';
-      const prdCode = productType === 'MIS' ? 'I' : productType === 'NRML' ? 'M' : 'C';
-
-      // Cash Margin Gatekeeper validation
-      const estTotal = entryPrice * Number(quantity);
-      const equity = Number(accountEquity) || 1000000;
-      const marginReq = productType === 'MIS' ? estTotal / 5 : estTotal;
-
-      if (side === 'BUY' && marginReq > equity) {
-        return NextResponse.json({
-          error: 'INSUFFICIENT_MARGIN',
-          message: `Cash Margin Breach: Required margin (₹${marginReq.toFixed(2)}) exceeds available equity (₹${equity.toFixed(2)}).`
-        }, { status: 400 });
-      }
-
-      const payload = {
-        uid: serverShoonyaSession.actid,
-        actid: serverShoonyaSession.actid,
-        exch: inst.exchange,
-        tsym: inst.tradingSymbol,
-        qty: String(quantity),
-        prc: orderType === 'LIMIT' && price ? String(price) : '0',
-        prd: prdCode,
-        trantype: side === 'BUY' ? 'B' : 'S',
-        prctyp: orderType === 'LIMIT' ? 'LMT' : 'MKT',
-        ret: 'DAY',
-        remarks: 'TradeSphere_AI'
-      };
-
-      const res = await fetch(SHOONYA_BASE_URL + 'PlaceOrder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `jData=${encodeURIComponent(JSON.stringify(payload))}&jKey=${encodeURIComponent(serverShoonyaSession.token)}`
-      });
-
-      const data = await res.json();
-      if (data.stat !== 'Ok') {
-        return NextResponse.json({
-          error: 'ORDER_REJECTED',
-          message: data.emsg || data.message || 'Finvasia Shoonya rejected order.'
-        }, { status: 400 });
-      }
-
       return NextResponse.json({
-        success: true,
-        orderId: data.norenordno,
-        message: `Order filled via Finvasia Shoonya. Order ID: ${data.norenordno}`
-      });
+        error: 'SHOONYA_LIVE_ORDERING_DISABLED',
+        message: 'Direct live order routing to Finvasia Shoonya is temporarily disabled pending per-user authorization, encrypted credential storage, and multi-tenant session isolation. Please use the authoritative paper trading OMS.'
+      }, { status: 403 });
     }
 
     if (action === 'cancel') {

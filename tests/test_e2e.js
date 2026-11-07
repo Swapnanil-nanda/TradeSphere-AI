@@ -76,13 +76,13 @@ async function runTests() {
   const sampleCandle = candles.data[candles.data.length - 1];
   console.log(`   ✓ Received ${candles.data.length} candles. Latest close: ₹${sampleCandle.close}, EMA20: ₹${sampleCandle.ema20}, VWAP: ₹${sampleCandle.vwap}`);
 
-  // 4. Level 2 DOM Ladder (20-depth book)
+  // 4. Simulated 20-Level DOM Ladder
   console.log('4. Checking GET /api/dom?symbol=RELIANCE...');
   const dom = await request('GET', '/api/dom?symbol=RELIANCE');
   if (dom.status !== 200 || !Array.isArray(dom.data.bids) || !Array.isArray(dom.data.asks)) {
     throw new Error(`DOM check failed: ${JSON.stringify(dom)}`);
   }
-  console.log(`   ✓ Level 2 DOM Ladder verified: ${dom.data.bids.length} bids, ${dom.data.asks.length} asks. Spread: ₹${(dom.data.asks[0]?.price - dom.data.bids[0]?.price).toFixed(2)}`);
+  console.log(`   ✓ Simulated 20-Level DOM Ladder verified: ${dom.data.bids.length} bids, ${dom.data.asks.length} asks. Spread: ₹${(dom.data.asks[0]?.price - dom.data.bids[0]?.price).toFixed(2)}`);
 
   // 5. Architectural Invariant: Deprecated Node Order Endpoints return HTTP 410
   console.log('5. Verifying Architectural Invariant: Deprecated Node OMS returns HTTP 410...');

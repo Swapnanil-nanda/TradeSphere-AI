@@ -67,7 +67,7 @@ export default function HomePage() {
     },
     {
       q: 'How does the 24/7 market simulator work without exchange API keys?',
-      a: 'TradeSphere AI incorporates a high-performance Geometric Brownian Motion (GBM) stochastic generator coupled with Average True Range (ATR) volatility. It produces realistic 120ms price ticks, volume deltas, and 20-level Level 2 DOM ladders for 10 core NSE and NASDAQ symbols 24 hours a day.'
+      a: 'TradeSphere AI incorporates a high-performance Geometric Brownian Motion (GBM) stochastic generator coupled with Average True Range (ATR) volatility. It produces realistic 120ms price ticks, volume deltas, and simulated 20-level order book ladders for 10 core NSE and NASDAQ symbols 24 hours a day.'
     },
     {
       q: 'What is the starting virtual paper-trading capital?',
@@ -130,7 +130,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-2xl">
-              An India-first, zero-fee financial research, simulated execution, and paper-trading terminal. Experience 24/7 realistic market simulation, 20-level Level 2 DOM ladders, and real-time Black-Scholes Options Greeks — with synchronous 1% risk guardrails.
+              An India-first, zero-fee financial research, simulated execution, and paper-trading terminal. Experience 24/7 realistic market simulation, simulated 20-level order book ladders, and real-time Black-Scholes Options Greeks — with disciplined risk guardrails.
             </p>
 
             {/* CTAs */}
@@ -379,7 +379,7 @@ export default function HomePage() {
             </h2>
             <p className="text-slate-300 text-sm leading-relaxed">
               Standard paper trading apps give you fake executions at mid-prices without bid/ask spreads, market slippage, or risk boundaries—reinforcing bad habits that blow real accounts. 
-              TradeSphere AI pairs deterministic paper orders against a 20-level Level 2 DOM order book with hard stop-loss guardrails and automated trade journaling.
+              TradeSphere AI pairs deterministic paper orders against a simulated 20-level order book with disciplined risk guardrails and automated trade journaling.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
               <div className="bg-[#070b14] p-4 rounded-xl border border-[#1b253b]">
@@ -431,9 +431,9 @@ export default function HomePage() {
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <Layers className="w-5 h-5" />
             </div>
-            <h4 className="text-base font-bold text-white">20-Depth Level 2 DOM Ladder</h4>
+            <h4 className="text-base font-bold text-white">Simulated 20-Level Order Book Ladder</h4>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Inspect resting liquidity with 20 levels of continuous bids and asks. Direct limit execution from the ladder with transient ~10ms streaming updates without whole-page React re-render lag.
+              Inspect resting liquidity with 20 levels of continuous bids and asks. Direct limit execution from the ladder with transient ~120ms streaming tick cycle updates without whole-page React re-render lag.
             </p>
             <Link href="/features#level2-dom" className="text-[11px] text-amber-400 font-semibold flex items-center gap-1 hover:underline">
               <span>Explore DOM Microstructure</span> &rarr;
@@ -466,7 +466,7 @@ export default function HomePage() {
               Tailored Complexity for Beginners &amp; Quants
             </h3>
             <p className="text-slate-400 text-xs sm:text-sm mt-2">
-              Beginners get guided risk guardrails without cognitive overload. Experienced quants get Level 2 DOM ladders, Black-Scholes Greeks, and vectorized backtesters.
+              Beginners get guided risk guardrails without cognitive overload. Experienced quants get simulated 20-level DOM ladders, Black-Scholes Greeks, and vectorized backtesters.
             </p>
 
             {/* Mode Switcher Buttons */}
@@ -556,7 +556,7 @@ export default function HomePage() {
               <>
                 <div className="bg-[#090d16] p-5 rounded-xl border border-[#1b253b] space-y-3">
                   <div className="text-xs font-bold text-blue-400">Professional Quant</div>
-                  <h4 className="text-white font-bold text-sm">20-Depth Level 2 DOM Ladder</h4>
+                  <h4 className="text-white font-bold text-sm">Simulated 20-Level DOM Ladder</h4>
                   <p className="text-slate-400 text-xs">
                     Real-time order book ladder with bid/ask depth volume bars, spread analytics, and instant fill triggers.
                   </p>
@@ -624,7 +624,7 @@ export default function HomePage() {
             </span>
             <h4 className="text-base font-bold text-white">Market Structure &amp; Auction Theory</h4>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Understand VWAP, 20-EMA trend alignment, and Level 2 DOM order book dynamics. Learn how institutional liquidity works.
+              Understand VWAP, 20-EMA trend alignment, and 20-level simulated order book dynamics. Learn how institutional liquidity works.
             </p>
             <Link href="/learning#market-structure" className="text-xs text-indigo-400 font-semibold hover:underline block pt-2">
               Start Module &rarr;

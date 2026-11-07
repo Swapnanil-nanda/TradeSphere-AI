@@ -2,7 +2,7 @@
  * ApexTradeOS / TradeSphere AI - Unified Multi-Process Stack Launcher
  * Orchestrates:
  *  1. Authoritative OMS & Auth Backend (Spring Boot - Port 8080)
- *  2. Real-time Market Simulator & Level 2 DOM Feed (Node.js - Port 8000)
+ *  2. Real-time Market Simulator & 20-Level DOM Feed (Node.js - Port 8000)
  *  3. React / Next.js Trading Terminal (Port 3000)
  */
 
@@ -20,10 +20,10 @@ console.log('================================================================');
 console.log('  Ω  TradeSphere AI / ApexTradeOS - Institutional Stack Launcher');
 console.log('================================================================');
 console.log('  * Authoritative OMS & Auth: Spring Boot (Port 8080)');
-console.log('  * Market Data & Level 2 Feed: Node.js GBM Engine (Port 8000)');
+console.log('  * Market Data & DOM Feed: Node.js GBM Engine (Port 8000)');
 console.log('  * Quantitative Research Engine: Python FastAPI (Port 8100)');
 console.log('  * UI Terminal: Next.js 15 (Port 3000)');
-console.log('  * Pre-Trade Gatekeeper: 1% Max Risk & 3% Circuit Breaker Active');
+console.log('  * Pre-Trade Gatekeeper: Dynamic Risk & 3% Circuit Breaker Active');
 console.log('----------------------------------------------------------------');
 
 const processes = [];
