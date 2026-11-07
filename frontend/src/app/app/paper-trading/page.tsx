@@ -341,7 +341,7 @@ function PaperTradingContent() {
             </span>
           </div>
           <p className="text-xs text-[#808a9d] mt-0.5">
-            Synchronous Pre-Trade Risk Gatekeeper (1.0% Single-Trade Cap & 3.0% Daily Drawdown Circuit Breaker)
+            Synchronous Pre-Trade Risk Gatekeeper (Cash Margin Buying Power & 3.0% Daily Drawdown Circuit Breaker)
           </p>
         </div>
 
@@ -872,7 +872,7 @@ function PaperTradingContent() {
           </div>
         </div>
 
-        {/* Right (1 Col): Smart Order Ticket with 1% Auto Sizer */}
+        {/* Right (1 Col): Smart Order Ticket with Margin Quick Sizer */}
         <div className="space-y-4">
           <OrderForm
             symbol={symbol}

@@ -4,33 +4,31 @@ import { apiClient } from './api-client';
 import { appConfig } from './config';
 
 describe('ApiClient & Position Sizing Invariants', () => {
-  test('1. Sizing within 1% risk computes correct safe quantity', async () => {
+  test('1. Sizing within risk budget computes correct quantity', async () => {
     // Equity = 1,000,000; 1% risk = 10,000.
     // Entry = 100, StopLoss = 90 -> Risk distance = 10.
     // Quantity = 10,000 / 10 = 1000 shares.
     const res = await apiClient.calculatePositionSize({
       symbol: 'TEST',
       entryPrice: 100,
-      stopLossPrice: 90
+      stopLossPrice: 90,
+      riskPct: 1.0
     });
 
     assert.equal(res.recommendedQuantity, 1000);
     assert.equal(res.riskBreached, false);
   });
 
-  test('2. Sizing where single share risk exceeds 1% cap returns 0 shares and flags risk breach', async () => {
-    // Equity = 1,000,000; 1% risk = 10,000.
-    // Entry = 50,000, StopLoss = 35,000 -> Risk distance = 15,000 (> 10,000).
-    // Invariant: Never round up to 1 unit. Must return 0.
+  test('2. Sizing on high-priced instrument allocates real-world units without artificial lockout', async () => {
     const res = await apiClient.calculatePositionSize({
       symbol: 'MRF',
       entryPrice: 50000,
-      stopLossPrice: 35000
+      stopLossPrice: 35000,
+      riskPct: 25.0
     });
 
-    assert.equal(res.recommendedQuantity, 0);
-    assert.equal(res.riskBreached, true);
-    assert.match(res.message || '', /exceeds 1% risk cap/);
+    assert.ok(res.recommendedQuantity >= 1);
+    assert.equal(res.riskBreached, false);
   });
 
   test('3. Invalid or zero Stop-Loss distance returns 0 shares safely', async () => {

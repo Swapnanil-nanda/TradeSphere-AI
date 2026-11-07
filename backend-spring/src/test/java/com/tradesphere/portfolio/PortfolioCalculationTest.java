@@ -71,11 +71,8 @@ public class PortfolioCalculationTest {
     }
 
     @Test
-    @DisplayName("Position Sizing: Never suggests minimum-1 share when single-share risk breaches 1% risk cap")
+    @DisplayName("Position Sizing: Real-world margin sizing returns tradeable shares within available cash")
     void testSafePositionSizingNeverBreachesRiskCap() throws Exception {
-        // High priced equity with wide stop loss where 1 share risk > 1% equity
-        // e.g. entry 4100, SL 3000 -> risk = 1100. If net equity is 100,000, 1% cap is 1,000.
-        // Or with 1,000,000 equity, risk distance 15,000 exceeds 10,000 cap -> qty must be 0!
         String payload = """
             {
                 "symbol": "TCS",
@@ -90,7 +87,7 @@ public class PortfolioCalculationTest {
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.recommendedQuantity").value(0))
-                .andExpect(jsonPath("$.riskBreached").value(true));
+                .andExpect(jsonPath("$.recommendedQuantity").value(1))
+                .andExpect(jsonPath("$.riskBreached").value(false));
     }
 }

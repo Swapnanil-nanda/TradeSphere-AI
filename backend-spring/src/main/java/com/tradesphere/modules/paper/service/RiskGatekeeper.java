@@ -60,17 +60,9 @@ public class RiskGatekeeper {
             }
         }
 
-        // Invariant 2: Mandatory Hard Stop-Loss in Basic & Active modes
-        String tier = user.getTier() != null ? user.getTier().toUpperCase() : "ACTIVE";
-        boolean isBracketOrLimit = "BRACKET".equalsIgnoreCase(order.getOrderType()) || "LIMIT".equalsIgnoreCase(order.getOrderType());
-        if (("BASIC".equals(tier) || "ACTIVE".equals(tier) || isBracketOrLimit) && order.getStopLoss() == null) {
-            throw new RiskGatekeeperException("MANDATORY_STOP_LOSS_REQUIRED",
-                    "Hard Stop-Loss price is mandatory before execution under " + tier + " tier guardrails.");
-        }
-
         BigDecimal entryPrice = order.getLimitPrice() != null ? order.getLimitPrice() : currentPrice;
 
-        // Invariant 3: Directional Stop-Loss and Take-Profit validation
+        // Invariant 2: Directional Stop-Loss validation (if provided)
         if (order.getStopLoss() != null) {
             BigDecimal stopLoss = order.getStopLoss();
             if (stopLoss.compareTo(BigDecimal.ZERO) <= 0) {
@@ -84,53 +76,25 @@ public class RiskGatekeeper {
                 throw new RiskGatekeeperException("INVALID_STOP_LOSS",
                         String.format("Stop-Loss price (%s) must be strictly above entry price (%s) for SELL orders.", stopLoss, entryPrice));
             }
+        }
 
-            BigDecimal riskDistance = entryPrice.subtract(stopLoss).abs();
-            if (riskDistance.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new RiskGatekeeperException("INVALID_STOP_LOSS",
-                        "Stop-Loss price cannot equal entry price (" + entryPrice + ").");
+        // Invariant 3: Directional Take-Profit validation (if provided)
+        if (order.getTakeProfit() != null) {
+            BigDecimal takeProfit = order.getTakeProfit();
+            if (takeProfit.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new RiskGatekeeperException("INVALID_TAKE_PROFIT", "Take-Profit price must be positive and non-zero.");
             }
 
-            // Invariant 4: Single-Trade Max Loss Cap (1% account equity)
-            BigDecimal totalTradeRisk = riskDistance.multiply(BigDecimal.valueOf(order.getQuantity()));
-            BigDecimal maxAllowedRisk = account.getNetLiquidation()
-                    .multiply(user.getRiskCapPct())
-                    .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
-
-            if (totalTradeRisk.compareTo(maxAllowedRisk) > 0) {
-                throw new RiskGatekeeperException("MAX_LOSS_CAP_EXCEEDED",
-                        String.format("Trade risk %s exceeds single-trade max loss cap of %s (%.1f%% of equity). Reduce quantity.",
-                                totalTradeRisk.setScale(2, RoundingMode.HALF_UP),
-                                maxAllowedRisk.setScale(2, RoundingMode.HALF_UP),
-                                user.getRiskCapPct().doubleValue()));
-            }
-
-            // Invariant 5: Minimum 1.50R Reward:Risk Check for Bracket Orders
-            if (order.getTakeProfit() != null) {
-                BigDecimal takeProfit = order.getTakeProfit();
-                if (takeProfit.compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new RiskGatekeeperException("INVALID_TAKE_PROFIT", "Take-Profit price must be positive and non-zero.");
-                }
-
-                if ("BUY".equals(side) && takeProfit.compareTo(entryPrice) <= 0) {
-                    throw new RiskGatekeeperException("INVALID_TAKE_PROFIT",
-                            String.format("Take-Profit price (%s) must be strictly above entry price (%s) for BUY orders.", takeProfit, entryPrice));
-                } else if ("SELL".equals(side) && takeProfit.compareTo(entryPrice) >= 0) {
-                    throw new RiskGatekeeperException("INVALID_TAKE_PROFIT",
-                            String.format("Take-Profit price (%s) must be strictly below entry price (%s) for SELL orders.", takeProfit, entryPrice));
-                }
-
-                BigDecimal rewardDistance = takeProfit.subtract(entryPrice).abs();
-                BigDecimal rMultiple = rewardDistance.divide(riskDistance, 2, RoundingMode.HALF_UP);
-                if (rMultiple.compareTo(new BigDecimal("1.50")) < 0) {
-                    throw new RiskGatekeeperException("SUBOPTIMAL_RISK_REWARD",
-                            String.format("Sub-optimal Reward:Risk (%.2fR). Institutional threshold requires at least 1.50R.",
-                                    rMultiple.doubleValue()));
-                }
+            if ("BUY".equals(side) && takeProfit.compareTo(entryPrice) <= 0) {
+                throw new RiskGatekeeperException("INVALID_TAKE_PROFIT",
+                        String.format("Take-Profit price (%s) must be strictly above entry price (%s) for BUY orders.", takeProfit, entryPrice));
+            } else if ("SELL".equals(side) && takeProfit.compareTo(entryPrice) >= 0) {
+                throw new RiskGatekeeperException("INVALID_TAKE_PROFIT",
+                        String.format("Take-Profit price (%s) must be strictly below entry price (%s) for SELL orders.", takeProfit, entryPrice));
             }
         }
 
-        // Invariant 6: Position Ownership for SELL Orders
+        // Real-World Cap: Position Ownership for SELL Orders
         if ("SELL".equals(side)) {
             int held = (heldQuantity != null) ? heldQuantity : 0;
             if (held < order.getQuantity()) {
@@ -140,7 +104,7 @@ public class RiskGatekeeper {
             }
         }
 
-        // Invariant 7: Cash / Margin Adequacy for BUY Orders
+        // Real-World Cap: Cash / Margin Adequacy for BUY Orders (Actual Buying Power)
         if ("BUY".equals(side)) {
             BigDecimal orderTotal = entryPrice.multiply(BigDecimal.valueOf(order.getQuantity()));
             if (orderTotal.compareTo(account.getCurrentCash()) > 0) {

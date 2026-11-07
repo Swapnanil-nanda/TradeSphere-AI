@@ -788,21 +788,24 @@ public class PaperTradingService {
         BigDecimal rawQty = maxRiskCapital.divide(riskDistance, 0, RoundingMode.FLOOR);
         int qty = rawQty.intValue();
 
+        BigDecimal availableCash = (account != null && account.getCurrentCash() != null)
+                ? account.getCurrentCash()
+                : netEquity;
+        int maxCashShares = entryPrice.compareTo(BigDecimal.ZERO) > 0
+                ? availableCash.divide(entryPrice, 0, RoundingMode.FLOOR).intValue()
+                : 0;
+
         if (qty < 1) {
-            return new PositionSizeResponse(
-                    req.getSymbol(), entryPrice, sl, 0, riskDistance, maxRiskCapital, BigDecimal.ZERO, true,
-                    String.format("Risk Breach: Single-share risk (%s) exceeds your %.1f%% account risk cap (%s). Select a tighter Stop-Loss.",
-                            riskDistance.setScale(2, RoundingMode.HALF_UP),
-                            riskPct.doubleValue(),
-                            maxRiskCapital.setScale(2, RoundingMode.HALF_UP))
-            );
+            qty = Math.min(1, maxCashShares);
+        } else if (maxCashShares > 0 && qty > maxCashShares) {
+            qty = maxCashShares;
         }
 
         BigDecimal totalRisk = riskDistance.multiply(BigDecimal.valueOf(qty));
         return new PositionSizeResponse(
                 req.getSymbol(), entryPrice, sl, qty, riskDistance, maxRiskCapital, totalRisk, false,
-                String.format("Auto-sized to %d shares. Total risk strictly capped at %s (%.1f%% of equity).",
-                        qty, totalRisk.setScale(2, RoundingMode.HALF_UP), riskPct.doubleValue())
+                String.format("Auto-sized to %d shares. Total trade risk: %s.",
+                        qty, totalRisk.setScale(2, RoundingMode.HALF_UP))
         );
     }
 }

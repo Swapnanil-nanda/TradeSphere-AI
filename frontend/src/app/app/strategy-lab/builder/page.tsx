@@ -255,14 +255,14 @@ def compute_signals(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
                 <div className="relative">
                   <input
                     type="number"
-                    step="0.1"
-                    max="1.0"
+                    step="0.5"
+                    max="10.0"
                     min="0.1"
                     value={riskPerTrade}
-                    onChange={(e) => setRiskPerTrade(Math.min(1.0, Number(e.target.value)))}
+                    onChange={(e) => setRiskPerTrade(Math.max(0.1, Number(e.target.value)))}
                     className="w-full px-2.5 py-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-[#35C69A] font-bold text-xs font-mono focus:outline-none"
                   />
-                  <span className="absolute right-2 top-1.5 text-[10px] text-[#8B99A8] font-mono">CAP 1%</span>
+                  <span className="absolute right-2 top-1.5 text-[10px] text-[#8B99A8] font-mono">% CAP</span>
                 </div>
               </div>
 
@@ -405,7 +405,7 @@ def compute_signals(df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
           <div className="p-3.5 rounded-xl bg-[#0D131A] border border-[#25313D] flex items-start gap-2.5">
             <ShieldCheck className="w-4 h-4 text-[#35C69A] shrink-0 mt-0.5" />
             <div className="text-[10px] text-[#8B99A8] leading-relaxed">
-              <strong className="text-[#E7EDF3]">Risk Constraint:</strong> Position sizing enforces Rule A invariant (1.0% single-trade risk). If entry-to-stop distance breaches 1.0% equity risk for even 1 share, sizing drops to 0 units.
+              <strong className="text-[#E7EDF3]">Risk Constraint:</strong> Position sizing dynamically allocates shares bounded by available cash margin, buying power, and user-defined risk parameters without arbitrary 0-share lockouts.
             </div>
           </div>
         </div>

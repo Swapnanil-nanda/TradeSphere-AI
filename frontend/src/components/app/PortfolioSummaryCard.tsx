@@ -59,7 +59,7 @@ export default function PortfolioSummaryCard({ account, onReset }: PortfolioSumm
         ) : (
           <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-[#00c805]/10 border border-[#00c805]/20 text-[#00c805] font-semibold text-[10px]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00c805] animate-pulse" />
-            <span>1% RISK GUARD &bull; 3% CIRCUIT BREAKER ACTIVE</span>
+            <span>CASH MARGIN GATEKEEPER &bull; 3% CIRCUIT BREAKER ACTIVE</span>
           </div>
         )}
       </div>

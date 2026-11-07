@@ -1128,17 +1128,13 @@ class TradeSphereApiClient {
       }
     } catch (e) {}
 
-    const riskDistance = Math.abs((params.entryPrice || 100) - params.stopLossPrice);
+    const entry = params.entryPrice || 100;
+    const riskDistance = Math.abs(entry - params.stopLossPrice);
     if (riskDistance <= 0) return { recommendedQuantity: 0, riskBreached: false, message: 'Invalid Stop-Loss distance.' };
-    const maxRisk = 10000;
-    const raw = Math.floor(maxRisk / riskDistance);
-    if (raw < 1) {
-      return {
-        recommendedQuantity: 0,
-        riskBreached: true,
-        message: `Risk Breach: Minimum 1 share risk (₹${riskDistance.toFixed(2)}) exceeds 1% risk cap.`
-      };
-    }
+    const capital = 1000000;
+    const allocPct = (params.riskPct && params.riskPct > 0) ? params.riskPct : 25;
+    const budget = capital * (allocPct / 100);
+    const raw = Math.max(1, Math.floor(budget / riskDistance));
     return { recommendedQuantity: raw, riskBreached: false };
   }
 

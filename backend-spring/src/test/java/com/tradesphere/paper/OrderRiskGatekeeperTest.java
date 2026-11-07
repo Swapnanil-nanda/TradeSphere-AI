@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -59,19 +60,14 @@ public class OrderRiskGatekeeperTest {
     }
 
     @Test
-    @DisplayName("Risk Gatekeeper Rule A: Rejects order when single-trade max loss exceeds 1.0% cap")
-    void testSingleTradeRiskCapBreachRejection() throws Exception {
-        // Entry ~2985, Stop-Loss 2500 (Risk per share = ~485)
-        // Quantity = 100 shares -> Total Risk = 48,500 INR
-        // 1.0% Risk Cap on 10,00,000 INR = 10,000 INR -> Must be rejected!
+    @DisplayName("Risk Gatekeeper Real Cap: Rejects BUY order when required capital exceeds available cash")
+    void testInsufficientMarginRejection() throws Exception {
+        // Price ~2985, Quantity = 5000 shares -> Required cash ~1.49 Crores (> 10 Lakhs cash)
         OrderRequest req = new OrderRequest();
         req.setSymbol("RELIANCE");
         req.setSide("BUY");
-        req.setOrderType("BRACKET");
-        req.setQuantity(100);
-        req.setLimitPrice(new BigDecimal("2985.00"));
-        req.setStopLoss(new BigDecimal("2500.00"));
-        req.setTakeProfit(new BigDecimal("3900.00"));
+        req.setOrderType("MARKET");
+        req.setQuantity(5000);
 
         mockMvc.perform(post("/api/orders")
                         .header("Authorization", authToken)
@@ -79,38 +75,31 @@ public class OrderRiskGatekeeperTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.error").value("RISK_GATEKEEPER_VIOLATION"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("exceeds single-trade max loss cap")));
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("exceeds available paper cash balance")));
     }
 
     @Test
-    @DisplayName("Risk Gatekeeper Rule A: Rejects bracket order when Reward:Risk is sub-optimal (< 1.50R)")
-    void testSubOptimalRiskRewardRejection() throws Exception {
-        // Entry 3000, Stop-Loss 2950 (Risk = 50)
-        // Take-Profit 3030 (Reward = 30) -> R:R = 30/50 = 0.60R < 1.50R -> Must be rejected!
+    @DisplayName("Risk Gatekeeper Real Cap: Accepts and executes standard order without mandatory Stop-Loss")
+    void testOrderWithoutStopLossExecution() throws Exception {
         OrderRequest req = new OrderRequest();
         req.setSymbol("RELIANCE");
         req.setSide("BUY");
-        req.setOrderType("BRACKET");
-        req.setQuantity(10);
-        req.setLimitPrice(new BigDecimal("3000.00"));
-        req.setStopLoss(new BigDecimal("2950.00"));
-        req.setTakeProfit(new BigDecimal("3030.00"));
+        req.setOrderType("MARKET");
+        req.setQuantity(5);
+        req.setClientOrderId("test_market_nosl_" + UUID.randomUUID());
 
         mockMvc.perform(post("/api/orders")
                         .header("Authorization", authToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error").value("RISK_GATEKEEPER_VIOLATION"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Sub-optimal Reward:Risk")));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.symbol").value("RELIANCE"))
+                .andExpect(jsonPath("$.quantity").value(5));
     }
 
     @Test
-    @DisplayName("Risk Gatekeeper: Accepts and executes valid bracket order adhering to 1% risk and >= 1.50R")
+    @DisplayName("Risk Gatekeeper: Accepts and executes valid bracket order with optional Stop-Loss and Target")
     void testValidBracketOrderExecution() throws Exception {
-        // Entry 3000, Stop-Loss 2960 (Risk = 40)
-        // Quantity = 10 -> Total Risk = 400 INR (well within 10,000 INR cap)
-        // Take-Profit 3080 (Reward = 80) -> R:R = 80/40 = 2.00R >= 1.50R -> Allowed!
         OrderRequest req = new OrderRequest();
         req.setSymbol("RELIANCE");
         req.setSide("BUY");
@@ -119,6 +108,7 @@ public class OrderRiskGatekeeperTest {
         req.setLimitPrice(new BigDecimal("3000.00"));
         req.setStopLoss(new BigDecimal("2960.00"));
         req.setTakeProfit(new BigDecimal("3080.00"));
+        req.setClientOrderId("test_bracket_" + UUID.randomUUID());
 
         mockMvc.perform(post("/api/orders")
                         .header("Authorization", authToken)

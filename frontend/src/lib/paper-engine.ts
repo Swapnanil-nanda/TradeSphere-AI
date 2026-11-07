@@ -382,25 +382,13 @@ class UniversalPaperTradingEngine {
     const orderValue = execPrice * qty;
     const commission = orderValue * this.state.feeRate;
 
-    // RULE A: Risk Gatekeeper Check
-    if (params.stopLoss) {
-      const riskDistance = Math.abs(execPrice - params.stopLoss);
-      const singleTradeRisk = riskDistance * qty;
-      const maxAllowedRisk = this.state.account.netLiquidation * (this.state.account.maxRiskPerTradePct / 100);
-
-      if (singleTradeRisk > maxAllowedRisk) {
-        throw new Error(
-          `Pre-Trade Risk Breached: Trade risk (₹${singleTradeRisk.toFixed(2)}) exceeds 1.0% maximum account risk cap (₹${maxAllowedRisk.toFixed(2)}). Reduce quantity or widen stop-loss.`
-        );
-      }
-    }
-
-    // Buying power check for BUY orders
+    // Real Buying Power / Cash Margin Gatekeeper for BUY orders
     if (params.side === 'BUY') {
       const totalReq = orderValue + commission;
+      const curr = this.state.account.currency === 'USD' ? '$' : '₹';
       if (this.state.account.currentCash < totalReq) {
         throw new Error(
-          `Insufficient Buying Power: Required ₹${totalReq.toFixed(2)}, Available Cash ₹${this.state.account.currentCash.toFixed(2)}.`
+          `Insufficient Buying Power: Required ${curr}${totalReq.toFixed(2)}, Available Cash ${curr}${this.state.account.currentCash.toFixed(2)}.`
         );
       }
     }
