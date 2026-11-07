@@ -5,7 +5,7 @@
  * backend microservices are offline. Fully compliant with AGENTS.md:
  * - Rule A: 1% account risk gatekeeper & safe sizing
  * - Rule D: Decimal-safe financial arithmetic
- * - Real live execution at Yahoo Finance live market prices
+ * - Real live execution at Finvasia Shoonya & simulated market prices
  */
 
 import {

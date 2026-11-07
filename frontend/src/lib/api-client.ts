@@ -659,6 +659,30 @@ class TradeSphereApiClient {
   }): Promise<any> {
     const isAuth = this.isAuthenticated();
 
+    // Check if Finvasia Shoonya Live Broker execution mode is selected
+    const execMode = typeof window !== 'undefined' ? localStorage.getItem('tradesphere_execution_mode') : 'paper';
+    if (execMode === 'shoonya') {
+      const res = await fetch('/api/broker/shoonya', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'order',
+          symbol: orderData.symbol,
+          side: orderData.side,
+          orderType: orderData.orderType,
+          quantity: orderData.quantity,
+          price: orderData.limitPrice,
+          stopLoss: orderData.stopLoss,
+          takeProfit: orderData.takeProfit
+        })
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || 'Shoonya order rejected.');
+      }
+      return data;
+    }
+
     // In authenticated mode, transactional operations must fail closed.
     if (isAuth) {
       let res: Response;

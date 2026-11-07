@@ -139,14 +139,14 @@ export default function HomePage() {
                 href="/app/paper-trading"
                 className="flex items-center gap-2 px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/30 transition-all hover:scale-[1.02]"
               >
-                <span>Launch Institutional Terminal</span>
+                <span>Explore Demo (No Sign-in Required)</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                href="/register"
+                href="/login"
                 className="px-6 py-3.5 rounded-xl bg-[#0c121f] hover:bg-[#141d30] border border-[#1b253b] text-slate-200 font-semibold text-sm transition-all"
               >
-                Create ₹10 Lakh Virtual Account
+                Create Account / Sign In
               </Link>
               <Link
                 href="/learning"
@@ -258,6 +258,111 @@ export default function HomePage() {
                 </Link>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2.5 The Ideal User Journey Flowchart */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-8">
+          <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+            Zero-Friction Architecture
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">
+            1. The Ideal User Journey
+          </h2>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">
+            Why this is better: Visitors can understand and explore the product immediately before signing in.
+          </p>
+        </div>
+
+        <div className="bg-[#090D14] border border-[#1b253b] rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl relative">
+          {/* Step 1: Public Landing Page */}
+          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-4 text-center">
+            <h4 className="font-bold text-sm text-white">Public landing page</h4>
+            <p className="text-xs text-slate-400 mt-1">
+              Product overview, screenshots, features, live risk auto-sizer, and regulatory data disclaimer
+            </p>
+          </div>
+
+          <div className="flex justify-center text-slate-500">
+            <ArrowRight className="w-4 h-4 rotate-90" />
+          </div>
+
+          {/* Step 2: Explore demo without signing in */}
+          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-4 text-center relative hover:border-blue-500/50 transition-all">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              <h4 className="font-bold text-sm text-white">Explore demo without signing in</h4>
+            </div>
+            <p className="text-xs text-slate-400">
+              Sample screener, simulated market data, read-only charts with 20-EMA/VWAP, and learning content
+            </p>
+            <div className="mt-3">
+              <Link
+                href="/app/paper-trading"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 hover:text-white font-mono text-xs font-bold transition-all"
+              >
+                <span>Launch Demo Terminal Now</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex justify-center text-slate-500">
+            <ArrowRight className="w-4 h-4 rotate-90" />
+          </div>
+
+          {/* Step 3: Authentication Required (Border Highlight) */}
+          <div className="bg-[#0e1624] border-2 border-emerald-500/40 rounded-2xl p-4 text-center relative shadow-lg shadow-emerald-500/5">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold uppercase mb-1.5">
+              <Lock className="w-3 h-3" />
+              <span>Authentication required</span>
+            </div>
+            <h4 className="font-bold text-sm text-white">Create account / Sign in</h4>
+            <p className="text-xs text-slate-400 mt-1 max-w-xl mx-auto">
+              Before personal watchlists, persistent accounts, order placement, trade journals, and saved research
+            </p>
+            <div className="mt-3 flex justify-center gap-3">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all"
+              >
+                <span>Sign In or Register</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex justify-center text-slate-500">
+            <ArrowRight className="w-4 h-4 rotate-90" />
+          </div>
+
+          {/* Step 4: Choose experience level */}
+          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-4 text-center">
+            <h4 className="font-bold text-sm text-white">Choose experience level</h4>
+            <div className="flex items-center justify-center gap-2 mt-2 font-mono text-xs">
+              <span className="px-2.5 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold">Basic</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-400 font-bold">Active</span>
+              <span className="text-slate-500">&rarr;</span>
+              <span className="px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold">Pro</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              This controls interface complexity progressively, not financial permissions or paywalls.
+            </p>
+          </div>
+
+          <div className="flex justify-center text-slate-500">
+            <ArrowRight className="w-4 h-4 rotate-90" />
+          </div>
+
+          {/* Step 5: Personal TradeSphere workspace */}
+          <div className="bg-gradient-to-r from-blue-900/30 via-[#131d2e] to-indigo-900/30 border border-blue-500/30 rounded-2xl p-5 text-center">
+            <h4 className="font-bold text-base text-white">Personal TradeSphere workspace</h4>
+            <p className="text-xs text-slate-300 mt-1 max-w-xl mx-auto">
+              Personal ₹10 Lakh paper account (or linked live Finvasia Shoonya broker), custom watchlists, orders, portfolio, and quantitative research.
+            </p>
           </div>
         </div>
       </section>

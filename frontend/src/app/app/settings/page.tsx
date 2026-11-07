@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { apiClient, UserProfile } from '../../../lib/api-client';
 import {
   Settings, ShieldCheck, Wallet, RotateCcw, Save, CheckCircle2, Sliders,
-  User, Sparkles, HelpCircle, Layers, ArrowRight
+  User, Sparkles, HelpCircle, Layers, ArrowRight, Zap, Key, Lock, AlertCircle,
+  ExternalLink, Globe, RefreshCw
 } from 'lucide-react';
 import OnboardingModal from '../../../components/app/OnboardingModal';
 
@@ -18,6 +19,18 @@ export default function SettingsPage() {
   const [savedFeedback, setSavedFeedback] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Finvasia Shoonya Live Broker State
+  const [shoonyaUserId, setShoonyaUserId] = useState('');
+  const [shoonyaPassword, setShoonyaPassword] = useState('');
+  const [shoonyaTotpSecret, setShoonyaTotpSecret] = useState('');
+  const [shoonyaVendorCode, setShoonyaVendorCode] = useState('');
+  const [shoonyaApiKey, setShoonyaApiKey] = useState('');
+  const [shoonyaConnected, setShoonyaConnected] = useState(false);
+  const [shoonyaConnecting, setShoonyaConnecting] = useState(false);
+  const [shoonyaUname, setShoonyaUname] = useState('');
+  const [shoonyaFeedback, setShoonyaFeedback] = useState<string | null>(null);
+  const [executionMode, setExecutionMode] = useState<'paper' | 'shoonya'>('paper');
+
   useEffect(() => {
     const user = apiClient.getUserProfile();
     setProfile(user);
@@ -26,6 +39,25 @@ export default function SettingsPage() {
     setTier(user.tier);
     setRiskCap(user.riskCapPct || 1.0);
     setCircuitBreaker(user.circuitBreakerPct || 3.0);
+
+    // Check existing Shoonya Broker Status
+    fetch('/api/broker/shoonya?action=status')
+      .then(r => r.json())
+      .then(d => {
+        if (d.connected) {
+          setShoonyaConnected(true);
+          setShoonyaUname(d.session?.uname || 'Finvasia Trader');
+          setExecutionMode('shoonya');
+        }
+      })
+      .catch(() => {});
+
+    try {
+      const savedShoonyaId = localStorage.getItem('tradesphere_shoonya_uid');
+      if (savedShoonyaId) setShoonyaUserId(savedShoonyaId);
+      const savedMode = localStorage.getItem('tradesphere_execution_mode');
+      if (savedMode === 'shoonya') setExecutionMode('shoonya');
+    } catch {}
   }, []);
 
   const handleSave = (e: React.FormEvent) => {
@@ -38,8 +70,73 @@ export default function SettingsPage() {
       circuitBreakerPct: circuitBreaker
     });
     setProfile(updated);
+    try {
+      localStorage.setItem('tradesphere_execution_mode', executionMode);
+      if (shoonyaUserId) localStorage.setItem('tradesphere_shoonya_uid', shoonyaUserId);
+    } catch {}
     setSavedFeedback(true);
     setTimeout(() => setSavedFeedback(false), 3000);
+  };
+
+  const handleConnectShoonya = async () => {
+    if (!shoonyaUserId || !shoonyaPassword || !shoonyaVendorCode || !shoonyaApiKey) {
+      setShoonyaFeedback('Please fill all required Shoonya credentials: User ID, Password, Vendor Code, and API Key.');
+      return;
+    }
+
+    setShoonyaConnecting(true);
+    setShoonyaFeedback(null);
+
+    try {
+      const res = await fetch('/api/broker/shoonya', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'auth',
+          credentials: {
+            userId: shoonyaUserId,
+            password: shoonyaPassword,
+            totpSecret: shoonyaTotpSecret,
+            vendorCode: shoonyaVendorCode,
+            apiKey: shoonyaApiKey
+          }
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Authentication with Finvasia failed.');
+      }
+
+      setShoonyaConnected(true);
+      setShoonyaUname(data.session?.uname || 'Finvasia Trader');
+      setExecutionMode('shoonya');
+      setShoonyaFeedback(`✓ Connected successfully! Account: ${data.session?.uname || shoonyaUserId}. Live NSE/BSE execution is ready.`);
+      try {
+        localStorage.setItem('tradesphere_shoonya_uid', shoonyaUserId);
+        localStorage.setItem('tradesphere_execution_mode', 'shoonya');
+      } catch {}
+    } catch (err: any) {
+      setShoonyaFeedback(`Connection Error: ${err.message}`);
+    } finally {
+      setShoonyaConnecting(false);
+    }
+  };
+
+  const handleDisconnectShoonya = async () => {
+    await fetch('/api/broker/shoonya', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'disconnect' })
+    }).catch(() => {});
+
+    setShoonyaConnected(false);
+    setShoonyaUname('');
+    setExecutionMode('paper');
+    setShoonyaFeedback('Disconnected from Finvasia Shoonya. Workstation reverted to Paper Simulation mode.');
+    try {
+      localStorage.setItem('tradesphere_execution_mode', 'paper');
+    } catch {}
   };
 
   const handleResetLedger = async () => {
@@ -73,11 +170,11 @@ export default function SettingsPage() {
               Platform &amp; Workstation Settings
             </h1>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#35C69A]/15 text-[#35C69A] border border-[#35C69A]/30 font-mono">
-              3 CANONICAL SECTIONS
+              4 CANONICAL SECTIONS
             </span>
           </div>
           <p className="text-xs text-[#8B99A8] mt-0.5">
-            Configure your personal profile, progressive complexity tier, and pre-trade risk guardrails.
+            Configure your personal profile, progressive complexity tier, pre-trade risk guardrails, and free live Finvasia Shoonya broker integration.
           </p>
         </div>
 
@@ -97,11 +194,11 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-[#2979FF]" />
               <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                Section 1: User Profile &amp; Virtual Capital
+                Section 1: User Profile &amp; Account Identity
               </h2>
             </div>
             <span className="text-xs font-mono text-[#35C69A] font-bold">
-              ₹10,00,000.00 Starting Equity
+              ₹10,00,000.00 Starting Virtual Capital
             </span>
           </div>
 
@@ -137,7 +234,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <Sliders className="w-4 h-4 text-[#D8AB5E]" />
               <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
-                Section 2: Complexity Tier &amp; Feature Access
+                Section 2: Complexity Tier &amp; Progressive Disclosure
               </h2>
             </div>
             
@@ -152,7 +249,7 @@ export default function SettingsPage() {
           </div>
 
           <p className="text-xs text-[#8B99A8] leading-relaxed">
-            All users are alloted to <strong>Tier 1 — Basic Guided</strong> upon first login to prevent cognitive overload. You can adjust your tier anytime to unlock advanced active trading and quantitative tools.
+            All users begin at <strong>Tier 1 — Basic Guided</strong> to prevent cognitive overload. Progressive complexity controls UI density, not financial permissions or paywalls.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-sans">
@@ -206,35 +303,8 @@ export default function SettingsPage() {
                 {tier === 'pro' && <CheckCircle2 className="w-4 h-4 text-[#D8AB5E]" />}
               </div>
               <p className="text-[11px] text-[#8B99A8] leading-relaxed">
-                All 33 tools unlocked: 20-level Level-2 DOM ladder, Black-Scholes Greeks, MPT Optimizer, and 7 Specialist Agents.
+                All 33 tools unlocked: 20-level Level-2 DOM ladder, Black-Scholes Greeks, MPT Optimizer, and 8-Agent Quant Pipeline.
               </p>
-            </div>
-          </div>
-
-          {/* Unlocked Features Breakdown Banner */}
-          <div className="p-3.5 bg-[#0D131A] rounded-xl border border-[#25313D] text-xs space-y-1.5 font-sans">
-            <div className="flex items-center gap-1.5 text-white font-bold">
-              <Layers className="w-4 h-4 text-[#2979FF]" />
-              <span>Current Unlocked Workstation Tools for {tier.toUpperCase()}:</span>
-            </div>
-            <div className="text-[11px] text-[#8B99A8] leading-relaxed">
-              {tier === 'basic' && (
-                <span>
-                  ✓ Terminal, Candlestick Charts with 20-EMA Guide, Live Watchlists, Order Blotter, Portfolio Blotter, Trader Academy, Guided Curriculum, and Quizzes.<br />
-                  <span className="text-[#D8AB5E]">🔒 Screener, Technicals, OCO, DOM, Greeks, MPT, and 7-Agents are hidden to maintain focus on core risk principles.</span>
-                </span>
-              )}
-              {tier === 'active' && (
-                <span>
-                  ✓ Everything in Basic + Stock Screener, Technical Analysis, Historical Analogues, Bracket OCO Orders, Trade Journal, Mutual Funds Directory, and Step-Up SIP Planner.<br />
-                  <span className="text-[#D8AB5E]">🔒 20-Level DOM, Black-Scholes Greeks, MPT Optimizer, Monte Carlo, and 7 Quant Agents reserved for Pro Quant.</span>
-                </span>
-              )}
-              {tier === 'pro' && (
-                <span className="text-[#35C69A] font-medium">
-                  ✓ All 33 Platform Features 100% Unlocked. Level 2 DOM, Options Chain Greeks, Strategy Payoff Modeler, Vectorized Backtester, MPT Optimizer, Monte Carlo, and 7 Autonomous Quant Agents.
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -318,6 +388,185 @@ export default function SettingsPage() {
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset Ledger (₹10L)</span>
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION 4: FINVASIA SHOONYA LIVE BROKER INTEGRATION (100% FREE LIFETIME API) */}
+        <div className="bg-[#090D12] border border-[#25313D] rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#25313D] gap-2">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#35C69A]" />
+              <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                Section 4: Finvasia Shoonya Live Broker (100% Free Lifetime API)
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {shoonyaConnected ? (
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00c805]/15 text-[#00c805] border border-[#00c805]/30 text-[11px] font-mono font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00c805] animate-pulse" />
+                  <span>CONNECTED ({shoonyaUname})</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#25313D] text-[#8B99A8] border border-[#354352] text-[11px] font-mono">
+                  <span>SANDBOX SIMULATION</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-[#8B99A8] leading-relaxed">
+            <strong>Shoonya by Finvasia</strong> is India&apos;s leading 100% free trading broker with zero brokerage on Equity Delivery, Intraday, and F&amp;O, and zero API subscription fees. Connect your free Shoonya account to stream real exchange ticks and execute live orders with synchronous 1% risk gatekeeping.
+          </p>
+
+          {/* Execution Mode Radio Switcher */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div
+              onClick={() => setExecutionMode('paper')}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                executionMode === 'paper'
+                  ? 'bg-[#2979FF]/15 border-[#2979FF]'
+                  : 'bg-[#0D131A] border-[#25313D] hover:border-[#8B99A8]'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold text-xs text-white">Paper Trading Simulation</span>
+                {executionMode === 'paper' && <CheckCircle2 className="w-4 h-4 text-[#2979FF]" />}
+              </div>
+              <p className="text-[11px] text-[#8B99A8]">
+                Virtual ₹10,00,000 capital sandbox. Risk-free testing with 24/7 GBM ticks and bracket orders.
+              </p>
+            </div>
+
+            <div
+              onClick={() => {
+                if (!shoonyaConnected) {
+                  alert('Please connect and verify your Finvasia Shoonya credentials below first.');
+                } else {
+                  setExecutionMode('shoonya');
+                }
+              }}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                executionMode === 'shoonya'
+                  ? 'bg-[#00c805]/15 border-[#00c805]'
+                  : 'bg-[#0D131A] border-[#25313D] hover:border-[#8B99A8]'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold text-xs text-white">Finvasia Shoonya Live Broker</span>
+                {executionMode === 'shoonya' && <CheckCircle2 className="w-4 h-4 text-[#00c805]" />}
+              </div>
+              <p className="text-[11px] text-[#8B99A8]">
+                Direct live market execution on NSE/BSE via official Finvasia Noren API with Rule A risk controls.
+              </p>
+            </div>
+          </div>
+
+          {/* Shoonya Credentials Form */}
+          <div className="bg-[#0D131A] border border-[#25313D] rounded-xl p-4 space-y-3.5 text-xs font-sans">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[#8B99A8] font-bold mb-1">Client Code / User ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. FA12345"
+                  value={shoonyaUserId}
+                  onChange={(e) => setShoonyaUserId(e.target.value)}
+                  className="w-full bg-[#080D15] border border-[#25313D] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#35C69A]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#8B99A8] font-bold mb-1">Password</label>
+                <input
+                  type="password"
+                  placeholder="Finvasia Password"
+                  value={shoonyaPassword}
+                  onChange={(e) => setShoonyaPassword(e.target.value)}
+                  className="w-full bg-[#080D15] border border-[#25313D] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#35C69A]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#8B99A8] font-bold mb-1">TOTP Secret / 2FA Code</label>
+                <input
+                  type="password"
+                  placeholder="Base32 Key or 6-digit TOTP"
+                  value={shoonyaTotpSecret}
+                  onChange={(e) => setShoonyaTotpSecret(e.target.value)}
+                  className="w-full bg-[#080D15] border border-[#25313D] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#35C69A]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[#8B99A8] font-bold mb-1">Vendor Code</label>
+                <input
+                  type="text"
+                  placeholder="e.g. VENDOR_U"
+                  value={shoonyaVendorCode}
+                  onChange={(e) => setShoonyaVendorCode(e.target.value)}
+                  className="w-full bg-[#080D15] border border-[#25313D] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#35C69A]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#8B99A8] font-bold mb-1">API Key (Prism Portal)</label>
+                <input
+                  type="password"
+                  placeholder="Finvasia API Key"
+                  value={shoonyaApiKey}
+                  onChange={(e) => setShoonyaApiKey(e.target.value)}
+                  className="w-full bg-[#080D15] border border-[#25313D] rounded-lg px-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-[#35C69A]"
+                />
+              </div>
+            </div>
+
+            {shoonyaFeedback && (
+              <div className={`p-3 rounded-lg border text-xs flex items-center gap-2 ${
+                shoonyaFeedback.startsWith('✓')
+                  ? 'bg-[#00c805]/10 border-[#00c805]/30 text-[#00c805]'
+                  : 'bg-[#ff333a]/10 border-[#ff333a]/30 text-[#ff333a]'
+              }`}>
+                {shoonyaFeedback.startsWith('✓') ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                <span>{shoonyaFeedback}</span>
+              </div>
+            )}
+
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
+              <a
+                href="https://shoonya.com"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-[#2979FF] hover:underline"
+              >
+                <span>Open Free Shoonya Account / Generate API Keys</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+
+              <div className="flex items-center gap-2">
+                {shoonyaConnected ? (
+                  <button
+                    type="button"
+                    onClick={handleDisconnectShoonya}
+                    className="px-4 py-2 rounded-xl bg-[#EF6468]/15 hover:bg-[#EF6468] text-[#EF6468] hover:text-white border border-[#EF6468]/30 font-bold font-mono text-xs transition-all"
+                  >
+                    Disconnect Shoonya
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleConnectShoonya}
+                    disabled={shoonyaConnecting}
+                    className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[#00c805] hover:bg-[#009b04] text-black font-bold font-mono text-xs transition-all disabled:opacity-50 shadow-md shadow-green-500/20"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${shoonyaConnecting ? 'animate-spin' : ''}`} />
+                    <span>{shoonyaConnecting ? 'Authenticating...' : 'Test & Connect Shoonya'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
