@@ -124,6 +124,15 @@ function OptionsContent() {
                 ))}
               </optgroup>
             </select>
+
+            <Link
+              href={`/app/risk/volatility-surface?symbol=${symbol}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-semibold transition-colors shrink-0"
+              title="Open full 3D SVI Volatility Surface"
+            >
+              <span>Volatility Surface</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       </div>

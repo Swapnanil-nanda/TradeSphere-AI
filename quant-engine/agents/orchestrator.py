@@ -15,7 +15,8 @@ from agents.historical_similarity import HistoricalSimilarityAgent
 from agents.forecasting import ForecastingAgent
 from agents.risk_management import RiskManagementAgent
 from agents.strategy_lab import StrategyLabAgent
-from core.models import ResearchRun, EvidenceVerificationReport, ResearchMetadata
+from agents.document_intelligence import DocumentIntelligenceAgent
+from core.models import ResearchRun, EvidenceVerificationReport, ResearchMetadata, EvidenceCitation
 from core.validation import EvidenceVerifier
 from core.store import research_store
 from config import config
@@ -29,6 +30,7 @@ class QuantOrchestrator:
         self.forecasting = ForecastingAgent(self.market_data)
         self.risk_management = RiskManagementAgent(self.market_data)
         self.strategy_lab = StrategyLabAgent(self.market_data)
+        self.document_intelligence = DocumentIntelligenceAgent()
 
     def route_query_to_agents(self, query: str, explicit_agents: Optional[List[str]] = None) -> List[str]:
         """
@@ -63,9 +65,12 @@ class QuantOrchestrator:
         if any(w in q for w in ["strategy", "backtest", "crossover", "mean reversion", "alpha", "lab", "win rate"]):
             selected.append("StrategyLabAgent")
 
+        if any(w in q for w in ["document", "filing", "annual report", "10-k", "transcript", "evidence", "citation", "sec", "sebi", "fundamental", "earnings call"]):
+            selected.append("DocumentIntelligenceAgent")
+
         # If user asks a broad institutional synthesis query (or none matched), select core analytical triad
         if not selected:
-            selected = ["MarketDataAgent", "TechnicalAnalysisAgent", "ForecastingAgent"]
+            selected = ["MarketDataAgent", "TechnicalAnalysisAgent", "ForecastingAgent", "DocumentIntelligenceAgent"]
 
         return selected
 
@@ -163,6 +168,18 @@ class QuantOrchestrator:
                 verified_all = False
                 all_unsupported_claims.extend(v_report.unsupported_claims_found)
 
+        # 8. Document Intelligence & Evidence Tracking
+        evidence_trail: List[EvidenceCitation] = []
+        if "DocumentIntelligenceAgent" in invoked_agents:
+            doc_res = self.document_intelligence.analyze_symbol_documents(symbol=symbol)
+            results_map["multi_document_analysis"] = doc_res
+            evidence_trail.extend(doc_res.citations)
+            v_report = EvidenceVerifier.verify_agent_output("DocumentIntelligenceAgent", doc_res.model_dump())
+            all_audit_notes.extend(v_report.audit_notes)
+            if not v_report.is_verified:
+                verified_all = False
+                all_unsupported_claims.extend(v_report.unsupported_claims_found)
+
         # Compile overall Evidence Verification Report
         overall_verification = EvidenceVerificationReport(
             is_verified=verified_all,
@@ -190,6 +207,9 @@ class QuantOrchestrator:
         if "news_intelligence" in results_map:
             news = results_map["news_intelligence"]
             synthesis_lines.append(f"News Sentiment: {news.sentiment_label} (VADER Compound: {news.overall_sentiment_score}, {news.headline_count} headlines).")
+        if "multi_document_analysis" in results_map:
+            doc_data = results_map["multi_document_analysis"]
+            synthesis_lines.append(f"Document Evidence ({len(doc_data.documents_analyzed)} filings, {len(doc_data.snippets)} citations): {doc_data.consensus_insights[0] if doc_data.consensus_insights else 'Primary filings verified.'}")
         synthesis_lines.append("Evidence Verification: Passed regulatory and mathematical integrity checks with non-guarantee disclosures.")
 
         synthesis_summary = " ".join(synthesis_lines)
@@ -227,6 +247,8 @@ class QuantOrchestrator:
             forecasting=results_map.get("forecasting"),
             risk_management=results_map.get("risk_management"),
             strategy_lab=results_map.get("strategy_lab"),
+            multi_document_analysis=results_map.get("multi_document_analysis"),
+            evidence_trail=evidence_trail,
             evidence_verification=overall_verification,
             synthesis_summary=synthesis_summary,
             metadata=metadata

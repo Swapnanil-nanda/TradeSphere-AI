@@ -253,6 +253,46 @@ class StrategyBacktestResult(BaseModel):
 
 # --- Composite Research Run & Evidence Verification Models ---
 
+class EvidenceSnippet(BaseModel):
+    snippet_id: str
+    document_id: str
+    document_title: str
+    document_type: Literal[
+        "ANNUAL_REPORT_10K",
+        "EARNINGS_CALL_TRANSCRIPT",
+        "REGULATORY_FILING",
+        "BROKER_RESEARCH",
+        "EXCHANGE_CIRCULAR",
+        "NEWS_INTELLIGENCE"
+    ]
+    section: str
+    page_or_timestamp: str
+    exact_text: str
+    confidence_score: float = Field(..., ge=0.0, le=1.0)
+    sentiment: Literal["POSITIVE", "NEUTRAL", "NEGATIVE"] = "NEUTRAL"
+    key_metrics_mentioned: Dict[str, Any] = Field(default_factory=dict)
+    verified: bool = True
+
+class EvidenceCitation(BaseModel):
+    citation_id: str
+    claim_text: str
+    snippet_ids: List[str]
+    supporting_agent: str
+    verification_status: Literal["VERIFIED", "UNVERIFIED", "CONTRADICTED"] = "VERIFIED"
+    contradiction_details: Optional[str] = None
+    confidence: float = Field(..., ge=0.0, le=1.0)
+
+class MultiDocumentAnalysisResult(BaseModel):
+    symbol: str
+    documents_analyzed: List[Dict[str, Any]]
+    snippets: List[EvidenceSnippet]
+    citations: List[EvidenceCitation]
+    key_claims: List[Dict[str, Any]]
+    consensus_insights: List[str]
+    conflicts_identified: List[str]
+    evidence_score: float = Field(..., ge=0.0, le=100.0)
+    metadata: ResearchMetadata
+
 class EvidenceVerificationReport(BaseModel):
     is_verified: bool
     unsupported_claims_found: List[str]
@@ -275,6 +315,8 @@ class ResearchRun(BaseModel):
     forecasting: Optional[MultiHorizonForecastResult] = None
     risk_management: Optional[Dict[str, Any]] = None
     strategy_lab: Optional[StrategyBacktestResult] = None
+    multi_document_analysis: Optional[MultiDocumentAnalysisResult] = None
+    evidence_trail: List[EvidenceCitation] = Field(default_factory=list)
     evidence_verification: EvidenceVerificationReport
     synthesis_summary: str
     metadata: ResearchMetadata

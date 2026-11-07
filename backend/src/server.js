@@ -3,6 +3,7 @@ import { parse } from 'url';
 import { WebSocketServer } from 'ws';
 import { MarketSimulator, INSTRUMENTS } from './market_data/simulator.js';
 import { generateOptionsChain } from './quant/options_greeks.js';
+import { generateVolatilitySurface } from './quant/volatility_surface.js';
 import { runBacktest } from './quant/backtester.js';
 import { getCoachGuidance } from './coach/ai_coach.js';
 import { logger } from './logger.js';
@@ -155,6 +156,18 @@ const server = http.createServer((req, res) => {
     const chain = generateOptionsChain(symbol, spot, parseInt(query.days || 7, 10));
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(chain));
+    return;
+  }
+
+  // 6b. GET /api/volatility-surface?symbol=NIFTY50 (Options Volatility Surface & SVI Skew Analytics)
+  if (req.method === 'GET' && pathname === '/api/volatility-surface') {
+    const symbol = query.symbol || 'NIFTY50';
+    const ticker = simulator.getTicker(symbol);
+    const defaultSpot = symbol.includes('NIFTY') ? 24350.0 : (symbol === 'RELIANCE' ? 2950.0 : 180.0);
+    const spot = ticker ? ticker.ltp : defaultSpot;
+    const surface = generateVolatilitySurface(symbol, spot);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(surface));
     return;
   }
 

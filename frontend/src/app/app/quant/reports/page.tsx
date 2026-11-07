@@ -87,6 +87,14 @@ function QuantReportsContent() {
   const [newSymbol, setNewSymbol] = useState(initialSym || 'INFY');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  // Strategy Reproducibility Package State
+  const [activeTab, setActiveTab] = useState<'research_dossiers' | 'strategy_reproducibility'>('research_dossiers');
+  const [stratSymbol, setStratSymbol] = useState('RELIANCE');
+  const [stratName, setStratName] = useState('EMA_CROSSOVER');
+  const [stratSeed, setStratSeed] = useState(42);
+  const [stratLoading, setStratLoading] = useState(false);
+  const [reproPackage, setReproPackage] = useState<any>(null);
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem('tradesphere_quant_reports_v2');
@@ -154,6 +162,57 @@ function QuantReportsContent() {
     }
   };
 
+  const handleGenerateStrategyPackage = async () => {
+    setStratLoading(true);
+    try {
+      const res = await apiClient.exportReproducibilityPackage({
+        strategy_name: stratName,
+        symbol: stratSymbol,
+        initial_capital: 1000000,
+        risk_per_trade_pct: 1.0,
+        bars: 252,
+        seed: stratSeed,
+        format: 'json'
+      });
+      setReproPackage(res);
+    } catch (e) {
+      console.error('Failed to generate reproducibility package:', e);
+    } finally {
+      setStratLoading(false);
+    }
+  };
+
+  const handleDownloadStrategyJson = () => {
+    if (!reproPackage) return;
+    const blob = new Blob([JSON.stringify(reproPackage, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Strategy_Reproducibility_${stratSymbol}_${stratName}.json`;
+    a.click();
+  };
+
+  const handleDownloadStrategyPdf = async () => {
+    try {
+      const blob = await apiClient.exportReproducibilityPackage({
+        strategy_name: stratName,
+        symbol: stratSymbol,
+        initial_capital: 1000000,
+        risk_per_trade_pct: 1.0,
+        bars: 252,
+        seed: stratSeed,
+        format: 'pdf'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Strategy_Reproducibility_${stratSymbol}_${stratName}.pdf`;
+      a.click();
+    } catch (e) {
+      console.error('Failed to download strategy PDF:', e);
+    }
+  };
+
   const filteredReports = reports.filter(r => {
     const matchesSearch = r.symbol.toLowerCase().includes(search.toLowerCase()) || 
                           r.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -206,8 +265,202 @@ function QuantReportsContent() {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="p-3 bg-[#111922] rounded-xl border border-[#25313D] flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Sub-Tab Navigation Switcher */}
+      <div className="flex items-center gap-2 bg-[#111922] p-1.5 rounded-xl border border-[#25313D] w-fit">
+        <button
+          onClick={() => setActiveTab('research_dossiers')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'research_dossiers'
+              ? 'bg-[#2979FF] text-white shadow-xs'
+              : 'text-[#8B99A8] hover:text-[#E7EDF3]'
+          }`}
+        >
+          Multi-Agent Research Dossiers
+        </button>
+        <button
+          onClick={() => setActiveTab('strategy_reproducibility')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+            activeTab === 'strategy_reproducibility'
+              ? 'bg-[#2979FF] text-white shadow-xs'
+              : 'text-[#8B99A8] hover:text-[#E7EDF3]'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#35C69A]" />
+          <span>Reproducible Strategy Packages (SHA-256)</span>
+        </button>
+      </div>
+
+      {activeTab === 'strategy_reproducibility' ? (
+        /* Reproducible Strategy Packages View */
+        <div className="space-y-4">
+          <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#25313D] pb-3">
+              <div>
+                <h2 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#35C69A]" />
+                  Deterministic Strategy Reproducibility Engine
+                </h2>
+                <p className="text-[#8B99A8] text-[11px] mt-0.5">
+                  Generates tamper-evident algorithmic audit bundles with cryptographic SHA-256 provenance checksum, full execution trade ledgers, and standalone Python replication code.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGenerateStrategyPackage}
+                  disabled={stratLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-semibold transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${stratLoading ? 'animate-spin' : ''}`} />
+                  <span>{stratLoading ? 'Hashing & Compiling...' : 'Compile Package'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Parameter Selector Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 font-mono">
+              <div>
+                <label className="text-[10px] text-[#8B99A8] block mb-1">Strategy Algorithm:</label>
+                <select
+                  value={stratName}
+                  onChange={e => setStratName(e.target.value)}
+                  className="w-full bg-[#0D131A] border border-[#25313D] rounded-lg px-2.5 py-1.5 text-xs text-white"
+                >
+                  <option value="EMA_CROSSOVER">EMA Crossover (Trend)</option>
+                  <option value="RSI_MEAN_REVERSION">RSI Mean Reversion (Statistical)</option>
+                  <option value="BOLLINGER_BANDS">Bollinger Volatility Bands</option>
+                  <option value="DONCHIAN_MOMENTUM">Donchian Breakout Channel</option>
+                  <option value="SUPERTREND">Supertrend ATR Ratchet</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-[#8B99A8] block mb-1">Target Instrument:</label>
+                <select
+                  value={stratSymbol}
+                  onChange={e => setStratSymbol(e.target.value)}
+                  className="w-full bg-[#0D131A] border border-[#25313D] rounded-lg px-2.5 py-1.5 text-xs text-white"
+                >
+                  {ALL_SYMBOLS.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-[#8B99A8] block mb-1">Deterministic PRNG Seed:</label>
+                <input
+                  type="number"
+                  value={stratSeed}
+                  onChange={e => setStratSeed(parseInt(e.target.value || '42', 10))}
+                  className="w-full bg-[#0D131A] border border-[#25313D] rounded-lg px-2.5 py-1.5 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-[#8B99A8] block mb-1">Safe Risk Allocation:</label>
+                <div className="p-1.5 rounded-lg bg-[#0D131A] border border-[#25313D] text-xs text-[#35C69A] font-bold">
+                  1.0% Equity Risk Cap Enforced
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Compiled Package Output */}
+          {reproPackage ? (
+            <div className="bg-[#111922] p-4 rounded-xl border border-[#25313D] shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#25313D] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white font-mono">
+                      {reproPackage.strategy?.name} — {reproPackage.strategy?.symbol}
+                    </h3>
+                    <span className="text-[10px] text-[#8B99A8] font-mono">
+                      Generated: {new Date(reproPackage.generated_at).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDownloadStrategyPdf}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-semibold transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF Dossier</span>
+                  </button>
+
+                  <button
+                    onClick={handleDownloadStrategyJson}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#151F29] hover:bg-[#1E2B38] text-white border border-[#25313D] font-semibold transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#35C69A]" />
+                    <span>Download JSON Package</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Provenance Checksum Bar */}
+              <div className="p-3 rounded-lg bg-[#0D131A] border border-[#25313D] space-y-1 font-mono">
+                <div className="text-[10px] text-[#8B99A8] font-sans">Cryptographic Provenance Checksum (SHA-256):</div>
+                <div className="text-xs text-[#35C69A] font-bold break-all">
+                  {reproPackage.provenance_hash}
+                </div>
+                <div className="text-[9px] text-[#8B99A8] font-sans pt-1">
+                  Enforces bitwise deterministic replication across Python 3.11 runtimes.
+                </div>
+              </div>
+
+              {/* Performance Metrics Table */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 font-mono text-center">
+                <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                  <span className="text-[9px] text-[#8B99A8] block font-sans">CAGR</span>
+                  <span className="text-sm font-bold text-[#35C69A]">{reproPackage.strategy?.cagr_pct}%</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                  <span className="text-[9px] text-[#8B99A8] block font-sans">Sharpe Ratio</span>
+                  <span className="text-sm font-bold text-[#2979FF]">{reproPackage.strategy?.sharpe_ratio}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                  <span className="text-[9px] text-[#8B99A8] block font-sans">Max Drawdown</span>
+                  <span className="text-sm font-bold text-[#EF6468]">{reproPackage.strategy?.max_drawdown_pct}%</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                  <span className="text-[9px] text-[#8B99A8] block font-sans">Win Rate</span>
+                  <span className="text-sm font-bold text-white">{reproPackage.strategy?.win_rate_pct}%</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                  <span className="text-[9px] text-[#8B99A8] block font-sans">Total Trades</span>
+                  <span className="text-sm font-bold text-white">{reproPackage.strategy?.total_trades}</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-[#0D131A] border border-[#25313D]">
+                  <span className="text-[9px] text-[#8B99A8] block font-sans">Profit Factor</span>
+                  <span className="text-sm font-bold text-[#35C69A]">{reproPackage.strategy?.profit_factor}</span>
+                </div>
+              </div>
+
+              {/* Replication Script Preview */}
+              <div className="p-3 rounded-lg bg-[#0D131A] border border-[#25313D] space-y-1">
+                <div className="text-[10px] text-[#8B99A8] font-mono">Independent Python Replication Script:</div>
+                <pre className="text-[10px] font-mono text-[#D1D9E0] bg-[#111922] p-2.5 rounded border border-[#25313D] overflow-x-auto">
+                  {reproPackage.replication_code}
+                </pre>
+              </div>
+            </div>
+          ) : (
+            <div className="p-8 text-center bg-[#111922] rounded-xl border border-[#25313D] text-[#8B99A8] font-mono">
+              Select strategy and click &quot;Compile Package&quot; to build your cryptographic reproducibility bundle.
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Standard Research Dossiers View */
+        <>
+          {/* Filter and Search Bar */}
+          <div className="p-3 bg-[#111922] rounded-xl border border-[#25313D] flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-72">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8B99A8]" />
           <input
@@ -320,6 +573,8 @@ function QuantReportsContent() {
           })
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }
