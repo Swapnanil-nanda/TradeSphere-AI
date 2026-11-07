@@ -19,6 +19,7 @@ export interface Ticker {
   dayLow: number;
   timestamp: number;
   isSimulated: boolean;
+  isLive?: boolean;
 }
 
 export interface Candle {
@@ -41,6 +42,8 @@ export interface Position {
   side: 'BUY' | 'SELL';
   quantity: number;
   avgPrice: number;
+  entryPrice?: number;
+  averagePrice?: number;
   currentPrice: number;
   marketValue: number;
   stopLoss?: number;
@@ -49,25 +52,28 @@ export interface Position {
   unrealizedPnLPct: number;
   openedAt: number;
   currency?: 'INR' | 'USD';
-  productType?: 'CNC' | 'MIS';
+  productType?: 'CNC' | 'MIS' | 'NRML';
   marketValueInr?: number;
   unrealizedPnLInr?: number;
 }
 
 export interface Order {
   id: string;
+  clientOrderId?: string;
   symbol: string;
   side: 'BUY' | 'SELL';
   orderType: 'MARKET' | 'LIMIT' | 'BRACKET';
+  type?: string;
   quantity: number;
   price: number;
+  limitPrice?: number;
   executionPrice?: number;
-  status: 'PENDING' | 'FILLED' | 'REJECTED' | 'CANCELLED';
+  status: 'PENDING' | 'FILLED' | 'REJECTED' | 'CANCELLED' | 'OPEN';
   stopLoss?: number;
   takeProfit?: number;
   timestamp: number;
   currency?: 'INR' | 'USD';
-  productType?: 'CNC' | 'MIS';
+  productType?: 'CNC' | 'MIS' | 'NRML';
 }
 
 export interface Trade {
@@ -77,6 +83,7 @@ export interface Trade {
   side: 'BUY' | 'SELL';
   quantity: number;
   entryPrice: number;
+  price?: number;
   exitPrice?: number;
   realizedPnL?: number;
   realizedPnLInr?: number;
@@ -85,7 +92,7 @@ export interface Trade {
   action: 'ENTRY' | 'EXIT';
   timestamp: number;
   currency?: 'INR' | 'USD';
-  productType?: 'CNC' | 'MIS';
+  productType?: 'CNC' | 'MIS' | 'NRML';
 }
 
 export const USD_TO_INR_RATE = 84.0;
@@ -106,17 +113,25 @@ export function formatMoney(amount: number, currency: 'INR' | 'USD' = 'INR'): st
 
 export interface PortfolioAccount {
   id: string;
-  name: string;
+  name?: string;
   currency: string;
   initialEquity: number;
+  startingCapital?: number;
   currentCash: number;
   netLiquidation: number;
+  portfolioValue?: number;
   totalUnrealizedPnL: number;
+  totalPnL?: number;
+  totalPnLPct?: number;
+  realizedPnL?: number;
   dayStartEquity: number;
   dailyPnL: number;
   dailyPnLPct: number;
+  dailyDrawdownPct?: number;
   maxRiskPerTradePct: number;
   dailyDrawdownLimitPct: number;
+  circuitBreakerPct?: number;
+  isCircuitBreakerTripped?: boolean;
   tradingLocked: boolean;
   lockReason?: string | null;
 }
@@ -156,6 +171,7 @@ export interface PortfolioData {
   orders: Order[];
   openOrders?: Order[];
   trades: Trade[];
+  executedTrades?: Trade[];
   isSimulated?: boolean;
   disclaimer?: string;
 }
@@ -174,9 +190,10 @@ export interface WatchlistBackendData {
   id: number | string;
   userId?: number;
   name: string;
-  defaultList: boolean;
+  defaultList?: boolean;
   createdAt: string;
   instruments: WatchlistBackendItem[];
+  symbols?: string[];
 }
 
 export interface WatchlistAlert {
@@ -327,7 +344,11 @@ const MARKET_BASE = appConfig.marketApiUrl || BACKEND_BASE;
 
 class TradeSphereApiClient {
   private getAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const traceId = `tr_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Trace-Id': traceId
+    };
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('tradesphere_token');
       if (token) {
@@ -566,10 +587,10 @@ class TradeSphereApiClient {
     return this.fallbackTickers;
   }
 
-  async getCandles(symbol: string, timeframe: string = '5m'): Promise<Candle[]> {
+  async getCandles(symbol: string, timeframe: string = '5m', count: number = 120): Promise<Candle[]> {
     // 1. Try real live market candles from Next.js proxy first
     try {
-      const res = await fetch(`/api/market/live-candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`, { cache: 'no-store' });
+      const res = await fetch(`/api/market/live-candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&count=${count}`, { cache: 'no-store' });
       if (res.ok) {
         const liveCandles = await res.json();
         if (Array.isArray(liveCandles) && liveCandles.length > 0) {
@@ -582,7 +603,7 @@ class TradeSphereApiClient {
 
     // 2. Try backend microservice
     try {
-      const res = await fetch(`${BACKEND_BASE}/api/candles?symbol=${symbol}&timeframe=${timeframe}`, { cache: 'no-store' });
+      const res = await fetch(`${BACKEND_BASE}/api/candles?symbol=${symbol}&timeframe=${timeframe}&count=${count}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) return data;
@@ -1343,7 +1364,11 @@ class TradeSphereApiClient {
       });
       if (res.ok) {
         const data = await res.json();
-        return Array.isArray(data) ? data : [];
+        return {
+          recommendedQuantity: data.recommendedQuantity ?? data.quantity ?? 0,
+          riskBreached: data.riskBreached ?? false,
+          message: data.message
+        };
       }
     } catch (e) {}
 
@@ -2175,7 +2200,7 @@ class TradeSphereApiClient {
     let currentMonthly = P;
     let futureValue = 0;
 
-    const yearlyBreakdown = [];
+    const yearlyBreakdown: { year: number; invested: number; wealthGain: number; totalCorpus: number }[] = [];
 
     for (let month = 1; month <= n; month++) {
       if (month > 1 && (month - 1) % 12 === 0 && stepUp > 0) {

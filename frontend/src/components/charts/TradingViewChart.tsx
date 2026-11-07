@@ -124,17 +124,17 @@ export default function TradingViewChart({
 }: TradingViewChartProps) {
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick', UTCTimestamp> | null>(null);
-  const volumeSeriesRef = useRef<ISeriesApi<'Histogram', UTCTimestamp> | null>(null);
+  const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick', any> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<'Histogram', any> | null>(null);
 
   // Indicator series refs
-  const sma20SeriesRef = useRef<ISeriesApi<'Line', UTCTimestamp> | null>(null);
-  const ema20SeriesRef = useRef<ISeriesApi<'Line', UTCTimestamp> | null>(null);
-  const vwapSeriesRef = useRef<ISeriesApi<'Line', UTCTimestamp> | null>(null);
-  const bbUpperSeriesRef = useRef<ISeriesApi<'Line', UTCTimestamp> | null>(null);
-  const bbLowerSeriesRef = useRef<ISeriesApi<'Line', UTCTimestamp> | null>(null);
-  const supertrendSeriesRef = useRef<ISeriesApi<'Line', UTCTimestamp> | null>(null);
-  const rsiSeriesRef = useRef<ISeriesApi<'Line', UTCTimestamp> | null>(null);
+  const sma20SeriesRef = useRef<ISeriesApi<'Line', any> | null>(null);
+  const ema20SeriesRef = useRef<ISeriesApi<'Line', any> | null>(null);
+  const vwapSeriesRef = useRef<ISeriesApi<'Line', any> | null>(null);
+  const bbUpperSeriesRef = useRef<ISeriesApi<'Line', any> | null>(null);
+  const bbLowerSeriesRef = useRef<ISeriesApi<'Line', any> | null>(null);
+  const supertrendSeriesRef = useRef<ISeriesApi<'Line', any> | null>(null);
+  const rsiSeriesRef = useRef<ISeriesApi<'Line', any> | null>(null);
 
   // Indicator toggle state
   const [showSMA, setShowSMA] = useState(true);
@@ -231,7 +231,7 @@ export default function TradingViewChart({
       wickUpColor: isDark ? '#10b981' : '#16a34a',
       wickDownColor: isDark ? '#f43f5e' : '#dc2626'
     });
-    candlestickSeriesRef.current = candleSeries;
+    candlestickSeriesRef.current = candleSeries as any;
 
     // 2. Volume Histogram Overlay
     const volumeSeries = chart.addSeries(HistogramSeries, {
@@ -245,7 +245,7 @@ export default function TradingViewChart({
         bottom: 0.0
       }
     });
-    volumeSeriesRef.current = volumeSeries;
+    volumeSeriesRef.current = volumeSeries as any;
 
     // 3. Technical Indicator Overlays
     const sma20 = chart.addSeries(LineSeries, {
@@ -253,21 +253,21 @@ export default function TradingViewChart({
       lineWidth: 1,
       title: 'SMA 20'
     });
-    sma20SeriesRef.current = sma20;
+    sma20SeriesRef.current = sma20 as any;
 
     const ema20 = chart.addSeries(LineSeries, {
       color: '#3b82f6', // Blue
-      lineWidth: 1.5,
+      lineWidth: 2,
       title: 'EMA 20'
     });
-    ema20SeriesRef.current = ema20;
+    ema20SeriesRef.current = ema20 as any;
 
     const vwap = chart.addSeries(LineSeries, {
       color: '#a855f7', // Purple
-      lineWidth: 1.5,
+      lineWidth: 2,
       title: 'VWAP'
     });
-    vwapSeriesRef.current = vwap;
+    vwapSeriesRef.current = vwap as any;
 
     const bbUpper = chart.addSeries(LineSeries, {
       color: '#06b6d4', // Cyan
@@ -275,7 +275,7 @@ export default function TradingViewChart({
       lineStyle: 2,
       title: 'BB Upper'
     });
-    bbUpperSeriesRef.current = bbUpper;
+    bbUpperSeriesRef.current = bbUpper as any;
 
     const bbLower = chart.addSeries(LineSeries, {
       color: '#06b6d4', // Cyan
@@ -283,23 +283,23 @@ export default function TradingViewChart({
       lineStyle: 2,
       title: 'BB Lower'
     });
-    bbLowerSeriesRef.current = bbLower;
+    bbLowerSeriesRef.current = bbLower as any;
 
     const supertrend = chart.addSeries(LineSeries, {
       color: '#10b981', // Green
       lineWidth: 2,
       title: 'Supertrend'
     });
-    supertrendSeriesRef.current = supertrend;
+    supertrendSeriesRef.current = supertrend as any;
 
     // 4. RSI Sub-Pane
     const rsiSeries = chart.addSeries(LineSeries, {
       color: '#ec4899', // Pink
-      lineWidth: 1.5,
+      lineWidth: 2,
       title: 'RSI 14',
       priceScaleId: 'rsi_scale'
     }, 1);
-    rsiSeriesRef.current = rsiSeries;
+    rsiSeriesRef.current = rsiSeries as any;
 
     // Responsive Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
@@ -314,7 +314,9 @@ export default function TradingViewChart({
       }
     });
 
-    resizeObserver.observe(chartContainerRef.current);
+    if (chartContainerRef.current) {
+      resizeObserver.observe(chartContainerRef.current);
+    }
 
     // Crosshair move subscription for dynamic legend
     chart.subscribeCrosshairMove((param) => {

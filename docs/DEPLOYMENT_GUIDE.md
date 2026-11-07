@@ -186,3 +186,39 @@ This guide provides exact, step-by-step instructions for deploying TradeSphere A
 6. **Check Cold-Start Resilience:**
    - If Render goes to sleep after 15 minutes of inactivity, open the dashboard.
    - Confirm that the UI loads instantly with simulated demo fixtures and does not crash while Render spins up.
+
+---
+
+## Phase 7: Automated Deployment Diagnostics & Disaster Recovery
+
+### 7.1 Multi-Target Deployment Health Checker
+Run the deployment health diagnostics script to verify end-to-end connectivity across all microservices:
+```bash
+node scripts/healthcheck.js
+```
+In strict CI/CD environments, set `STRICT_HEALTHCHECK=true` to enforce zero downtime during rolling deploys:
+```bash
+STRICT_HEALTHCHECK=true node scripts/healthcheck.js
+```
+
+### 7.2 Automated Database Backups & Point-in-Time Recovery
+Execute a compressed PostgreSQL backup with SHA-256 tamper verification:
+```bash
+./scripts/backup_restore.sh backup
+```
+To verify archive integrity and test decompression before initiating a failover restore:
+```bash
+./scripts/backup_restore.sh verify ./backups/postgres/tradesphere_backup_latest.sql.gz
+```
+To restore database state during disaster recovery failover:
+```bash
+./scripts/backup_restore.sh restore ./backups/postgres/tradesphere_backup_latest.sql.gz
+```
+
+### 7.3 Operational Runbooks
+Consult [`docs/INCIDENT_RUNBOOKS.md`](./INCIDENT_RUNBOOKS.md) for standard operating procedures regarding:
+- **INC-01:** Intraday 3.0% Drawdown Circuit Breaker Locking
+- **INC-02:** Realized/Unrealized Cash Ledger Discrepancy
+- **INC-03:** Primary Database Failure & Disaster Recovery
+- **INC-04:** Market Feed Outage & Synthetic Fallback Activation
+- **INC-05:** Rate Limiting Breaches & DoS Mitigation

@@ -8,6 +8,10 @@ interface EmptyStateProps {
   description?: string;
   actionText?: string;
   onAction?: () => void;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 export default function EmptyState({
@@ -16,9 +20,12 @@ export default function EmptyState({
   message,
   description,
   actionText,
-  onAction
+  onAction,
+  action
 }: EmptyStateProps) {
   const displayMessage = message || description || 'No items available at this time.';
+  const effectiveActionText = actionText || action?.label;
+  const effectiveOnAction = onAction || action?.onClick;
 
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center bg-[#050505] border border-[#141414] rounded-xl select-none">
@@ -27,12 +34,12 @@ export default function EmptyState({
       </div>
       <h3 className="text-sm font-bold text-white mb-1 font-sans">{title}</h3>
       <p className="text-xs text-[#808a9d] max-w-sm mb-4 leading-relaxed font-sans">{displayMessage}</p>
-      {actionText && onAction && (
+      {effectiveActionText && effectiveOnAction && (
         <button
-          onClick={onAction}
+          onClick={effectiveOnAction}
           className="px-4 py-2 rounded-lg bg-[#2979FF] hover:bg-blue-600 text-white font-bold text-xs transition-all shadow-md shadow-blue-500/20"
         >
-          {actionText}
+          {effectiveActionText}
         </button>
       )}
     </div>

@@ -51,6 +51,14 @@ public class OrderController {
         return ResponseEntity.ok(paperTradingService.getOrders(principal.getId()));
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Get single simulated order by ID")
+    public ResponseEntity<OrderResponse> getOrder(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long id) {
+        return ResponseEntity.ok(paperTradingService.getOrder(principal.getId(), id));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Cancel an open simulated limit order")
     public ResponseEntity<OrderResponse> cancelOrder(

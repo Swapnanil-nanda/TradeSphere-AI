@@ -33,15 +33,15 @@ import { generateFallback120Candles } from '../../../components/charts/TradingVi
 import { paperEngine } from '../../../lib/paper-engine';
 
 const DEFAULT_TICKERS: Ticker[] = [
-  { symbol: 'RELIANCE', name: 'Reliance Industries', ltp: 2985.4, bid: 2985.0, ask: 2985.5, change: 24.8, changePct: 0.84, market: 'IN', exchange: 'NSE', currency: 'INR' },
-  { symbol: 'TCS', name: 'Tata Consultancy Services', ltp: 4125.6, bid: 4125.0, ask: 4126.0, change: -12.4, changePct: -0.30, market: 'IN', exchange: 'NSE', currency: 'INR' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', ltp: 1682.3, bid: 1682.0, ask: 1682.5, change: 8.5, changePct: 0.51, market: 'IN', exchange: 'NSE', currency: 'INR' },
-  { symbol: 'NIFTY 50', name: 'Nifty 50 Index', ltp: 24350.25, bid: 24349.0, ask: 24351.0, change: 85.4, changePct: 0.35, market: 'IN', exchange: 'NSE', currency: 'INR' },
-  { symbol: 'SENSEX', name: 'BSE Sensex 30', ltp: 80105.80, bid: 80100.0, ask: 80110.0, change: 240.2, changePct: 0.30, market: 'IN', exchange: 'BSE', currency: 'INR' },
-  { symbol: 'NVDA', name: 'NVIDIA Corp', ltp: 138.25, bid: 138.20, ask: 138.30, change: 4.10, changePct: 3.06, market: 'US', exchange: 'NASDAQ', currency: 'USD' },
-  { symbol: 'MSFT', name: 'Microsoft Corp', ltp: 445.80, bid: 445.70, ask: 445.90, change: 2.30, changePct: 0.52, market: 'US', exchange: 'NASDAQ', currency: 'USD' },
-  { symbol: 'AAPL', name: 'Apple Inc', ltp: 231.40, bid: 231.35, ask: 231.45, change: -1.20, changePct: -0.51, market: 'US', exchange: 'NASDAQ', currency: 'USD' },
-  { symbol: 'TSLA', name: 'Tesla Inc', ltp: 252.60, bid: 252.50, ask: 252.70, change: 8.40, changePct: 3.44, market: 'US', exchange: 'NASDAQ', currency: 'USD' }
+  { symbol: 'RELIANCE', name: 'Reliance Industries', ltp: 2985.4, bid: 2985.0, ask: 2985.5, change: 24.8, changePct: 0.84, market: 'IN', exchange: 'NSE', currency: 'INR', volume: 1540000, dayHigh: 3010.0, dayLow: 2970.0, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'TCS', name: 'Tata Consultancy Services', ltp: 4125.6, bid: 4125.0, ask: 4126.0, change: -12.4, changePct: -0.30, market: 'IN', exchange: 'NSE', currency: 'INR', volume: 920000, dayHigh: 4160.0, dayLow: 4095.0, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', ltp: 1682.3, bid: 1682.0, ask: 1682.5, change: 8.5, changePct: 0.51, market: 'IN', exchange: 'NSE', currency: 'INR', volume: 2450000, dayHigh: 1695.0, dayLow: 1670.0, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'NIFTY 50', name: 'Nifty 50 Index', ltp: 24350.25, bid: 24349.0, ask: 24351.0, change: 85.4, changePct: 0.35, market: 'IN', exchange: 'NSE', currency: 'INR', volume: 4500000, dayHigh: 24420.0, dayLow: 24280.0, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'SENSEX', name: 'BSE Sensex 30', ltp: 80105.80, bid: 80100.0, ask: 80110.0, change: 240.2, changePct: 0.30, market: 'IN', exchange: 'BSE', currency: 'INR', volume: 3200000, dayHigh: 80350.0, dayLow: 79900.0, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'NVDA', name: 'NVIDIA Corp', ltp: 138.25, bid: 138.20, ask: 138.30, change: 4.10, changePct: 3.06, market: 'US', exchange: 'NASDAQ', currency: 'USD', volume: 35000000, dayHigh: 141.0, dayLow: 136.0, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'MSFT', name: 'Microsoft Corp', ltp: 445.80, bid: 445.70, ask: 445.90, change: 2.30, changePct: 0.52, market: 'US', exchange: 'NASDAQ', currency: 'USD', volume: 18000000, dayHigh: 449.0, dayLow: 443.0, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'AAPL', name: 'Apple Inc', ltp: 231.40, bid: 231.35, ask: 231.45, change: -1.20, changePct: -0.51, market: 'US', exchange: 'NASDAQ', currency: 'USD', volume: 28000000, dayHigh: 233.5, dayLow: 229.8, timestamp: Date.now(), isSimulated: true },
+  { symbol: 'TSLA', name: 'Tesla Inc', ltp: 252.60, bid: 252.50, ask: 252.70, change: 8.40, changePct: 3.44, market: 'US', exchange: 'NASDAQ', currency: 'USD', volume: 22000000, dayHigh: 258.0, dayLow: 248.5, timestamp: Date.now(), isSimulated: true }
 ];
 
 const getInitialPortfolio = (): PortfolioData => {
@@ -63,7 +63,7 @@ function PaperTradingContent() {
   const initialSymbol = searchParams.get('symbol') || 'RELIANCE';
 
   const [symbol, setSymbol] = useState(initialSymbol);
-  const [tickers, setTickers] = useState<Ticker[]>(() => {
+  const [tickers, setTickers] = useState<any[]>(() => {
     if (typeof window !== 'undefined') {
       const storeTickers = useMarketStore.getState().tickers;
       if (Array.isArray(storeTickers) && storeTickers.length > 0) return storeTickers;

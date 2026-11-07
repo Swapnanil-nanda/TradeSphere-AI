@@ -127,10 +127,11 @@ export interface MarketIndexSummary {
   exchange: string;
   market: MarketRegion;
   value: number;
+  ltp?: number;
   change: number;
   changePct: number;
-  high: number;
-  low: number;
+  high?: number;
+  low?: number;
   metadata: MetadataLabel;
 }
 
@@ -144,11 +145,15 @@ export interface MarketOverview {
     unchanged: number;
     advanceDeclineRatio: number;
   };
-  sectorPerformance: {
+  sectorPerformance?: {
     sector: string;
     changePct: number;
     market: MarketRegion;
   }[];
+  marketStatus?: string;
+  advances?: number;
+  declines?: number;
+  unchanged?: number;
   metadata: MetadataLabel;
 }
 

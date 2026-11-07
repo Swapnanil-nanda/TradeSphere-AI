@@ -699,6 +699,21 @@ public class PaperTradingService {
     }
 
     @Transactional(readOnly = true)
+    public OrderResponse getOrder(Long userId, Long orderId) {
+        PaperAccount account = paperAccountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("PaperAccount", "userId", userId));
+
+        PaperOrder order = paperOrderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("PaperOrder", "id", orderId));
+
+        if (!order.getAccount().getId().equals(account.getId())) {
+            throw new ResourceNotFoundException("PaperOrder", "id", orderId);
+        }
+
+        return toOrderResponse(order, order.getRejectionReason());
+    }
+
+    @Transactional(readOnly = true)
     public List<OrderResponse> getOrders(Long userId) {
         PaperAccount account = paperAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("PaperAccount", "userId", userId));

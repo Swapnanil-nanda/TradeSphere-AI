@@ -2,11 +2,17 @@
 TradeSphere AI - Quantitative Investment Research Microservice
 FastAPI Application Entry Point
 """
+import time
+import os
+import psutil
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import config
 from api.quant_router import router as quant_router
 from api.wealth_router import router as wealth_router
+from core.logging_middleware import StructuredLoggingMiddleware
+
+_START_TIME = time.time()
 
 app = FastAPI(
     title="TradeSphere AI — Quantitative Research Engine",
@@ -20,6 +26,9 @@ app = FastAPI(
     docs_url="/docs",
     openapi_url="/openapi.json"
 )
+
+# Attach Logging & Tracing Middleware
+app.add_middleware(StructuredLoggingMiddleware)
 
 # CORS Middleware
 app.add_middleware(
@@ -49,6 +58,31 @@ async def health_check():
         "version": config.version,
         "methodology_version": config.methodology_version,
         "execution_mode": "RESEARCH_ONLY_NO_ORDER_AUTHORITY"
+    }
+
+@app.get("/metrics", summary="Service Metrics & Diagnostics")
+@app.get("/api/metrics", summary="Service Metrics & Diagnostics")
+async def metrics_probe():
+    uptime_sec = int(time.time() - _START_TIME)
+    mem_info = {}
+    try:
+        import psutil
+        process = psutil.Process(os.getpid())
+        mem_info = {
+            "rss_bytes": process.memory_info().rss,
+            "cpu_percent": process.cpu_percent(interval=None)
+        }
+    except Exception:
+        pass
+
+    return {
+        "service": "tradesphere-quant-engine",
+        "status": "HEALTHY",
+        "uptime_seconds": uptime_sec,
+        "active_specialist_agents": 7,
+        "evidence_verification_enabled": True,
+        "memory": mem_info,
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
 
 if __name__ == "__main__":

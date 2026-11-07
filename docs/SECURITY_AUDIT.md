@@ -127,3 +127,7 @@ Node.js sets `Access-Control-Allow-Origin: *` unconditionally. Any malicious thi
 | **Brute-Force & DoS Protection** | `backend-spring` | Implemented sliding-window rate limiting filter on `/api/auth/*` and `/api/orders/*`. | `AuthIntegrationTest.java` | **RESOLVED** |
 | **Multi-Tenant Watchlist Isolation** | `WatchlistController.java` | User B cannot view, modify, or delete User A's custom watchlists (returns 404). | `WatchlistSecurityTest.java` | **RESOLVED** |
 | **Quant Engine Execution Authority** | `quant-engine/` | Strict read-only invariant enforced; Python service has zero order execution authority. | `quant-engine/tests/` | **RESOLVED** |
+| **Multi-Tenant Order & Portfolio Isolation** | `PaperTradingService.java`, `OrderController.java` | Strict isolation across orders, positions, and accounts; cross-tenant manipulation returns 404/400. | `MultiTenantIsolationIntegrationTest.java` | **RESOLVED** |
+| **Automated Secret & Token Leak Detection** | Entire Monorepo | High-entropy regex scanner prevents accidental credential leaks in commits and builds. | `scripts/security/secret_scanner.py` | **RESOLVED** |
+| **Static Application Security Testing (SAST)** | Frontend, Spring Boot, Node, Python | Automated AST scanning for SQLi, XSS, unparameterized queries, and eval. | `scripts/security/sast_scan.js` | **RESOLVED** |
+| **Strict Deployment Quality Gatekeepers** | `frontend/next.config.mjs` | TypeScript (`tsc --noEmit`) and ESLint (`next lint`) errors strictly block production build and deployment. | `npm run build` CI Gate | **RESOLVED** |

@@ -170,3 +170,24 @@ Zero-drift calculations for 8 institutional indicators:
 - Dynamic crosshair legend with OHLCV statistics.
 - Interactive indicator toggle buttons.
 - Complies with TradingView Lightweight Charts attribution guidelines.
+
+---
+
+## 6. Distributed Observability, Reliability & Incident Operations
+
+### 6.1 Distributed Tracing & Structured Logging
+- **`X-Trace-Id` Propagation:** Generated on the Next.js frontend (`api-client.ts`) and propagated across HTTP request headers to Spring Boot, Node.js, and Python FastAPI.
+- **Spring Boot `TraceIdFilter`:** Binds `traceId` to SLF4J `MDC` for every request and outputs structured JSON access logs with request duration and status.
+- **Node.js Structured Logger:** JSON logging with timestamp, service name, level, and trace context.
+- **Python FastAPI `StructuredLoggingMiddleware`:** Records request duration, method, path, status, and traceId for all quantitative microservice calls.
+
+### 6.2 Automated Quality & Security Gatekeepers (CI Pipeline)
+- **Zero Build / Lint Errors Allowed:** Frontend enforces strict TypeScript compilation (`tsc --noEmit`) and strict ESLint (`next lint`) without ignore flags.
+- **Credential & Secret Scanning:** `scripts/security/secret_scanner.py` runs on every pull request to detect accidental leaks of API tokens or private keys.
+- **Static Application Security Testing (SAST):** `scripts/security/sast_scan.js` audits source files for injection vulnerabilities, unsafe DOM operations, and missing parameters.
+- **Dependency Manifest Audit:** `scripts/security/dependency_audit.js` validates package integrity across npm, Maven, and pip.
+
+### 6.3 Backup, Disaster Recovery & SRE Runbooks
+- **Automated PostgreSQL Backups (`scripts/backup_restore.sh`):** Daily gzipped SQL dumps with SHA-256 integrity checksums, point-in-time recovery, and 7-day retention pruning.
+- **Full-Stack Deployment Health Checks (`scripts/healthcheck.js`):** Deep health probes checking Spring Boot (8080), Node.js (8000), Python FastAPI (8100), and Next.js (3000).
+- **Incident Runbooks (`docs/INCIDENT_RUNBOOKS.md`):** Authoritative Standard Operating Procedures (SOPs) for circuit breakers, ledger discrepancy, DB failover, and rate limiting mitigation.

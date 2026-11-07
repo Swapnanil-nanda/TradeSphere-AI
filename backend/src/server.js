@@ -5,8 +5,10 @@ import { MarketSimulator, INSTRUMENTS } from './market_data/simulator.js';
 import { generateOptionsChain } from './quant/options_greeks.js';
 import { runBacktest } from './quant/backtester.js';
 import { getCoachGuidance } from './coach/ai_coach.js';
+import { logger } from './logger.js';
 
 const PORT = process.env.PORT || 8000;
+let requestCounter = 0;
 
 // Initialize Market Simulation Engine Only
 // (Authoritative Accounts, Orders, Auth, and Ledgers are owned exclusively by Spring Boot on port 8080)
@@ -43,6 +45,9 @@ const server = http.createServer((req, res) => {
     });
   }
 
+  requestCounter++;
+  const traceId = req.headers['x-trace-id'] || null;
+
   // 1. Health Check (Market Feed Engine only)
   if (req.method === 'GET' && (pathname === '/api/health' || pathname === '/health')) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -54,6 +59,26 @@ const server = http.createServer((req, res) => {
       role: 'MARKET_SIMULATION_ONLY',
       simulator: '24/7 GBM active',
       disclaimer: 'SIMULATED MARKET DATA – NOT REAL FINANCIAL ADVICE'
+    }));
+    return;
+  }
+
+  // 1b. Metrics & Diagnostics
+  if (req.method === 'GET' && (pathname === '/metrics' || pathname === '/api/metrics')) {
+    const mem = process.memoryUsage();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      service: 'tradesphere-microstructure',
+      uptime_seconds: Math.floor(process.uptime()),
+      total_requests: requestCounter,
+      active_ws_clients: wss ? wss.clients.size : 0,
+      active_instruments: INSTRUMENTS.length,
+      memory: {
+        rss_bytes: mem.rss,
+        heap_used_bytes: mem.heapUsed,
+        heap_total_bytes: mem.heapTotal
+      },
+      timestamp: new Date().toISOString()
     }));
     return;
   }

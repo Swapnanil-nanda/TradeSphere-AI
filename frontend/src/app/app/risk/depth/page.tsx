@@ -173,6 +173,7 @@ function DepthContent() {
               bids: domSnapshot.bids.map(b => [b.price, b.quantity]),
               asks: domSnapshot.asks.map(a => [a.price, a.quantity])
             } as any)}
+            onQuickFill={() => {}}
           />
         </div>
 

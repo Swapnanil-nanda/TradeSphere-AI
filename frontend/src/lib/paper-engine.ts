@@ -156,7 +156,7 @@ class UniversalPaperTradingEngine {
 
     const updatedPositions = this.state.positions.map(p => {
       const isUs = getInstrumentCurrency(p.symbol) === 'USD';
-      const currency = isUs ? 'USD' : 'INR';
+      const currency: 'INR' | 'USD' = isUs ? 'USD' : 'INR';
       const fxRate = isUs ? USD_TO_INR_RATE : 1.0;
 
       const ltp = tickerMap.get(p.symbol) || p.currentPrice || p.avgPrice;
@@ -279,14 +279,14 @@ class UniversalPaperTradingEngine {
     points.push({
       timestamp: now,
       dateStr: new Date(now).toLocaleDateString(),
-      equity: this.state.account.netLiquidation,
+      equity: this.state.account.netLiquidation ?? initialEquity,
       benchmark: Number((initialEquity + (points.length * 350)).toFixed(2))
     });
 
     return {
       currency: 'INR',
       initialEquity,
-      currentEquity: this.state.account.netLiquidation,
+      currentEquity: this.state.account.netLiquidation ?? initialEquity,
       points,
       dataStatus: 'SIMULATED',
       benchmark: 'NIFTY 50'
@@ -636,17 +636,18 @@ class UniversalPaperTradingEngine {
     }
   }
 
-  public resetAccount(): any {
+  public resetAccount(startingCapital?: number): any {
+    const capital = startingCapital && startingCapital > 0 ? startingCapital : DEFAULT_STARTING_EQUITY;
     this.state = {
       account: {
         id: 'paper_act_local',
         name: 'Demo Paper Account',
         currency: 'INR',
-        initialEquity: DEFAULT_STARTING_EQUITY,
-        currentCash: DEFAULT_STARTING_EQUITY,
-        netLiquidation: DEFAULT_STARTING_EQUITY,
+        initialEquity: capital,
+        currentCash: capital,
+        netLiquidation: capital,
         totalUnrealizedPnL: 0,
-        dayStartEquity: DEFAULT_STARTING_EQUITY,
+        dayStartEquity: capital,
         dailyPnL: 0,
         dailyPnLPct: 0,
         maxRiskPerTradePct: 1.0,
@@ -677,7 +678,7 @@ class UniversalPaperTradingEngine {
 
   public configureAccount(config: { startingCapital?: number; slippageRate?: number; feeRate?: number }): any {
     if (config.startingCapital && config.startingCapital > 0) {
-      const delta = config.startingCapital - this.state.account.initialEquity;
+      const delta = config.startingCapital - (this.state.account.initialEquity ?? DEFAULT_STARTING_EQUITY);
       this.state.account.initialEquity = config.startingCapital;
       this.state.account.currentCash += delta;
       this.state.account.dayStartEquity = config.startingCapital;
@@ -716,13 +717,13 @@ class UniversalPaperTradingEngine {
       reconciled: variance <= 1.0,
       variance,
       currency: this.state.account.currency,
-      startingCapital: this.state.account.initialEquity,
+      startingCapital: this.state.account.initialEquity ?? DEFAULT_STARTING_EQUITY,
       totalTradeDebits: Number(debits.toFixed(2)),
       totalTradeCredits: Number(credits.toFixed(2)),
       totalCommissionFees: Number(fees.toFixed(2)),
       calculatedCash: Number(calculatedCash.toFixed(2)),
       actualCurrentCash: Number(actualCash.toFixed(2)),
-      netLiquidation: this.state.account.netLiquidation,
+      netLiquidation: this.state.account.netLiquidation ?? DEFAULT_STARTING_EQUITY,
       totalLedgerEntries: this.state.ledger.length,
       auditFormula: 'Actual Cash == Initial Equity + Trade Credits - Trade Debits - Commissions',
       timestamp: new Date().toISOString(),

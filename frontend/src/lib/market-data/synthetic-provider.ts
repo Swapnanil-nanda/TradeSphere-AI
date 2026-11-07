@@ -232,7 +232,7 @@ export class SyntheticMarketDataProvider implements MarketDataProvider {
               indicators,
               metadata: {
                 source: 'Live Exchange Feed (NSE/BSE/NASDAQ)',
-                dataType: 'LIVE',
+                dataType: 'REAL_TIME',
                 timestamp: Date.now(),
                 dataFreshness: 'Real-time Candlestick Feed (<100ms)',
                 isSimulated: false

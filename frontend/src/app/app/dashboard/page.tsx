@@ -27,17 +27,31 @@ const DEFAULT_DASHBOARD_TICKERS: Ticker[] = [
 
 const DEFAULT_PORTFOLIO: PortfolioData = {
   account: {
+    id: 'guest_account',
+    name: 'Paper Trading Account',
+    initialEquity: 1000000,
     startingCapital: 1000000,
     currentCash: 1000000,
+    netLiquidation: 1000000,
     portfolioValue: 1000000,
+    totalUnrealizedPnL: 0,
     totalPnL: 0,
     totalPnLPct: 0,
+    dayStartEquity: 1000000,
+    dailyPnL: 0,
+    dailyPnLPct: 0,
     dailyDrawdownPct: 0,
+    maxRiskPerTradePct: 1,
+    dailyDrawdownLimitPct: 3,
+    circuitBreakerPct: 3,
     isCircuitBreakerTripped: false,
+    tradingLocked: false,
     currency: 'INR'
   },
   positions: [],
+  orders: [],
   openOrders: [],
+  trades: [],
   executedTrades: []
 };
 

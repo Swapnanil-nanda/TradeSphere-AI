@@ -60,7 +60,7 @@ export default function PriceChart({
     name: ticker?.name || `${symbol} Equity`,
     exchange: (ticker?.exchange as any) || (symbol === 'AAPL' || symbol === 'MSFT' || symbol === 'NVDA' ? 'NASDAQ' : 'NSE'),
     market: ticker?.market || (symbol === 'AAPL' || symbol === 'MSFT' || symbol === 'NVDA' ? 'US' : 'IN'),
-    currency: ticker?.currency || (symbol === 'AAPL' || symbol === 'MSFT' || symbol === 'NVDA' ? 'USD' : 'INR'),
+    currency: (ticker?.currency as 'INR' | 'USD') || (symbol === 'AAPL' || symbol === 'MSFT' || symbol === 'NVDA' ? 'USD' : 'INR'),
     sector: 'Technology & Industrials',
     lotSize: 1,
     tickSize: 0.05,

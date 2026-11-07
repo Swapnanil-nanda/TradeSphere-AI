@@ -142,10 +142,6 @@ export class HistoricalMarketDataProvider implements MarketDataProvider {
     };
   }
 
-  calculateIndicators(candles: OHLCV[]): TechnicalIndicatorsSeries {
-    return calculateIndicators(candles);
-  }
-
   async getCandles(symbol: string, timeframe: string = '1d', count: number = 250): Promise<{
     symbol: string;
     source: string;
@@ -239,11 +235,19 @@ export class HistoricalMarketDataProvider implements MarketDataProvider {
       declines: 920,
       unchanged: 110,
       indices: [
-        { symbol: 'NIFTY 50', name: 'Nifty 50', ltp: 24350.00, change: 85.50, changePct: 0.35, market: 'IN' },
-        { symbol: 'SENSEX', name: 'BSE Sensex', ltp: 79820.00, change: 270.00, changePct: 0.34, market: 'IN' },
-        { symbol: 'SPY', name: 'S&P 500 ETF', ltp: 585.00, change: 3.20, changePct: 0.55, market: 'US' },
-        { symbol: 'QQQ', name: 'Nasdaq 100 ETF', ltp: 495.00, change: 4.50, changePct: 0.92, market: 'US' }
+        { symbol: 'NIFTY 50', name: 'Nifty 50', exchange: 'NSE', value: 24350.00, ltp: 24350.00, change: 85.50, changePct: 0.35, market: 'IN', metadata: this.createMetadata('NIFTY 50') },
+        { symbol: 'SENSEX', name: 'BSE Sensex', exchange: 'BSE', value: 79820.00, ltp: 79820.00, change: 270.00, changePct: 0.34, market: 'IN', metadata: this.createMetadata('SENSEX') },
+        { symbol: 'SPY', name: 'S&P 500 ETF', exchange: 'NYSE', value: 585.00, ltp: 585.00, change: 3.20, changePct: 0.55, market: 'US', metadata: this.createMetadata('SPY') },
+        { symbol: 'QQQ', name: 'Nasdaq 100 ETF', exchange: 'NASDAQ', value: 495.00, ltp: 495.00, change: 4.50, changePct: 0.92, market: 'US', metadata: this.createMetadata('QQQ') }
       ],
+      topGainers: [],
+      topLosers: [],
+      marketBreadth: {
+        advances: 1350,
+        declines: 920,
+        unchanged: 110,
+        advanceDeclineRatio: 1.47
+      },
       metadata: this.createMetadata('NIFTY 50')
     };
   }

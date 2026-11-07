@@ -120,23 +120,23 @@ Builds and boots the complete containerized stack: PostgreSQL 16, Spring Boot 3.
 
 ---
 
-## 🧪 Monorepo Test Suites (136 Automated Tests)
+## 🧪 Monorepo Test Suites (148 Automated Tests)
 
-The monorepo contains 136 automated tests validating security, financial math, and risk enforcement across all layers:
+The monorepo contains 148 automated tests validating security, financial math, tenant isolation, and risk enforcement across all layers:
 
-### 1. Spring Boot Authoritative Test Suite (47 Tests)
-Verifies JWT authentication, Google Sign-In, tenant isolation, pre-trade risk gatekeeper, cash ledger reconciliation, fee and slippage accounting, rate limiting, saved screens, plus dedicated edge case and concurrency tests (partial fills, cancellation races, duplicate order submission idempotency, and OCO execution):
+### 1. Spring Boot Authoritative Test Suite (52 Tests)
+Verifies JWT authentication, Google Sign-In, multi-tenant isolation boundaries, pre-trade risk gatekeeper, cash ledger reconciliation, fee and slippage accounting, rate limiting, saved screens, plus dedicated edge case and concurrency tests (partial fills, cancellation races, duplicate order submission idempotency, and OCO execution):
 ```bash
 mvn clean test -f backend-spring/pom.xml
 ```
-*Output: 47 passed, 0 failed.*
+*Output: 52 passed, 0 failed.*
 
-### 2. Frontend Unit & Invariant Test Suite (51 Tests)
-Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), options Greeks analytical bounds, fail-closed API client operations, multi-currency USD/INR formatting, trader academy curriculum, genuinely historical market data provider metadata, all 5 backtesting strategies, NEXT_BAR_OPEN fill models, transaction fees, Out-of-Sample evaluation, and Walk-Forward Analysis:
+### 2. Frontend Unit & E2E Test Suite (56 Tests)
+Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), options Greeks analytical bounds, fail-closed API client operations, multi-currency USD/INR formatting, trader academy curriculum, genuinely historical market data provider metadata, all 5 backtesting strategies, NEXT_BAR_OPEN fill models, transaction fees, Out-of-Sample evaluation, Walk-Forward Analysis, and full browser E2E terminal workflows:
 ```bash
 npm test --prefix frontend
 ```
-*Output: 51 passed, 0 failed.*
+*Output: 56 passed, 0 failed.*
 
 ### 3. Quantitative Research Microservice Test Suite (34 Tests)
 Verifies specialist research agents, selective query routing, independent evidence verification, Markowitz MPT, one-sided VaR/CVaR, path-based Monte Carlo drawdowns, step-up SIP plans, and PDF report generation:
@@ -145,12 +145,38 @@ cd quant-engine && pytest
 ```
 *Output: 34 passed, 0 failed.*
 
-### 4. Node.js Market Feed Test Suite (4 Tests)
+### 4. Node.js Market Feed & Microstructure Engine Test Suite (4 Tests)
 Verifies GBM price simulation, simulated 20-level DOM ladder, Black-Scholes Options Greeks, and auto-sizer logic:
 ```bash
 npm test --prefix backend
 ```
 *Output: 4 passed, 0 failed.*
+
+### 5. High-Throughput Load & Cross-Service API Integration (6 Tests)
+Verifies order book depth ladder generation exceeding 120,000 DOM calculations/second, sliding-window rate limiting under 200 rapid bursts, and cross-service HTTP contract validation:
+```bash
+node --test tests/load/orderbook_load_test.js
+node --test tests/integration/api_flow.test.js
+```
+*Output: 6 passed, 0 failed.*
+
+---
+
+## 🔒 Security, Observability & Site Reliability Engineering (SRE)
+
+1. **Deployment Gatekeepers**:
+   - `npm run type-check`: Strict TypeScript compilation without `ignoreBuildErrors`.
+   - `npm run lint`: Strict ESLint validation blocking deployments on syntax or quote errors.
+   - `python scripts/security/secret_scanner.py`: High-entropy credential and token scanner.
+   - `node scripts/security/sast_scan.js`: Static Application Security Testing for SQLi, XSS, and unparameterized queries.
+   - `node scripts/security/dependency_audit.js`: Multi-manifest dependency audit across all 4 services.
+2. **Distributed Tracing & Structured Logs**:
+   - `X-Trace-Id` propagation from Next.js client through Spring Boot OMS, Node.js feed, and FastAPI research engine.
+   - Logback structured JSON logging with MDC traceId and duration tracking.
+3. **Backups & Disaster Recovery**:
+   - `scripts/backup_restore.sh`: Gzip-compressed PostgreSQL backups with SHA-256 tamper verification, point-in-time recovery, and automated retention pruning.
+   - `scripts/healthcheck.js`: Multi-target deployment health checker validating Spring Boot, Node, Python, Next.js, and database connectivity.
+   - `docs/INCIDENT_RUNBOOKS.md`: Formal P1/P2/P3 Standard Operating Procedures (SOPs) for circuit breakers, ledger discrepancy, and database failover.
 
 ---
 

@@ -52,7 +52,11 @@ Desktop.ini
 data/
 quant-engine/data/
 __pycache__/
+**/__pycache__/
 *.pyc
+*.tsbuildinfo
+.pytest_cache/
+**/.pytest_cache/
 
 # Temporary Files
 *.tmp

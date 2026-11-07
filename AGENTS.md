@@ -71,12 +71,21 @@ TR AI/
 ├── AGENTS.md                  # System architecture, invariants & engineering rules
 ├── start.js                   # Unified multi-process local launcher (Spring + Node + Next.js)
 ├── render.yaml                # Render cloud deployment specification (backend-spring)
+├── .github/workflows/ci.yml   # Production CI pipeline (Security, Frontend, Spring, Node, Python)
+├── scripts/                   # SRE automation, secret scanner, SAST, dependency audit, backup
+│   ├── security/              # Secret scanner, SAST, and dependency audit tools
+│   ├── backup_restore.sh      # PostgreSQL backup, checksum verification & restore
+│   └── healthcheck.js         # Deployment readiness diagnostics probe
+├── tests/                     # Monorepo integration and high-throughput load tests
+│   ├── integration/           # Cross-service API contract integration tests
+│   └── load/                  # 120k+ DOM updates/sec microstructure load benchmarks
 ├── docs/                      # Complete specifications & audits
 │   ├── REPOSITORY_AUDIT.md    # Full source-code and architectural audit
 │   ├── BACKEND_CONFLICTS.md   # Endpoint migration and ownership resolution
 │   ├── API_DEPENDENCY_MAP.md  # Frontend-to-backend dependency mapping
 │   ├── DATA_FLOW_AUDIT.md     # Market data and transactional event flows
 │   ├── SECURITY_AUDIT.md      # Tenant isolation and vulnerability report
+│   ├── INCIDENT_RUNBOOKS.md   # Production incident response & P1/P2/P3 SOPs
 │   ├── QUANT_INTEGRATION_PLAN.md # Roadmap for future Python quantitative engine
 │   ├── PRD.md                 # Product Requirements Document
 │   ├── ARCHITECTURE.md        # Architecture & Data Workflows
