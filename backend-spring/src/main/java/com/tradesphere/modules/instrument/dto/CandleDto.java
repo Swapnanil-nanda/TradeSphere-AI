@@ -13,6 +13,7 @@ public class CandleDto {
     private BigDecimal vwap;
     private BigDecimal support;
     private BigDecimal resistance;
+    private BigDecimal rsi;
 
     public CandleDto() {}
 
@@ -27,6 +28,11 @@ public class CandleDto {
         this.vwap = vwap;
         this.support = support;
         this.resistance = resistance;
+    }
+
+    public CandleDto(long time, BigDecimal open, BigDecimal high, BigDecimal low, BigDecimal close, long volume, BigDecimal ema20, BigDecimal vwap, BigDecimal support, BigDecimal resistance, BigDecimal rsi) {
+        this(time, open, high, low, close, volume, ema20, vwap, support, resistance);
+        this.rsi = rsi;
     }
 
     public long getTime() { return time; }
@@ -49,4 +55,6 @@ public class CandleDto {
     public void setSupport(BigDecimal support) { this.support = support; }
     public BigDecimal getResistance() { return resistance; }
     public void setResistance(BigDecimal resistance) { this.resistance = resistance; }
+    public BigDecimal getRsi() { return rsi; }
+    public void setRsi(BigDecimal rsi) { this.rsi = rsi; }
 }

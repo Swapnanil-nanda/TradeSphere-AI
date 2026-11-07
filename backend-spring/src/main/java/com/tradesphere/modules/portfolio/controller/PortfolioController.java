@@ -3,6 +3,8 @@ package com.tradesphere.modules.portfolio.controller;
 import com.tradesphere.common.security.UserPrincipal;
 import com.tradesphere.modules.paper.dto.AccountSummaryDto;
 import com.tradesphere.modules.paper.service.PaperAccountService;
+import com.tradesphere.modules.portfolio.dto.EquityHistoryResponseDto;
+import com.tradesphere.modules.portfolio.dto.PortfolioAnalyticsDto;
 import com.tradesphere.modules.portfolio.dto.PortfolioSummaryResponse;
 import com.tradesphere.modules.portfolio.service.PortfolioService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,6 +36,26 @@ public class PortfolioController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(portfolioService.getPortfolioSummary(principal.getId()));
+    }
+
+    @GetMapping("/equity-history")
+    @Operation(summary = "Get backend-authoritative equity curve snapshots with periodic NAV returns and benchmark")
+    public ResponseEntity<EquityHistoryResponseDto> getEquityHistory(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(name = "period", defaultValue = "1M") String period) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(portfolioService.getEquityHistory(principal.getId(), period));
+    }
+
+    @GetMapping("/analytics")
+    @Operation(summary = "Get backend-authoritative portfolio analytics (Sharpe, Sortino, Max Drawdown, Alpha, Beta)")
+    public ResponseEntity<PortfolioAnalyticsDto> getPortfolioAnalytics(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(portfolioService.getPortfolioAnalytics(principal.getId()));
     }
 
     @PostMapping("/reset")

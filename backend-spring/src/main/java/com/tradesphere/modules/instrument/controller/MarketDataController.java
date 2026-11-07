@@ -2,7 +2,9 @@ package com.tradesphere.modules.instrument.controller;
 
 import com.tradesphere.modules.instrument.dto.CandleDto;
 import com.tradesphere.modules.instrument.dto.DomDepthDto;
+import com.tradesphere.modules.instrument.dto.HistoricalCandlesResponseDto;
 import com.tradesphere.modules.instrument.dto.TickerQuoteDto;
+import com.tradesphere.modules.instrument.service.HistoricalMarketDataService;
 import com.tradesphere.modules.instrument.service.MarketDataService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,9 +19,11 @@ import java.util.List;
 public class MarketDataController {
 
     private final MarketDataService marketDataService;
+    private final HistoricalMarketDataService historicalMarketDataService;
 
-    public MarketDataController(MarketDataService marketDataService) {
+    public MarketDataController(MarketDataService marketDataService, HistoricalMarketDataService historicalMarketDataService) {
         this.marketDataService = marketDataService;
+        this.historicalMarketDataService = historicalMarketDataService;
     }
 
     @GetMapping({"/market-data/quotes", "/market-data/tickers", "/tickers", "/quotes"})
@@ -51,5 +55,16 @@ public class MarketDataController {
             @PathVariable String symbol,
             @RequestParam(name = "depth", defaultValue = "10") int depth) {
         return ResponseEntity.ok(marketDataService.getDomLadder(symbol, depth));
+    }
+
+    @GetMapping({"/market-data/historical-candles", "/historical-candles"})
+    @Operation(summary = "Get genuinely historical market-data provider candles with source and timestamp metadata")
+    public ResponseEntity<HistoricalCandlesResponseDto> getHistoricalCandles(
+            @RequestParam(name = "symbol", defaultValue = "RELIANCE") String symbol,
+            @RequestParam(name = "interval", defaultValue = "1d") String interval,
+            @RequestParam(name = "startDate", required = false) String startDate,
+            @RequestParam(name = "endDate", required = false) String endDate,
+            @RequestParam(name = "count", defaultValue = "250") Integer count) {
+        return ResponseEntity.ok(historicalMarketDataService.getHistoricalCandles(symbol, interval, startDate, endDate, count));
     }
 }

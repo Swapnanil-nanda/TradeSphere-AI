@@ -39,6 +39,22 @@ import Link from 'next/link';
 export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [equityHistory, setEquityHistory] = useState<EquityHistoryPoint[]>([]);
+  const [analytics, setAnalytics] = useState<{
+    sharpeRatio: number | null;
+    sortinoRatio: number | null;
+    maxDrawdownPct: number | null;
+    annualizedReturnPct: number | null;
+    annualizedVolatilityPct: number | null;
+    profitFactor: number | null;
+    winRatePct: number | null;
+    averageRMultiple: number | null;
+    expectancy: number | null;
+    alpha: number | null;
+    beta: number | null;
+    fxRateInrUsd: number;
+    fxSource: string;
+    fxTimestamp: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [closingSymbol, setClosingSymbol] = useState<string | null>(null);
@@ -53,10 +69,22 @@ export default function PortfolioPage() {
       const data = await apiClient.getPortfolio();
       setPortfolio(data);
 
-      // Load timestamped equity history
-      const history = await apiClient.getEquityHistory(historyPeriod);
-      if (history && Array.isArray(history.points)) {
-        setEquityHistory(history.points);
+      // Load authoritative timestamped equity history
+      try {
+        const history = await apiClient.getEquityHistory(historyPeriod);
+        if (history && Array.isArray(history.points)) {
+          setEquityHistory(history.points);
+        }
+      } catch (e) {
+        console.warn('Equity history fetch fallback:', e);
+      }
+
+      // Load authoritative portfolio analytics
+      try {
+        const a = await apiClient.getPortfolioAnalytics();
+        if (a) setAnalytics(a);
+      } catch (e) {
+        console.warn('Portfolio analytics fetch fallback:', e);
       }
 
       // Check if sample holdings are active
@@ -117,12 +145,17 @@ export default function PortfolioPage() {
   const closedTrades = journalTrades.filter(t => t.realizedPnL !== undefined);
   const winningTrades = closedTrades.filter(t => (t.realizedPnL || 0) > 0);
   const losingTrades = closedTrades.filter(t => (t.realizedPnL || 0) < 0);
-  const winRate = closedTrades.length > 0 ? Math.round((winningTrades.length / closedTrades.length) * 100) : null;
+  const winRate = analytics?.winRatePct != null
+    ? Math.round(analytics.winRatePct)
+    : (closedTrades.length > 0 ? Math.round((winningTrades.length / closedTrades.length) * 100) : null);
+
+  // Authoritative & Snapshot Multi-Currency FX Rate
+  const currentFxRate = analytics?.fxRateInrUsd || USD_TO_INR_RATE;
 
   // Real Multi-Currency Realized PnL Calculation in INR
   const totalRealizedPnLInr = closedTrades.reduce((acc, t) => {
     const isUs = t.currency === 'USD' || getInstrumentCurrency(t.symbol) === 'USD';
-    const fx = isUs ? USD_TO_INR_RATE : 1.0;
+    const fx = isUs ? currentFxRate : 1.0;
     return acc + (t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * fx));
   }, 0);
 
@@ -131,7 +164,7 @@ export default function PortfolioPage() {
     .filter(t => (t.realizedPnL ?? 0) > 0)
     .reduce((sum, t) => {
       const isUs = t.currency === 'USD' || getInstrumentCurrency(t.symbol) === 'USD';
-      return sum + (t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * (isUs ? USD_TO_INR_RATE : 1.0)));
+      return sum + (t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * (isUs ? currentFxRate : 1.0)));
     }, 0);
 
   const grossLossInr = Math.abs(
@@ -139,24 +172,28 @@ export default function PortfolioPage() {
       .filter(t => (t.realizedPnL ?? 0) < 0)
       .reduce((sum, t) => {
         const isUs = t.currency === 'USD' || getInstrumentCurrency(t.symbol) === 'USD';
-        return sum + (t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * (isUs ? USD_TO_INR_RATE : 1.0)));
+        return sum + (t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * (isUs ? currentFxRate : 1.0)));
       }, 0)
   );
 
-  const profitFactor = grossLossInr > 0
-    ? (grossProfitInr / grossLossInr).toFixed(2)
-    : grossProfitInr > 0
-      ? '∞ (0 Losses)'
-      : 'N/A';
+  const profitFactor = analytics?.profitFactor != null
+    ? (analytics.profitFactor >= 90 ? '∞ (0 Losses)' : analytics.profitFactor.toFixed(2))
+    : grossLossInr > 0
+      ? (grossProfitInr / grossLossInr).toFixed(2)
+      : grossProfitInr > 0
+        ? '∞ (0 Losses)'
+        : 'N/A';
 
   // Dynamic Average R-Multiple calculation
   const validR = closedTrades
     .map(t => t.rMultiple)
     .filter((r): r is number => typeof r === 'number' && Number.isFinite(r));
 
-  const averageR = validR.length > 0
-    ? `${(validR.reduce((sum, r) => sum + r, 0) / validR.length).toFixed(2)}R`
-    : 'N/A';
+  const averageR = analytics?.averageRMultiple != null
+    ? `${analytics.averageRMultiple.toFixed(2)}R`
+    : validR.length > 0
+      ? `${(validR.reduce((sum, r) => sum + r, 0) / validR.length).toFixed(2)}R`
+      : 'N/A';
 
   // Capital & Sector Allocation Calculation
   const initialEquity = account?.initialEquity || 1000000;
@@ -166,7 +203,7 @@ export default function PortfolioPage() {
   // Quantitative Sharpe & Sortino ratios from closed trades
   const returns = closedTrades.map(t => {
     const isUs = t.currency === 'USD' || getInstrumentCurrency(t.symbol) === 'USD';
-    const pnl = t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * (isUs ? USD_TO_INR_RATE : 1.0));
+    const pnl = t.realizedPnLInr ?? ((t.realizedPnL ?? 0) * (isUs ? currentFxRate : 1.0));
     return pnl / initialEquity;
   });
 
@@ -175,14 +212,22 @@ export default function PortfolioPage() {
     ? returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / (returns.length - 1)
     : 0;
   const stdDev = Math.sqrt(variance);
-  const sharpeRatio = stdDev > 0 ? ((meanReturn / stdDev) * Math.sqrt(252)).toFixed(2) : (hasSampleHoldings ? '2.14' : 'N/A');
+  const sharpeRatio = analytics?.sharpeRatio != null
+    ? analytics.sharpeRatio.toFixed(2)
+    : stdDev > 0
+      ? ((meanReturn / stdDev) * Math.sqrt(252)).toFixed(2)
+      : 'N/A';
 
   const negativeReturns = returns.filter(r => r < 0);
   const downsideVariance = negativeReturns.length > 0
     ? negativeReturns.reduce((sum, r) => sum + Math.pow(r, 2), 0) / negativeReturns.length
     : 0;
   const downsideStdDev = Math.sqrt(downsideVariance);
-  const sortinoRatio = downsideStdDev > 0 ? ((meanReturn / downsideStdDev) * Math.sqrt(252)).toFixed(2) : (hasSampleHoldings ? '2.85' : 'N/A');
+  const sortinoRatio = analytics?.sortinoRatio != null
+    ? analytics.sortinoRatio.toFixed(2)
+    : downsideStdDev > 0
+      ? ((meanReturn / downsideStdDev) * Math.sqrt(252)).toFixed(2)
+      : 'N/A';
 
   // 28-Day Monthly P&L Calendar Heatmap
   const heatmapDays = Array.from({ length: 28 }, (_, i) => {
@@ -220,7 +265,7 @@ export default function PortfolioPage() {
 
   const usEquityValue = allPositions
     .filter(p => getInstrumentCurrency(p.symbol) === 'USD')
-    .reduce((acc, p) => acc + (p.marketValueInr || (p.marketValue * USD_TO_INR_RATE)), 0);
+    .reduce((acc, p) => acc + (p.marketValueInr || (p.marketValue * currentFxRate)), 0);
 
   const cashPct = Math.max(0, Math.min(100, (availableCash / currentNetLiquidation) * 100));
   const indianPct = Math.max(0, Math.min(100, (indianEquityValue / currentNetLiquidation) * 100));
@@ -617,7 +662,7 @@ export default function PortfolioPage() {
                                   <div>{formatMoney(val, currency)}</div>
                                   {isUs && (
                                     <div className="text-[10px] text-slate-400 font-sans">
-                                      ≈ ₹{(val * USD_TO_INR_RATE).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                      ≈ ₹{(val * currentFxRate).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                     </div>
                                   )}
                                 </td>
@@ -627,7 +672,7 @@ export default function PortfolioPage() {
                                   </div>
                                   {isUs && (
                                     <div className="text-[10px] text-slate-400 font-sans">
-                                      ≈ {isUp ? '+' : ''}₹{(pnl * USD_TO_INR_RATE).toFixed(2)}
+                                      ≈ {isUp ? '+' : ''}₹{(pnl * currentFxRate).toFixed(2)}
                                     </div>
                                   )}
                                 </td>
@@ -703,7 +748,7 @@ export default function PortfolioPage() {
                                   </div>
                                   {isUs && (
                                     <div className="text-[10px] text-slate-400 font-sans">
-                                      ≈ {isUp ? '+' : ''}₹{(pos.unrealizedPnL * USD_TO_INR_RATE).toFixed(2)}
+                                      ≈ {isUp ? '+' : ''}₹{(pos.unrealizedPnL * currentFxRate).toFixed(2)}
                                     </div>
                                   )}
                                 </td>
@@ -769,7 +814,7 @@ export default function PortfolioPage() {
                             const isUs = tr.currency === 'USD' || getInstrumentCurrency(tr.symbol) === 'USD';
                             const currency = isUs ? 'USD' : 'INR';
                             const isWin = (tr.realizedPnL || 0) >= 0;
-                            const realizedInr = tr.realizedPnLInr ?? ((tr.realizedPnL ?? 0) * (isUs ? USD_TO_INR_RATE : 1.0));
+                            const realizedInr = tr.realizedPnLInr ?? ((tr.realizedPnL ?? 0) * (isUs ? currentFxRate : 1.0));
 
                             return (
                               <tr key={tr.id} className="hover:bg-slate-800/30">

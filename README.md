@@ -45,8 +45,19 @@
   - **NSE (India)**: `NIFTY 50`, `SENSEX`, `RELIANCE`, `TCS`, `INFY`, `HDFCBANK`, `TATAMOTORS`
   - **NASDAQ / NYSE (US)**: `AAPL`, `TSLA`, `NVDA`, `MSFT`, `GOOGL`, `AMZN`, `SPY`, `QQQ`
 
-### 3. 📊 Honest Quantitative Backtesting
-- **No Fabricated Backtest Metrics**: Strategies are backtested strictly against historical candle data ($\ge 30$ historical bars required). If candle data is missing or insufficient, the engine throws an explicit error rather than silently synthesizing sine waves or defaulting to fabricated metric values.
+### 3. 📊 Honest Quantitative Backtesting & Authoritative Portfolio Analytics
+- **Genuinely Historical Market-Data Provider**: Historical candles with explicit source (`EXCHANGE_HISTORICAL_ARCHIVE`), `dataType: "HISTORICAL"`, timestamp, and provenance metadata across Indian and US equities.
+- **Five Core Algorithmic Strategies**:
+  1. `EMA_CROSSOVER`: Parameter-specific fast and slow exponential moving average crosses with dynamic ATR risk stops.
+  2. `RSI_MEAN_REVERSION`: J. Welles Wilder 14-period RSI with customizable oversold/overbought thresholds and exit RSI targets.
+  3. `BOLLINGER_BANDS`: Statistical standard deviation channel volatility breakout and mean reversion modes (`BREAKOUT` vs `REVERSION`).
+  4. `DONCHIAN_MOMENTUM`: Richard Donchian $N$-period high/low breakout with asymmetric entry and exit channels.
+  5. `SUPERTREND`: True ATR ratchet trend-following with parameter-controlled ATR periods and multipliers.
+- **Date Ranges, Intervals, Realistic Costs & Fill Models**: Date range filtering, interval selection, realistic transaction costs (brokerage commissions + slippage deductions), and `NEXT_BAR_OPEN` execution model preventing lookahead bias.
+- **Buy & Hold Benchmark Comparison**: Full equity curve comparison against underlying Buy & Hold, calculating $\alpha$, $\beta$, and Information Ratio.
+- **Out-of-Sample (OOS) & Walk-Forward Evaluation (WFE)**: In-Sample vs. Out-of-Sample performance split with efficiency ratio and overfit warnings, alongside multi-fold rolling Walk-Forward analysis and robustness verification.
+- **Backend-Authoritative Portfolio Analytics & NAV Returns**: Timestamped equity history (`/api/portfolio/equity-history`) and portfolio analytics (`/api/portfolio/analytics`) calculating periodic daily NAV returns $r_t = \frac{\text{NAV}_t - \text{NAV}_{t-1}}{\text{NAV}_{t-1}}$, annualized Sharpe and Sortino ratios, peak-to-trough maximum drawdown, and reliable snapshot FX fixing (`1 USD = ₹84.25`).
+- **No Fabricated Backtest Metrics**: Strategies enforce a strict minimum of 30 historical bars; incomplete datasets throw explicit errors rather than silently substituting fabricated values.
 
 ---
 
@@ -109,23 +120,23 @@ Builds and boots the complete containerized stack: PostgreSQL 16, Spring Boot 3.
 
 ---
 
-## 🧪 Monorepo Test Suites (119 Automated Tests)
+## 🧪 Monorepo Test Suites (136 Automated Tests)
 
-The monorepo contains 119 automated tests validating security, financial math, and risk enforcement across all layers:
+The monorepo contains 136 automated tests validating security, financial math, and risk enforcement across all layers:
 
-### 1. Spring Boot Authoritative Test Suite (43 Tests)
-Verifies JWT authentication, Google Sign-In, tenant isolation, pre-trade risk gatekeeper, cash ledger reconciliation, fee and slippage accounting, rate limiting, and saved screens:
+### 1. Spring Boot Authoritative Test Suite (47 Tests)
+Verifies JWT authentication, Google Sign-In, tenant isolation, pre-trade risk gatekeeper, cash ledger reconciliation, fee and slippage accounting, rate limiting, saved screens, plus dedicated edge case and concurrency tests (partial fills, cancellation races, duplicate order submission idempotency, and OCO execution):
 ```bash
 mvn clean test -f backend-spring/pom.xml
 ```
-*Output: 43 passed, 0 failed.*
+*Output: 47 passed, 0 failed.*
 
-### 2. Frontend Unit & Invariant Test Suite (38 Tests)
-Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), options Greeks analytical bounds, fail-closed API client operations, multi-currency USD/INR formatting, and trader academy curriculum:
+### 2. Frontend Unit & Invariant Test Suite (51 Tests)
+Verifies technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands, ATR, VWAP, Supertrend), options Greeks analytical bounds, fail-closed API client operations, multi-currency USD/INR formatting, trader academy curriculum, genuinely historical market data provider metadata, all 5 backtesting strategies, NEXT_BAR_OPEN fill models, transaction fees, Out-of-Sample evaluation, and Walk-Forward Analysis:
 ```bash
 npm test --prefix frontend
 ```
-*Output: 38 passed, 0 failed.*
+*Output: 51 passed, 0 failed.*
 
 ### 3. Quantitative Research Microservice Test Suite (34 Tests)
 Verifies specialist research agents, selective query routing, independent evidence verification, Markowitz MPT, one-sided VaR/CVaR, path-based Monte Carlo drawdowns, step-up SIP plans, and PDF report generation:
