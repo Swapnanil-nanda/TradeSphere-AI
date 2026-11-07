@@ -356,6 +356,7 @@ class UniversalPaperTradingEngine {
     symbol: string;
     side: 'BUY' | 'SELL';
     orderType: string;
+    productType?: 'CNC' | 'MIS' | 'NRML';
     quantity: number;
     limitPrice?: number;
     stopLoss?: number;
@@ -381,10 +382,12 @@ class UniversalPaperTradingEngine {
 
     const orderValue = execPrice * qty;
     const commission = orderValue * this.state.feeRate;
+    const productType = params.productType || 'CNC';
+    const marginMultiplier = productType === 'MIS' ? 0.2 : 1.0;
 
     // Real Buying Power / Cash Margin Gatekeeper for BUY orders
     if (params.side === 'BUY') {
-      const totalReq = orderValue + commission;
+      const totalReq = (orderValue * marginMultiplier) + commission;
       const curr = this.state.account.currency === 'USD' ? '$' : '₹';
       if (this.state.account.currentCash < totalReq) {
         throw new Error(
@@ -401,6 +404,7 @@ class UniversalPaperTradingEngine {
       symbol: params.symbol.toUpperCase(),
       side: params.side,
       orderType: (params.orderType as any) || 'MARKET',
+      productType,
       quantity: qty,
       price: Number(execPrice.toFixed(2)),
       executionPrice: isMarket ? Number(execPrice.toFixed(2)) : undefined,

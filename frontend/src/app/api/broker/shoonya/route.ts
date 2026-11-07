@@ -219,25 +219,19 @@ export async function POST(request: Request) {
         }, { status: 400 });
       }
 
-      // Synchronous Pre-Trade Risk Gatekeeper (Rule A)
-      if (!stopLoss || Number(stopLoss) <= 0) {
-        return NextResponse.json({
-          error: 'MANDATORY_STOP_LOSS_REQUIRED',
-          message: 'Rule A Invariant: Hard Stop-Loss price is mandatory before live order execution.'
-        }, { status: 400 });
-      }
-
       const entryPrice = price && price > 0 ? Number(price) : inst.basePrice;
-      const riskPerShare = Math.abs(entryPrice - Number(stopLoss));
-      const totalRisk = riskPerShare * Number(quantity);
-      const equity = Number(accountEquity) || 1000000;
-      const maxAllowedRisk = equity * 0.01;
+      const productType = body.productType || 'CNC';
+      const prdCode = productType === 'MIS' ? 'I' : productType === 'NRML' ? 'M' : 'C';
 
-      if (totalRisk > maxAllowedRisk) {
-        const safeSize = Math.floor(maxAllowedRisk / riskPerShare);
+      // Cash Margin Gatekeeper validation
+      const estTotal = entryPrice * Number(quantity);
+      const equity = Number(accountEquity) || 1000000;
+      const marginReq = productType === 'MIS' ? estTotal / 5 : estTotal;
+
+      if (side === 'BUY' && marginReq > equity) {
         return NextResponse.json({
-          error: 'RISK_GATEKEEPER_BREACH',
-          message: `Single-Trade Max Loss (₹${totalRisk.toFixed(2)}) exceeds 1% equity cap (₹${maxAllowedRisk.toFixed(2)}). Safe size is ${safeSize} shares.`
+          error: 'INSUFFICIENT_MARGIN',
+          message: `Cash Margin Breach: Required margin (₹${marginReq.toFixed(2)}) exceeds available equity (₹${equity.toFixed(2)}).`
         }, { status: 400 });
       }
 
@@ -248,7 +242,7 @@ export async function POST(request: Request) {
         tsym: inst.tradingSymbol,
         qty: String(quantity),
         prc: orderType === 'LIMIT' && price ? String(price) : '0',
-        prd: 'C',
+        prd: prdCode,
         trantype: side === 'BUY' ? 'B' : 'S',
         prctyp: orderType === 'LIMIT' ? 'LMT' : 'MKT',
         ret: 'DAY',

@@ -720,6 +720,7 @@ class TradeSphereApiClient {
     symbol: string;
     side: 'BUY' | 'SELL';
     orderType: string;
+    productType?: 'CNC' | 'MIS' | 'NRML';
     quantity: number;
     limitPrice?: number;
     stopLoss?: number;
@@ -739,6 +740,7 @@ class TradeSphereApiClient {
           symbol: orderData.symbol,
           side: orderData.side,
           orderType: orderData.orderType,
+          productType: orderData.productType || 'CNC',
           quantity: orderData.quantity,
           price: orderData.limitPrice,
           stopLoss: orderData.stopLoss,
@@ -813,6 +815,27 @@ class TradeSphereApiClient {
     } catch {}
 
     return paperEngine.closePosition(symbol, quantity, ltp);
+  }
+
+  async squareOffAllPositions(): Promise<{ success: boolean; closedCount: number }> {
+    try {
+      const p = await this.getPortfolio();
+      const posList = p.positions || [];
+      let closed = 0;
+      for (const pos of posList) {
+        if (pos.quantity > 0) {
+          try {
+            await this.closePosition(pos.symbol);
+            closed++;
+          } catch (err) {
+            console.warn(`[squareOffAllPositions] Could not close ${pos.symbol}:`, err);
+          }
+        }
+      }
+      return { success: true, closedCount: closed };
+    } catch (e: any) {
+      throw new Error(e.message || 'Failed to square off open positions.');
+    }
   }
 
   async matchOpenOrders(): Promise<void> {
