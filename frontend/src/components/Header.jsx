@@ -74,7 +74,7 @@ export default function Header({
               ? 'bg-[#2979FF] text-white shadow-2xs'
               : 'text-[#8B99A8] hover:text-[#E7EDF3]'
           }`}
-          title="Basic: Clean charts, 20-EMA trend guide, 1% auto-risk sizing"
+          title="Basic: Clean charts, 20-EMA trend guide, dynamic risk sizing"
         >
           <Layers className="w-3 h-3" />
           <span>Basic</span>

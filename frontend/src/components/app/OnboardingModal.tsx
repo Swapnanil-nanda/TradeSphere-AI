@@ -249,7 +249,7 @@ export default function OnboardingModal({ forceOpen = false, onClose }: Onboardi
                     <div className="p-2.5 rounded-lg bg-[#111922] border border-[#35C69A]/30 text-[#E7EDF3] space-y-1">
                       <div className="font-bold text-[#35C69A]">✓ Unlocked for Basic Trader:</div>
                       <div className="text-[10px] text-[#8B99A8] leading-relaxed">
-                        • Institutional Terminal with 1% Safe Risk Position Sizer<br />
+                        • Institutional Terminal with Dynamic Risk Position Sizer<br />
                         • Candlestick Charts with 20-EMA Trend Guide &amp; S/R Zones<br />
                         • Live NSE &amp; US Watchlists, Orders &amp; Portfolio Blotter<br />
                         • Complete Trader Academy, Guided Curriculum &amp; Quizzes
@@ -297,10 +297,10 @@ export default function OnboardingModal({ forceOpen = false, onClose }: Onboardi
                     <ShieldCheck className="w-3.5 h-3.5 text-[#35C69A]" />
                     <span>Section 3: Pre-Trade Risk Parameters &amp; Guardrails</span>
                   </span>
-                  <span className="text-[#2979FF] font-mono font-bold">Rule A: 1.0% Max Loss Cap</span>
+                  <span className="text-[#2979FF] font-mono font-bold">Risk Guardrails Active</span>
                 </div>
                 <p className="text-[11px] text-[#8B99A8] leading-relaxed">
-                  Mandatory hard Stop-Loss validation, 3.0% daily session drawdown circuit breaker, and synchronous server gatekeeper.
+                  Dynamic risk controls, 3.0% daily session drawdown circuit breaker, and synchronous pre-trade gatekeeper.
                 </p>
               </div>
             </div>

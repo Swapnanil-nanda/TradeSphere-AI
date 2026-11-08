@@ -18,10 +18,10 @@ export default function FeaturesPage() {
       icon: ShieldCheck,
       title: 'Pre-Trade Risk Gatekeeper (Synchronous)',
       tagline: 'Never blow an account again.',
-      description: 'The core invariant of TradeSphere AI. Every single market or limit order passes through synchronous pre-trade validation before execution. If the trade risks more than 1.0% of your account equity, it is rejected with the maximum safe quantity calculated automatically.',
+      description: 'The core invariant of TradeSphere AI. Every single market or limit order passes through synchronous pre-trade validation before execution. If the trade violates your predefined risk allocations, it is rejected with the maximum safe quantity calculated automatically.',
       points: [
         'Mandatory Stop-Loss rule: Open-ended risk is strictly prohibited.',
-        '1% equity risk cap with automatic share sizing.',
+        'Configurable equity risk cap with automatic share sizing.',
         'Minimum 1.5:1 recommended Risk-to-Reward ratio verification.',
         'Instant rejection feedback explaining exact risk breach numbers.'
       ]
@@ -104,7 +104,7 @@ export default function FeaturesPage() {
           Everything You Need For Serious Trading Practice.
         </h1>
         <p className="text-slate-400 text-sm leading-relaxed">
-          Built without compromises. From student-friendly 1% risk calculators to quantitative 20-level DOM ladders and options Greeks.
+          Built without compromises. From student-friendly dynamic risk calculators to quantitative 20-level DOM ladders and options Greeks.
         </p>
       </div>
 

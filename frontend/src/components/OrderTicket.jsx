@@ -73,6 +73,15 @@ export default function OrderTicket({ symbol, ticker, portfolio, mode, onOrderPl
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!apiClient.isAuthenticated()) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('tradesphere_auth_required', {
+          detail: { action: `Placing ${side} order for ${symbol}` }
+        }));
+      }
+      setFeedback({ type: 'error', message: 'Authentication required: Please sign in or create an account to submit orders.' });
+      return;
+    }
     if (quantity <= 0) {
       setFeedback({ type: 'error', message: 'Quantity must be at least 1 unit to submit an order.' });
       return;

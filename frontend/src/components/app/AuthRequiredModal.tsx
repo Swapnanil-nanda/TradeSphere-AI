@@ -86,7 +86,7 @@ export default function AuthRequiredModal() {
           </div>
           <div className="flex items-center gap-2 text-[#8B99A8]">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#35C69A] shrink-0" />
-            <span>Pre-Trade Risk Gatekeeper with 1% loss cap &amp; drawdown lock</span>
+            <span>Pre-Trade Risk Gatekeeper with real-time risk controls &amp; drawdown lock</span>
           </div>
           <div className="flex items-center gap-2 text-[#8B99A8]">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#35C69A] shrink-0" />

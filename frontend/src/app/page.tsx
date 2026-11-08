@@ -24,12 +24,7 @@ export default function HomePage() {
   const [tickers, setTickers] = useState<TickerData[]>([]);
   const [activeTier, setActiveTier] = useState<'basic' | 'active' | 'pro'>('active');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-  // Interactive Live Risk Calculator State
-  const [calcEquity, setCalcEquity] = useState<number>(1000000);
-  const [calcRiskPct, setCalcRiskPct] = useState<number>(1.0);
-  const [calcEntry, setCalcEntry] = useState<number>(2950);
-  const [calcStopLoss, setCalcStopLoss] = useState<number>(2920);
+  const [selectedPreviewSymbol, setSelectedPreviewSymbol] = useState<string>('RELIANCE');
 
   // Fetch real-time ticker snapshots from backend via apiClient
   useEffect(() => {
@@ -50,11 +45,15 @@ export default function HomePage() {
       });
   }, []);
 
-  // Compute live interactive risk auto-sizer metrics
-  const riskPerShare = Math.max(0.1, Math.abs(calcEntry - calcStopLoss));
-  const maxRiskAmount = (calcEquity * (calcRiskPct / 100));
-  const recommendedShares = Math.max(1, Math.floor(maxRiskAmount / riskPerShare));
-  const totalPositionValue = recommendedShares * calcEntry;
+  const previewTicker = tickers.find((t) => t.symbol === selectedPreviewSymbol) || tickers[0] || {
+    symbol: 'RELIANCE',
+    name: 'Reliance Industries',
+    ltp: 2950.4,
+    change: 24.8,
+    changePct: 0.85,
+    market: 'IN',
+    currency: 'INR'
+  };
 
   const faqs = [
     {
@@ -63,7 +62,7 @@ export default function HomePage() {
     },
     {
       q: 'How does the Pre-Trade Risk Gatekeeper prevent account blowups?',
-      a: 'Unlike standard brokers that allow users to risk their entire balance on a single trade, TradeSphere AI enforces a synchronous pre-trade risk invariant. Orders risking greater than 1.0% of your current equity are rejected before execution with the exact safe position size auto-calculated.'
+      a: 'Unlike standard brokers that allow users to risk their entire balance on a single trade, TradeSphere AI enforces a synchronous pre-trade risk invariant. Orders are validated against configurable risk limits and account capital before execution, auto-calculating disciplined position sizes and enforcing a 3% daily drawdown breaker.'
     },
     {
       q: 'How does the 24/7 market simulator work without exchange API keys?',
@@ -164,8 +163,8 @@ export default function HomePage() {
                 <div className="text-xs text-slate-400 font-medium">Zero Subscription Fees</div>
               </div>
               <div>
-                <div className="text-2xl font-black text-emerald-400">1.0% Cap</div>
-                <div className="text-xs text-slate-400 font-medium">Single-Trade Risk Guardrail</div>
+                <div className="text-2xl font-black text-emerald-400">Risk Controls</div>
+                <div className="text-xs text-slate-400 font-medium">Dynamic Pre-Trade Gatekeeper</div>
               </div>
               <div>
                 <div className="text-2xl font-black text-blue-400">24/7 GBM</div>
@@ -174,88 +173,155 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right Column: Product Preview / Live Risk Auto-Sizer Sandbox */}
+          {/* Right Column: Workstation & Live Market Demo Preview */}
           <div className="lg:col-span-5">
             <div className="bg-[#0c121f] border border-[#1b253b] rounded-2xl p-6 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500" />
-              
+
+              {/* Terminal Chrome Bar */}
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1b253b]">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
-                    ✓
+                  <div className="flex gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
                   </div>
-                  <span className="font-bold text-sm text-white">Product Preview: 1% Auto-Sizer</span>
+                  <span className="font-bold text-xs text-white ml-1">Live Demo Terminal</span>
                 </div>
-                <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded">
-                  SYNCHRONOUS
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded font-mono">
+                    24/7 GBM STREAM
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-4 text-xs">
-                <div>
-                  <div className="flex justify-between text-slate-400 mb-1">
-                    <span>Paper Account Capital:</span>
-                    <span className="font-mono text-white font-bold">₹{calcEquity.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="100000"
-                    max="5000000"
-                    step="50000"
-                    value={calcEquity}
-                    onChange={(e) => setCalcEquity(Number(e.target.value))}
-                    className="w-full accent-blue-500 cursor-pointer"
-                  />
-                </div>
+              {/* Symbol Tabs */}
+              <div className="flex gap-1.5 mb-4 overflow-x-auto no-scrollbar font-mono text-[11px]">
+                {['RELIANCE', 'NIFTY50', 'NVDA', 'AAPL'].map((sym) => {
+                  const isSelected = (previewTicker.symbol === sym) || (sym === 'NIFTY50' && previewTicker.symbol.startsWith('NIFTY'));
+                  return (
+                    <button
+                      key={sym}
+                      type="button"
+                      onClick={() => setSelectedPreviewSymbol(sym)}
+                      className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        isSelected
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-[#070b14] text-slate-400 hover:text-white border border-[#1b253b]'
+                      }`}
+                    >
+                      {sym}
+                    </button>
+                  );
+                })}
+              </div>
 
-                <div className="grid grid-cols-2 gap-3">
+              {/* Selected Symbol Real-Time Quote Card */}
+              <div className="bg-[#070b14] border border-[#1b253b] rounded-xl p-4 mb-4 space-y-3">
+                <div className="flex items-start justify-between">
                   <div>
-                    <label className="block text-slate-400 mb-1">Entry Price (₹):</label>
-                    <input
-                      type="number"
-                      value={calcEntry}
-                      onChange={(e) => setCalcEntry(Number(e.target.value))}
-                      className="w-full bg-[#070b14] border border-[#1b253b] rounded-lg px-3 py-2 text-white font-mono"
-                    />
+                    <div className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+                      <span>{previewTicker.symbol}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
+                        {previewTicker.market === 'US' ? 'NASDAQ' : 'NSE'}
+                      </span>
+                    </div>
+                    <div className="text-xl sm:text-2xl font-black text-white font-mono mt-0.5">
+                      {previewTicker.currency === 'USD' ? '$' : '₹'}
+                      {Number(previewTicker.ltp || 2950.4).toFixed(2)}
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1">Stop-Loss Price (₹):</label>
-                    <input
-                      type="number"
-                      value={calcStopLoss}
-                      onChange={(e) => setCalcStopLoss(Number(e.target.value))}
-                      className="w-full bg-[#070b14] border border-[#1b253b] rounded-lg px-3 py-2 text-rose-400 font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Calculated Auto-Size Metric Card */}
-                <div className="bg-[#070b14] border border-[#1b253b] rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>Single-Trade Risk Cap (1.0%):</span>
-                    <span className="font-mono font-bold text-amber-400">₹{maxRiskAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-slate-400">
-                    <span>Risk Distance Per Share:</span>
-                    <span className="font-mono text-slate-200">₹{riskPerShare.toFixed(2)}</span>
-                  </div>
-                  <div className="pt-2 border-t border-[#1b253b] flex justify-between items-center">
-                    <span className="font-bold text-white text-xs">Safe Position Size:</span>
-                    <span className="font-mono font-black text-emerald-400 text-base">
-                      {recommendedShares} Shares
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 text-right">
-                    Total Capital Utilized: ₹{totalPositionValue.toLocaleString()}
+                  <div
+                    className={`text-right font-mono text-xs font-bold px-2 py-1 rounded ${
+                      (previewTicker.changePct || 0) >= 0
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    }`}
+                  >
+                    {(previewTicker.changePct || 0) >= 0 ? '+' : ''}
+                    {(previewTicker.changePct || 0.85).toFixed(2)}%
+                    <div className="text-[10px] font-normal text-slate-400">
+                      {(previewTicker.change || 0) >= 0 ? '+' : ''}
+                      {(previewTicker.change || 24.8).toFixed(2)} pts
+                    </div>
                   </div>
                 </div>
 
+                {/* Simulated Microstructure Mini-Ladder */}
+                <div className="pt-2 border-t border-[#1b253b]/80">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1.5 font-mono">
+                    <span className="text-emerald-400 font-semibold">BID DEPTH (BUY)</span>
+                    <span className="text-slate-500">SPREAD: ~0.02%</span>
+                    <span className="text-rose-400 font-semibold">ASK DEPTH (SELL)</span>
+                  </div>
+                  <div className="space-y-1 font-mono text-[11px]">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-1 flex justify-between items-center">
+                        <span className="text-slate-300 text-[10px]">1,250 qty</span>
+                        <span className="text-emerald-400 font-bold">
+                          {previewTicker.currency === 'USD' ? '$' : '₹'}
+                          {(Number(previewTicker.ltp || 2950.4) - 0.25).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="bg-rose-500/10 border border-rose-500/20 rounded px-2 py-1 flex justify-between items-center">
+                        <span className="text-rose-400 font-bold">
+                          {previewTicker.currency === 'USD' ? '$' : '₹'}
+                          {(Number(previewTicker.ltp || 2950.4) + 0.25).toFixed(2)}
+                        </span>
+                        <span className="text-slate-300 text-[10px]">1,420 qty</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-emerald-500/5 border border-emerald-500/10 rounded px-2 py-0.5 flex justify-between items-center text-[10px]">
+                        <span className="text-slate-400">2,800 qty</span>
+                        <span className="text-emerald-400">
+                          {previewTicker.currency === 'USD' ? '$' : '₹'}
+                          {(Number(previewTicker.ltp || 2950.4) - 0.75).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="bg-rose-500/5 border border-rose-500/10 rounded px-2 py-0.5 flex justify-between items-center text-[10px]">
+                        <span className="text-rose-400">
+                          {previewTicker.currency === 'USD' ? '$' : '₹'}
+                          {(Number(previewTicker.ltp || 2950.4) + 0.75).toFixed(2)}
+                        </span>
+                        <span className="text-slate-400">3,100 qty</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Key Technical Signals */}
+                <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] font-mono">
+                  <div className="bg-[#0b101b] rounded-lg p-2 border border-[#1b253b]">
+                    <div className="text-[10px] text-slate-400">20-EMA TREND</div>
+                    <div className="text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
+                      <TrendingUp className="w-3 h-3" />
+                      <span>Bullish Momentum</span>
+                    </div>
+                  </div>
+                  <div className="bg-[#0b101b] rounded-lg p-2 border border-[#1b253b]">
+                    <div className="text-[10px] text-slate-400">ORDER BOOK LADDER</div>
+                    <div className="text-blue-400 font-bold flex items-center gap-1 mt-0.5">
+                      <Layers className="w-3 h-3" />
+                      <span>20-Level Depth</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Demo Exploration CTA */}
+              <div className="space-y-2">
                 <Link
-                  href="/app/paper-trading"
-                  className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-center block transition-all shadow-md shadow-emerald-600/20"
+                  href={`/app/paper-trading?symbol=${encodeURIComponent(previewTicker.symbol)}`}
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-center flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/25"
                 >
-                  Test Auto-Sizer in Live Terminal &rarr;
+                  <span>Explore Demo Without Signing In</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
+                <p className="text-[11px] text-slate-400 text-center">
+                  Instant access to live simulated charts, DOM ladder &amp; stock screener.
+                </p>
               </div>
             </div>
           </div>
@@ -269,19 +335,16 @@ export default function HomePage() {
             Zero-Friction Architecture
           </span>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3">
-            1. The Ideal User Journey
+            1. The ideal user journey
           </h2>
-          <p className="text-slate-400 text-xs sm:text-sm mt-1">
-            Why this is better: Visitors can understand and explore the product immediately before signing in.
-          </p>
         </div>
 
         <div className="bg-[#090D14] border border-[#1b253b] rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl relative">
           {/* Step 1: Public Landing Page */}
-          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-4 text-center">
-            <h4 className="font-bold text-sm text-white">Public landing page</h4>
+          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-5 text-center">
+            <h4 className="font-bold text-base text-white">Public landing page</h4>
             <p className="text-xs text-slate-400 mt-1">
-              Product overview, screenshots, features, live risk auto-sizer, and regulatory data disclaimer
+              Product overview, screenshots, features and data disclaimer
             </p>
           </div>
 
@@ -290,20 +353,17 @@ export default function HomePage() {
           </div>
 
           {/* Step 2: Explore demo without signing in */}
-          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-4 text-center relative hover:border-blue-500/50 transition-all">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-              <h4 className="font-bold text-sm text-white">Explore demo without signing in</h4>
-            </div>
-            <p className="text-xs text-slate-400">
-              Sample screener, simulated market data, read-only charts with 20-EMA/VWAP, and learning content
+          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-5 text-center relative hover:border-blue-500/40 transition-all">
+            <h4 className="font-bold text-base text-white">Explore demo without signing in</h4>
+            <p className="text-xs text-slate-400 mt-1">
+              Sample screener, simulated market data, read only charts and learning content
             </p>
-            <div className="mt-3">
+            <div className="mt-3 flex justify-center">
               <Link
                 href="/app/paper-trading"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 hover:text-white font-mono text-xs font-bold transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 text-blue-400 hover:text-white font-mono text-xs font-bold transition-all"
               >
-                <span>Launch Demo Terminal Now</span>
+                <span>Launch Free Demo Terminal</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -313,22 +373,22 @@ export default function HomePage() {
             <ArrowRight className="w-4 h-4 rotate-90" />
           </div>
 
-          {/* Step 3: Authentication Required (Border Highlight) */}
-          <div className="bg-[#0e1624] border-2 border-emerald-500/40 rounded-2xl p-4 text-center relative shadow-lg shadow-emerald-500/5">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold uppercase mb-1.5">
+          {/* Step 3: Authentication required (Green border card matching picture) */}
+          <div className="bg-[#0e1624] border-2 border-emerald-500/50 rounded-2xl p-6 text-center relative shadow-lg shadow-emerald-500/5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-bold mb-2">
               <Lock className="w-3 h-3" />
               <span>Authentication required</span>
             </div>
-            <h4 className="font-bold text-sm text-white">Create account / Sign in</h4>
-            <p className="text-xs text-slate-400 mt-1 max-w-xl mx-auto">
-              Before personal watchlists, persistent accounts, order placement, trade journals, and saved research
+            <h4 className="font-bold text-base text-white">Create account / Sign in</h4>
+            <p className="text-xs text-slate-300 mt-1 max-w-xl mx-auto">
+              Before personal watchlists, persistent accounts, order placement, journals and saved research
             </p>
             <div className="mt-3 flex justify-center gap-3">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all"
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all shadow-md shadow-emerald-600/20"
               >
-                <span>Sign In or Register</span>
+                <span>Sign In / Create Account</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -339,17 +399,17 @@ export default function HomePage() {
           </div>
 
           {/* Step 4: Choose experience level */}
-          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-4 text-center">
-            <h4 className="font-bold text-sm text-white">Choose experience level</h4>
-            <div className="flex items-center justify-center gap-2 mt-2 font-mono text-xs">
+          <div className="bg-[#0e1624] border border-[#223049] rounded-2xl p-5 text-center">
+            <h4 className="font-bold text-base text-white">Choose experience level</h4>
+            <div className="flex items-center justify-center gap-3 my-2 font-mono text-xs">
               <span className="px-2.5 py-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold">Basic</span>
               <span className="text-slate-500">&rarr;</span>
               <span className="px-2.5 py-1 rounded-md bg-blue-500/15 border border-blue-500/30 text-blue-400 font-bold">Active</span>
               <span className="text-slate-500">&rarr;</span>
               <span className="px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold">Pro</span>
             </div>
-            <p className="text-xs text-slate-400 mt-2">
-              This controls interface complexity progressively, not financial permissions or paywalls.
+            <p className="text-xs text-slate-400">
+              This should control interface complexity, not financial permissions.
             </p>
           </div>
 
@@ -358,12 +418,23 @@ export default function HomePage() {
           </div>
 
           {/* Step 5: Personal TradeSphere workspace */}
-          <div className="bg-gradient-to-r from-blue-900/30 via-[#131d2e] to-indigo-900/30 border border-blue-500/30 rounded-2xl p-5 text-center">
+          <div className="bg-[#1e232d] border border-[#2e3746] rounded-2xl p-6 text-center shadow-lg">
             <h4 className="font-bold text-base text-white">Personal TradeSphere workspace</h4>
             <p className="text-xs text-slate-300 mt-1 max-w-xl mx-auto">
-              Personal ₹10 Lakh paper account (or linked live Finvasia Shoonya broker), custom watchlists, orders, portfolio, and quantitative research.
+              Personal paper account, watchlists, orders, portfolio and research
             </p>
           </div>
+        </div>
+
+        {/* Why this is better */}
+        <div className="mt-6 text-left max-w-md">
+          <div className="flex items-center gap-2 text-white font-bold text-sm mb-1.5">
+            <span>Why this is better</span>
+            <ArrowRight className="w-3.5 h-3.5 rotate-90 text-slate-400" />
+          </div>
+          <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
+            <li>Visitors can understand and explore the product immediately.</li>
+          </ul>
         </div>
       </section>
 
@@ -420,7 +491,7 @@ export default function HomePage() {
             </div>
             <h4 className="text-base font-bold text-white">Pre-Trade Risk Gatekeeper</h4>
             <p className="text-slate-400 text-xs leading-relaxed">
-              No order executes without passing synchronous risk checks. Strictly blocks any order exceeding 1.0% equity risk and requires hard stop-losses.
+              No order executes without passing synchronous risk checks. Protects paper capital with configurable risk thresholds, hard stop-losses, and a 3% daily drawdown breaker.
             </p>
             <Link href="/features#risk-gatekeeper" className="text-[11px] text-blue-400 font-semibold flex items-center gap-1 hover:underline">
               <span>Inspect Gatekeeper Rules</span> &rarr;
@@ -510,10 +581,10 @@ export default function HomePage() {
                   </p>
                 </div>
                 <div className="bg-[#090d16] p-5 rounded-xl border border-[#1b253b] space-y-3">
-                  <div className="text-xs font-bold text-emerald-400">Guaranteed Protection</div>
-                  <h4 className="text-white font-bold text-sm">1% Auto-Risk Position Sizing</h4>
+                  <div className="text-xs font-bold text-emerald-400">Capital Preservation</div>
+                  <h4 className="text-white font-bold text-sm">Dynamic Risk &amp; Position Sizing</h4>
                   <p className="text-slate-400 text-xs">
-                    One-click auto-sizer calculates exact shares to purchase based on your stop-loss distance, ensuring you never risk more than 1%.
+                    One-click auto-sizer calculates safe position sizes based on your stop-loss distance, ensuring you never risk more than your predefined allocation.
                   </p>
                 </div>
                 <div className="bg-[#090d16] p-5 rounded-xl border border-[#1b253b] space-y-3">
@@ -611,7 +682,7 @@ export default function HomePage() {
             </span>
             <h4 className="text-base font-bold text-white">Pre-Trade Risk Management 101</h4>
             <p className="text-slate-400 text-xs leading-relaxed">
-              Why position sizing is 10x more important than entry timing. Master the 1% risk rule, R-multiples, and account survival mathematics.
+              Why position sizing is 10x more important than entry timing. Master dynamic risk sizing, R-multiples, and account survival mathematics.
             </p>
             <Link href="/learning#risk-basics" className="text-xs text-blue-400 font-semibold hover:underline block pt-2">
               Start Module &rarr;
